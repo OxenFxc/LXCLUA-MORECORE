@@ -1,0 +1,38 @@
+# Build outputs
+*.o
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+lua
+luac
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Qoder
+.qoder/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+
+# Compiled Lua bytecode
+*.luac
+*.out
+
+# Debug files
+*.dSYM/
+*.pdb
+
+# Test outputs
+test_output/
