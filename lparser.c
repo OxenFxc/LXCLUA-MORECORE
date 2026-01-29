@@ -5541,8 +5541,9 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
     luaX_next(ls);
     return val;
   }
-  else if (ls->t.token == '$') {
+  else if (ls->t.token == TK_DOLLAR) {
     /* $varname - 获取局部变量的寄存器编号 */
+    /* 注意: '$' 在词法分析器中被映射为 TK_DOLLAR */
     expdesc var;
     TString *varname;
     int varkind;
@@ -5714,26 +5715,36 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
       return 0;
     }
   }
-  else if (ls->t.token == '@') {
-    /* @ 或 @label - PC 位置或标签引用 */
-    luaX_next(ls);  /* 跳过 '@' */
+  else if (ls->t.token == TK_OR) {
+    /* @ (TK_OR) 或 @label - PC 位置或标签引用 */
+    /* 注意: '@' 在词法分析器中被映射为 TK_OR */
+    luaX_next(ls);  /* 跳过 '@' (TK_OR) */
+    /* 检查是否是标签引用（必须是纯名称，不能是关键字） */
     if (ls->t.token == TK_NAME && ctx != NULL) {
       /* @label - 引用标签 */
       TString *labelname = ls->t.seminfo.ts;
-      int labelpc = asm_reflabel(ls, ctx, labelname);
-      luaX_next(ls);  /* 跳过标签名 */
-      if (labelpc < 0) {
-        /* 前向引用，需要后续修补 */
-        if (pendingLabel) *pendingLabel = labelname;
-        return 0;  /* 临时返回 0，后续修补 */
+      /* 检查是否是已定义的标签或常量 */
+      int labelIdx = asm_findlabel(ctx, labelname);
+      int defIdx = asm_finddefine(ctx, labelname);
+      if (labelIdx >= 0 || defIdx < 0) {
+        /* 是标签引用（已定义或未定义的标签） */
+        int labelpc = asm_reflabel(ls, ctx, labelname);
+        luaX_next(ls);  /* 跳过标签名 */
+        if (labelpc < 0) {
+          /* 前向引用，需要后续修补 */
+          if (pendingLabel) *pendingLabel = labelname;
+          return 0;  /* 临时返回 0，后续修补 */
+        }
+        return labelpc;
       }
-      return labelpc;
+      /* 如果是已定义的常量而不是标签，回退让其作为当前PC处理 */
     }
     /* 单独的 @ - 返回当前 PC */
     return fs->pc;
   }
-  else if (ls->t.token == '!') {
+  else if (ls->t.token == TK_NOT) {
     /* !specifier - 特殊值 */
+    /* 注意: '!' 在词法分析器中被映射为 TK_NOT */
     luaX_next(ls);  /* 跳过 '!' */
     check(ls, TK_NAME);
     const char *specname = getstr(ls->t.seminfo.ts);
@@ -5791,9 +5802,9 @@ static lua_Integer asm_getint (LexState *ls) {
 */
 static lua_Integer asm_trygetint (LexState *ls, lua_Integer defval) {
   if (ls->t.token == TK_INT || ls->t.token == '-' ||
-      ls->t.token == '$' || ls->t.token == '^' || 
-      ls->t.token == '#' || ls->t.token == '@' ||
-      ls->t.token == '!' || ls->t.token == '%') {
+      ls->t.token == TK_DOLLAR || ls->t.token == '^' || 
+      ls->t.token == '#' || ls->t.token == TK_OR ||
+      ls->t.token == TK_NOT || ls->t.token == '%') {
     return asm_getint(ls);
   }
   /* 检查是否是 Rn 格式的寄存器引用 */
@@ -5814,9 +5825,9 @@ static lua_Integer asm_trygetint_ex (LexState *ls, AsmContext *ctx,
                                       lua_Integer defval,
                                       int *pendingPc, TString **pendingLabel) {
   if (ls->t.token == TK_INT || ls->t.token == '-' ||
-      ls->t.token == '$' || ls->t.token == '^' || 
-      ls->t.token == '#' || ls->t.token == '@' ||
-      ls->t.token == '!' || ls->t.token == '%') {
+      ls->t.token == TK_DOLLAR || ls->t.token == '^' || 
+      ls->t.token == '#' || ls->t.token == TK_OR ||
+      ls->t.token == TK_NOT || ls->t.token == '%') {
     return asm_getint_ex(ls, ctx, pendingPc, pendingLabel);
   }
   /* 检查是否是 Rn 格式的寄存器引用 */
@@ -6027,9 +6038,12 @@ static void asmstat (LexState *ls, int line) {
         luaX_next(ls);
         
         /* 检查是否有可选的值参数 */
+        /* 注意: '@' -> TK_OR, '$' -> TK_DOLLAR, '!' -> TK_NOT */
+        /* TK_NAME 用于支持 def 定义的常量 */
         if (ls->t.token == TK_INT || ls->t.token == '-' ||
-            ls->t.token == '$' || ls->t.token == '%' ||
-            ls->t.token == '!' || ls->t.token == '@') {
+            ls->t.token == TK_DOLLAR || ls->t.token == '%' ||
+            ls->t.token == TK_NOT || ls->t.token == TK_OR ||
+            ls->t.token == TK_NAME) {
           lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL);
           printf("[ASM] %s: %lld\n", msg, (long long)val);
         }
@@ -6037,10 +6051,16 @@ static void asmstat (LexState *ls, int line) {
           printf("[ASM] %s\n", msg);
         }
       }
-      else {
+      else if (ls->t.token == TK_INT || ls->t.token == '-' ||
+               ls->t.token == TK_DOLLAR || ls->t.token == '%' ||
+               ls->t.token == TK_NOT || ls->t.token == TK_OR ||
+               ls->t.token == TK_NAME) {
         /* 没有消息，直接打印值 */
         lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL);
         printf("[ASM] value: %lld\n", (long long)val);
+      }
+      else {
+        luaK_semerror(ls, "_print expects string or value");
       }
       
       testnext(ls, ';');
