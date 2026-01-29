@@ -111,6 +111,7 @@ static const char *const opnames[] = {
   "SETPROP",
   "INSTANCEOF",
   "SLICE",
+  "NOP",
   "EXTRAARG",
   NULL
 };

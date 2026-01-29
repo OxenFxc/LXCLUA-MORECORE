@@ -2507,6 +2507,23 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         checkGC(L, ra + 1);
         vmbreak;
       }
+      vmcase(OP_NOP) {
+        /*
+        ** 空操作指令 - 不执行任何操作
+        ** 用于控制流混淆的占位指令
+        ** A/B/C参数被忽略，仅用于干扰反编译分析
+        ** 
+        ** 使用场景：
+        ** 1. 控制流扁平化中的填充指令
+        ** 2. 基本块之间的随机插入
+        ** 3. 增加代码体积，提高分析难度
+        */
+        /* 获取虚假参数（仅为了触发反编译器解析，实际不使用） */
+        UNUSED(GETARG_A(i));
+        UNUSED(GETARG_B(i));
+        UNUSED(GETARG_C(i));
+        vmbreak;
+      }
       vmcase(OP_EXTRAARG) {
         lua_assert(0);
         vmbreak;

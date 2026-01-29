@@ -316,6 +316,20 @@ LUA_API int   (lua_load) (lua_State *L, lua_Reader reader, void *dt,
 
 LUA_API int (lua_dump) (lua_State *L, lua_Writer writer, void *data, int strip);
 
+/*
+** 控制流扁平化混淆标志位
+*/
+#define LUA_OBFUSCATE_NONE          0       /* 不进行混淆 */
+#define LUA_OBFUSCATE_CFF           (1<<0)  /* 控制流扁平化 */
+#define LUA_OBFUSCATE_BLOCK_SHUFFLE (1<<1)  /* 基本块随机打乱 */
+#define LUA_OBFUSCATE_BOGUS_BLOCKS  (1<<2)  /* 插入虚假基本块 */
+#define LUA_OBFUSCATE_STATE_ENCODE  (1<<3)  /* 状态值编码混淆 */
+
+/* 带控制流扁平化混淆的函数导出 */
+LUA_API int (lua_dump_obfuscated) (lua_State *L, lua_Writer writer, void *data,
+                                   int strip, int obfuscate_flags, unsigned int seed,
+                                   const char *log_path);
+
 
 /*
 ** coroutine functions

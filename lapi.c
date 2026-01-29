@@ -29,6 +29,7 @@
 #include "ltm.h"
 #include "lundump.h"
 #include "lvm.h"
+#include "lobfuscate.h"
 
 
 
@@ -1244,6 +1245,42 @@ LUA_API int lua_dump (lua_State *L, lua_Writer writer, void *data, int strip) {
   o = s2v(L->top.p - 1);
   if (isLfunction(o))
     status = luaU_dump(L, getproto(o), writer, data, strip);
+  else
+    status = 1;
+  lua_unlock(L);
+  return status;
+}
+
+
+/*
+** 带控制流扁平化混淆的函数导出
+** @param L Lua状态
+** @param writer 写入器函数
+** @param data 写入器数据
+** @param strip 是否剥离调试信息
+** @param obfuscate_flags 混淆标志位
+** @param seed 随机种子（0表示使用时间）
+** @param log_path 调试日志输出路径（NULL表示不输出日志）
+** @return 成功返回0，失败返回非0
+**
+** 混淆标志位（可组合）：
+** - 0: 不混淆
+** - 1: 控制流扁平化 (OBFUSCATE_CFF)
+** - 2: 基本块随机打乱 (OBFUSCATE_BLOCK_SHUFFLE)
+** - 4: 虚假基本块 (OBFUSCATE_BOGUS_BLOCKS)
+** - 8: 状态值编码 (OBFUSCATE_STATE_ENCODE)
+*/
+LUA_API int lua_dump_obfuscated (lua_State *L, lua_Writer writer, void *data, 
+                                  int strip, int obfuscate_flags, unsigned int seed,
+                                  const char *log_path) {
+  int status;
+  TValue *o;
+  lua_lock(L);
+  api_checknelems(L, 1);
+  o = s2v(L->top.p - 1);
+  if (isLfunction(o))
+    status = luaU_dump_obfuscated(L, getproto(o), writer, data, strip, 
+                                   obfuscate_flags, seed, log_path);
   else
     status = 1;
   lua_unlock(L);

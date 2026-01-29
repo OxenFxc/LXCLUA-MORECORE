@@ -2003,6 +2003,132 @@ static void primaryexp (LexState *ls, expdesc *v) {
       constructor(ls, v);
       return;
     }
+    case TK_DOLLAR: {
+      /**
+       * 宏调用语法: $name 或 $name(args)
+       * 等价于: _KEYWORDS["name"](args)
+       * 
+       * 用于关键字自举系统，让用户定义的关键字可以像原生语法一样使用
+       */
+      FuncState *fs = ls->fs;
+      int line = ls->linenumber;
+      TString *kwname;
+      expdesc keywords_table, key_exp;
+      int base;
+      
+      luaX_next(ls);  /* 跳过 '$' */
+      
+      /* 获取关键字名称 */
+      check(ls, TK_NAME);
+      kwname = ls->t.seminfo.ts;
+      luaX_next(ls);  /* 跳过关键字名称 */
+      
+      /* 获取 _KEYWORDS 表 */
+      singlevaraux(fs, luaS_newliteral(ls->L, "_KEYWORDS"), &keywords_table, 1);
+      if (keywords_table.k == VVOID) {
+        /* 从 _ENV 获取 _KEYWORDS */
+        expdesc env_key;
+        singlevaraux(fs, ls->envn, &keywords_table, 1);
+        codestring(&env_key, luaS_newliteral(ls->L, "_KEYWORDS"));
+        luaK_indexed(fs, &keywords_table, &env_key);
+      }
+      
+      /* 获取 _KEYWORDS[name] */
+      luaK_exp2anyreg(fs, &keywords_table);
+      codestring(&key_exp, kwname);
+      luaK_indexed(fs, &keywords_table, &key_exp);
+      
+      /* 返回函数表达式，让 suffixedexp 继续处理后续的函数调用 */
+      *v = keywords_table;
+      return;
+    }
+    case TK_DOLLDOLL: {
+      /**
+       * 运算符调用语法: $$<运算符>(args)
+       * 等价于: _OPERATORS["<运算符>"](args)
+       * 
+       * 用于调用 operator 关键字定义的自定义运算符
+       * 示例: $$++(a) 调用 _OPERATORS["++"](a)
+       *       $$^(a, b) 调用 _OPERATORS["^"](a, b)
+       */
+      FuncState *fs = ls->fs;
+      TString *opname = NULL;
+      const char *opstr = NULL;
+      expdesc operators_table, key_exp;
+      
+      luaX_next(ls);  /* 跳过 '$$' */
+      
+      /* 解析运算符符号 */
+      int tok = ls->t.token;
+      switch (tok) {
+        case TK_PLUSPLUS: opstr = "++"; break;
+        case TK_CONCAT: opstr = ".."; break;
+        case TK_IDIV: opstr = "//"; break;
+        case TK_SHL: opstr = "<<"; break;
+        case TK_SHR: opstr = ">>"; break;
+        case TK_EQ: opstr = "=="; break;
+        case TK_NE: opstr = "~="; break;
+        case TK_LE: opstr = "<="; break;
+        case TK_GE: opstr = ">="; break;
+        case TK_PIPE: opstr = "|>"; break;
+        case TK_REVPIPE: opstr = "<|"; break;
+        case TK_SPACESHIP: opstr = "<=>"; break;
+        case TK_NULLCOAL: opstr = "??"; break;
+        case TK_ARROW: opstr = "->"; break;
+        case TK_MEAN: opstr = "=>"; break;
+        case TK_ADDEQ: opstr = "+="; break;
+        case TK_SUBEQ: opstr = "-="; break;
+        case TK_MULEQ: opstr = "*="; break;
+        case TK_DIVEQ: opstr = "/="; break;
+        case TK_MODEQ: opstr = "%="; break;
+        case '+': opstr = "+"; break;
+        case '-': opstr = "-"; break;
+        case '*': opstr = "*"; break;
+        case '/': opstr = "/"; break;
+        case '%': opstr = "%"; break;
+        case '^': opstr = "^"; break;
+        case '#': opstr = "#"; break;
+        case '&': opstr = "&"; break;
+        case '|': opstr = "|"; break;
+        case '~': opstr = "~"; break;
+        case '<': opstr = "<"; break;
+        case '>': opstr = ">"; break;
+        case '@': opstr = "@"; break;
+        case TK_NAME:
+          opname = ls->t.seminfo.ts;
+          break;
+        case TK_STRING:
+          opname = ls->t.seminfo.ts;
+          break;
+        default:
+          luaX_syntaxerror(ls, "expected operator symbol after '$$'");
+      }
+      
+      if (opstr != NULL) {
+        opname = luaS_new(ls->L, opstr);
+      }
+      
+      luaX_next(ls);  /* 跳过运算符符号 */
+      
+      /* 获取 _OPERATORS 表 */
+      singlevaraux(fs, luaS_newliteral(ls->L, "_OPERATORS"), &operators_table, 1);
+      if (operators_table.k == VVOID) {
+        /* 从 _ENV 获取 _OPERATORS */
+        expdesc env_key;
+        singlevaraux(fs, ls->envn, &operators_table, 1);
+        codestring(&env_key, luaS_newliteral(ls->L, "_OPERATORS"));
+        luaK_indexed(fs, &operators_table, &env_key);
+      }
+      
+      /* 获取 _OPERATORS[运算符] */
+      luaK_exp2anyreg(fs, &operators_table);
+      codestring(&key_exp, opname);
+      luaK_indexed(fs, &operators_table, &key_exp);
+      
+      /* 返回函数表达式，让 suffixedexp 继续处理后续的函数调用 */
+      *v = operators_table;
+      return;
+    }
     default: {
       luaX_syntaxerror(ls, "unexpected symbol");
     }
@@ -5367,6 +5493,40 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
     luaX_next(ls);  /* 跳过变量名 */
     return var.u.var.ridx;  /* 返回寄存器索引 */
   }
+  else if (ls->t.token == '%') {
+    /* %n - 直接使用寄存器编号（无需预先声明变量） */
+    luaX_next(ls);  /* 跳过 '%' */
+    check(ls, TK_INT);
+    val = ls->t.seminfo.i;
+    if (val < 0 || val > 255) {
+      luaK_semerror(ls, "register index out of range (0-255) in asm: %lld", (long long)val);
+    }
+    luaX_next(ls);
+    return val;
+  }
+  else if (ls->t.token == TK_NAME) {
+    /* 检查是否是 Rn/rn 格式的寄存器引用 */
+    const char *name = getstr(ls->t.seminfo.ts);
+    if ((name[0] == 'R' || name[0] == 'r') && name[1] >= '0' && name[1] <= '9') {
+      /* 解析寄存器编号 */
+      val = 0;
+      int i = 1;
+      while (name[i] >= '0' && name[i] <= '9') {
+        val = val * 10 + (name[i] - '0');
+        i++;
+      }
+      if (name[i] == '\0') {  /* 确保格式正确，如 R0, R10, R255 */
+        if (val > 255) {
+          luaK_semerror(ls, "register index out of range (0-255) in asm: R%lld", (long long)val);
+        }
+        luaX_next(ls);
+        return val;
+      }
+    }
+    /* 不是寄存器格式，报错 */
+    luaX_syntaxerror(ls, "integer expected in asm instruction");
+    return 0;
+  }
   else if (ls->t.token == '^') {
     /* ^varname - 获取 upvalue 的索引 */
     TString *varname;
@@ -5561,8 +5721,15 @@ static lua_Integer asm_trygetint (LexState *ls, lua_Integer defval) {
   if (ls->t.token == TK_INT || ls->t.token == '-' ||
       ls->t.token == '$' || ls->t.token == '^' || 
       ls->t.token == '#' || ls->t.token == '@' ||
-      ls->t.token == '!') {
+      ls->t.token == '!' || ls->t.token == '%') {
     return asm_getint(ls);
+  }
+  /* 检查是否是 Rn 格式的寄存器引用 */
+  if (ls->t.token == TK_NAME) {
+    const char *name = getstr(ls->t.seminfo.ts);
+    if ((name[0] == 'R' || name[0] == 'r') && name[1] >= '0' && name[1] <= '9') {
+      return asm_getint(ls);
+    }
   }
   return defval;
 }
@@ -6465,6 +6632,185 @@ static void commandstat (LexState *ls, int line) {
     luaK_indexed(fs, &cmds_table, &key_exp);
     luaK_storevar(fs, &cmds_table, &val_exp);
   }
+}
+
+
+/*
+** 关键字声明语法处理
+** 语法: keyword 关键字名(参数列表) 代码块 end
+** 等价于: function 关键字名(参数列表) 代码块 end; _KEYWORDS["关键字名"] = 关键字名
+** 
+** 参数：
+**   ls - 词法状态
+**   line - 行号
+** 说明：
+**   将函数引用存储到 _KEYWORDS 表，支持宏调用语法 $name(args)
+*/
+static void keywordstat (LexState *ls, int line) {
+  /* keywordstat -> KEYWORD funcname body */
+  expdesc v, b;
+  TString *kwname;
+  
+  luaX_next(ls);  /* skip KEYWORD */
+  
+  /* 先保存关键字名（不消费 token） */
+  check(ls, TK_NAME);
+  kwname = ls->t.seminfo.ts;
+  
+  /* 使用 singlevar 获取变量描述符（这会消费 NAME token） */
+  singlevar(ls, &v);
+  
+  /* 检查是否为只读 */
+  check_readonly(ls, &v);
+  
+  /* 解析函数体 */
+  body(ls, &b, 0, line);
+  
+  /* 存储函数到变量 */
+  luaK_storevar(ls->fs, &v, &b);
+  luaK_fixline(ls->fs, line);
+  
+  /* 将函数引用注册到 _KEYWORDS 表: _KEYWORDS[关键字名] = 函数引用 */
+  {
+    FuncState *fs = ls->fs;
+    expdesc keywords_table, key_exp, func_exp;
+    
+    /* 获取 _KEYWORDS 全局表 */
+    singlevaraux(fs, luaS_newliteral(ls->L, "_KEYWORDS"), &keywords_table, 1);
+    if (keywords_table.k == VVOID) {
+      /* _KEYWORDS 不存在，从 _ENV 获取 */
+      expdesc env_key;
+      singlevaraux(fs, ls->envn, &keywords_table, 1);
+      codestring(&env_key, luaS_newliteral(ls->L, "_KEYWORDS"));
+      luaK_indexed(fs, &keywords_table, &env_key);
+    }
+    
+    /* 重新获取函数变量的值 */
+    singlevaraux(fs, kwname, &func_exp, 1);
+    if (func_exp.k == VVOID) {
+      /* 从 _ENV 获取 */
+      expdesc env_key2;
+      singlevaraux(fs, ls->envn, &func_exp, 1);
+      codestring(&env_key2, kwname);
+      luaK_indexed(fs, &func_exp, &env_key2);
+    }
+    luaK_exp2anyreg(fs, &func_exp);
+    
+    /* 设置 _KEYWORDS[关键字名] = 函数引用 */
+    luaK_exp2anyregup(fs, &keywords_table);
+    codestring(&key_exp, kwname);
+    luaK_indexed(fs, &keywords_table, &key_exp);
+    luaK_storevar(fs, &keywords_table, &func_exp);
+  }
+}
+
+
+/*
+** operatorstat - 解析 operator 语句
+** 语法: operator <符号> (参数列表) 语句块 end
+** 功能描述：
+**   定义自定义运算符，将函数存储到 _OPERATORS 表中
+** 参数：
+**   ls - 词法状态
+**   line - 行号
+** 示例：
+**   operator ++ (a) return a + 1 end
+**   operator ** (a, b) return a ^ b end
+*/
+static void operatorstat (LexState *ls, int line) {
+  /* operatorstat -> OPERATOR <符号> body */
+  expdesc b;
+  TString *opname = NULL;
+  FuncState *fs = ls->fs;
+  const char *opstr = NULL;
+  
+  luaX_next(ls);  /* 跳过 OPERATOR */
+  
+  /* 解析运算符符号 - 支持各种符号组合 */
+  int tok = ls->t.token;
+  
+  /* 根据当前token类型获取运算符字符串 */
+  switch (tok) {
+    case TK_PLUSPLUS: opstr = "++"; break;
+    case TK_CONCAT: opstr = ".."; break;
+    case TK_IDIV: opstr = "//"; break;
+    case TK_SHL: opstr = "<<"; break;
+    case TK_SHR: opstr = ">>"; break;
+    case TK_EQ: opstr = "=="; break;
+    case TK_NE: opstr = "~="; break;
+    case TK_LE: opstr = "<="; break;
+    case TK_GE: opstr = ">="; break;
+    case TK_PIPE: opstr = "|>"; break;
+    case TK_REVPIPE: opstr = "<|"; break;
+    case TK_SPACESHIP: opstr = "<=>"; break;
+    case TK_NULLCOAL: opstr = "??"; break;
+    case TK_ARROW: opstr = "->"; break;
+    case TK_MEAN: opstr = "=>"; break;
+    case TK_ADDEQ: opstr = "+="; break;
+    case TK_SUBEQ: opstr = "-="; break;
+    case TK_MULEQ: opstr = "*="; break;
+    case TK_DIVEQ: opstr = "/="; break;
+    case TK_MODEQ: opstr = "%="; break;
+    case '+': opstr = "+"; break;
+    case '-': opstr = "-"; break;
+    case '*': opstr = "*"; break;
+    case '/': opstr = "/"; break;
+    case '%': opstr = "%"; break;
+    case '^': opstr = "^"; break;
+    case '#': opstr = "#"; break;
+    case '&': opstr = "&"; break;
+    case '|': opstr = "|"; break;
+    case '~': opstr = "~"; break;
+    case '<': opstr = "<"; break;
+    case '>': opstr = ">"; break;
+    case '@': opstr = "@"; break;
+    case TK_NAME:
+      /* 支持命名运算符如 __add, __sub 等 */
+      opname = ls->t.seminfo.ts;
+      break;
+    case TK_STRING:
+      /* 支持字符串形式的运算符如 "**" */
+      opname = ls->t.seminfo.ts;
+      break;
+    default:
+      luaX_syntaxerror(ls, "expected operator symbol after 'operator'");
+  }
+  
+  /* 如果是固定字符串，创建 TString */
+  if (opstr != NULL) {
+    opname = luaS_new(ls->L, opstr);
+  }
+  
+  luaX_next(ls);  /* 消费运算符符号 */
+  
+  /* 解析函数体 (参数列表和函数体) */
+  body(ls, &b, 0, line);
+  
+  /* 将函数注册到 _OPERATORS 表: _OPERATORS[运算符] = 函数 */
+  {
+    expdesc operators_table, key_exp;
+    
+    /* 获取 _OPERATORS 全局表 */
+    singlevaraux(fs, luaS_newliteral(ls->L, "_OPERATORS"), &operators_table, 1);
+    if (operators_table.k == VVOID) {
+      /* _OPERATORS 不存在，从 _ENV 获取 */
+      expdesc env_key;
+      singlevaraux(fs, ls->envn, &operators_table, 1);
+      codestring(&env_key, luaS_newliteral(ls->L, "_OPERATORS"));
+      luaK_indexed(fs, &operators_table, &env_key);
+    }
+    
+    /* 确保函数在寄存器中 */
+    luaK_exp2anyreg(fs, &b);
+    
+    /* 设置 _OPERATORS[运算符] = 函数 */
+    luaK_exp2anyregup(fs, &operators_table);
+    codestring(&key_exp, opname);
+    luaK_indexed(fs, &operators_table, &key_exp);
+    luaK_storevar(fs, &operators_table, &b);
+  }
+  
+  luaK_fixline(fs, line);
 }
 
 
@@ -7935,6 +8281,14 @@ static void statement (LexState *ls) {
     }
     case TK_COMMAND: {  /* stat -> commandstat */
       commandstat(ls, line);
+      break;
+    }
+    case TK_KEYWORD: {  /* stat -> keywordstat */
+      keywordstat(ls, line);
+      break;
+    }
+    case TK_OPERATOR: {  /* stat -> operatorstat */
+      operatorstat(ls, line);
       break;
     }
     case TK_LOCAL: {  /* stat -> localstat */

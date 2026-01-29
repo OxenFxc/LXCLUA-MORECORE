@@ -35,4 +35,10 @@ LUAI_FUNC int luaU_dump (lua_State* L, const Proto* f, lua_Writer w,
 LUAI_FUNC int luaU_Vdump (lua_State* L, const Proto* f, lua_Writer w,
                          void* data, int strip);
 
+/* dump one chunk with control flow flattening obfuscation; from ldump.c */
+/* 带控制流扁平化混淆的字节码导出函数 */
+LUAI_FUNC int luaU_dump_obfuscated (lua_State* L, const Proto* f, lua_Writer w,
+                                    void* data, int strip, int obfuscate_flags,
+                                    unsigned int seed, const char *log_path);
+
 #endif

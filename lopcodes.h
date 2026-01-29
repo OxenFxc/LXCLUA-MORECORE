@@ -376,6 +376,12 @@ OP_SLICE,/*	A B C	R[A] := slice(R[B], R[B+1], R[B+2], R[B+3])
 			B+3 = step (步长，nil表示1)
 			C = 标志位：0=普通切片，1=有步长		*/
 
+OP_NOP,/*	A B C	空操作指令 - 不执行任何操作
+			用于控制流混淆占位，A/B/C参数可携带虚假数据干扰反编译
+			A = 虚假寄存器索引（被忽略）
+			B = 虚假操作数1（被忽略）
+			C = 虚假操作数2（被忽略）			*/
+
 OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 } OpCode;
 

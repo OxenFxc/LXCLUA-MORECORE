@@ -27,6 +27,7 @@
 #include "llimits.h"
 #include "json_parser.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 /* Define UNUSED macro for Android NDK compatibility */

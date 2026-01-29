@@ -256,13 +256,99 @@ static int writer (lua_State *L, const void *b, size_t size, void *ud) {
 }
 
 
+/*
+** string.dump 函数实现
+** 将Lua函数导出为字节码字符串
+**
+** 用法：
+**   string.dump(func)                    -- 基本用法
+**   string.dump(func, true)              -- 剥离调试信息
+**   string.dump(func, {                  -- 表参数形式
+**     strip = true,                      -- 是否剥离调试信息
+**     obfuscate = 1,                     -- 混淆标志位（可组合）
+**     seed = 12345                       -- 随机种子（可选，0或不指定表示使用时间）
+**   })
+**
+** 混淆标志位：
+**   0: 不混淆
+**   1: 控制流扁平化 (CFF)
+**   2: 基本块随机打乱
+**   4: 虚假基本块（预留）
+**   8: 状态值编码混淆
+**
+** @param L Lua状态
+** @return 1（返回字节码字符串）
+*/
 static int str_dump (lua_State *L) {
   struct str_Writer state;
-  int strip = lua_toboolean(L, 2);
+  int strip = 0;
+  int obfuscate_flags = 0;
+  unsigned int seed = 0;
+  const char *log_path = NULL;  /* 日志输出路径 */
+  
   luaL_checktype(L, 1, LUA_TFUNCTION);
-  lua_settop(L, 1);  /* ensure function is on the top of the stack */
+  
+  /* 检查第二个参数的类型 */
+  if (lua_istable(L, 2)) {
+    /* 表参数形式：读取各个字段 */
+    
+    /* 读取 strip 字段 */
+    lua_getfield(L, 2, "strip");
+    if (!lua_isnil(L, -1)) {
+      strip = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+    
+    /* 读取 obfuscate 字段（混淆标志位） */
+    lua_getfield(L, 2, "obfuscate");
+    if (!lua_isnil(L, -1)) {
+      obfuscate_flags = (int)lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+    
+    /* 读取 seed 字段（随机种子） */
+    lua_getfield(L, 2, "seed");
+    if (!lua_isnil(L, -1)) {
+      seed = (unsigned int)lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+    
+    /* 读取 log_path 字段（调试日志输出路径）*/
+    /* 注意：需要保持字符串在栈上直到 dump 完成 */
+    lua_getfield(L, 2, "log_path");
+    if (!lua_isnil(L, -1) && lua_isstring(L, -1)) {
+      log_path = lua_tostring(L, -1);
+      /* 字符串现在在栈顶，保持它在那里 */
+    } else {
+      lua_pop(L, 1);
+      lua_pushnil(L);  /* 占位，保持栈结构一致 */
+    }
+    /* 现在栈是: [func, table, log_path_or_nil] */
+  } else {
+    /* 兼容旧的布尔参数形式 */
+    strip = lua_toboolean(L, 2);
+    lua_pushnil(L);  /* 占位 */
+  }
+  
+  /* 栈: [func, table/bool, log_path_or_nil]
+  ** lua_dump 需要函数在栈顶，但我们需要保留 log_path 字符串的引用
+  ** 解决方案：把函数复制到栈顶
+  */
+  lua_pushvalue(L, 1);  /* 复制函数到栈顶 */
+  /* 栈: [func, table/bool, log_path_or_nil, func_copy] */
+  
   state.init = 0;
-  if (l_unlikely(lua_dump(L, writer, &state, strip) != 0))
+  
+  int result;
+  if (obfuscate_flags != 0) {
+    /* 使用带混淆的导出函数 */
+    result = lua_dump_obfuscated(L, writer, &state, strip, obfuscate_flags, seed, log_path);
+  } else {
+    /* 使用普通导出函数 */
+    result = lua_dump(L, writer, &state, strip);
+  }
+  
+  if (l_unlikely(result != 0))
     return luaL_error(L, "unable to dump given function1");
   luaL_pushresult(&state.B);
   return 1;
