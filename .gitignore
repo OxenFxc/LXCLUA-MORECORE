@@ -40,3 +40,6 @@ test_output/
 # SDK
 emsdk-main/
 *.js
+
+# Koishi
+koishi/
