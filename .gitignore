@@ -43,3 +43,8 @@ emsdk-main/
 
 # Koishi
 koishi/
+
+# Release packages
+*.zip
+*.tar.gz
+release/
