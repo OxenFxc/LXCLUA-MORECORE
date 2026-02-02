@@ -156,6 +156,17 @@ mingw:
 	luac.exe
 	TMPDIR=. TMP=. TEMP=. $(MAKE) "LBCDUMP_T=lbcdump.exe" "SYSLDFLAGS=-s" lbcdump.exe
 
+mingw-static:
+	TMPDIR=. TMP=. TEMP=. $(MAKE) "LUA_A=liblua.a" "LUA_T=lxclua.exe" \
+	"AR=$(AR)" "RANLIB=$(RANLIB)" \
+	"SYSCFLAGS=-DLUA_USE_DLOPEN -DLUA_COMPAT_MATHLIB -DLUA_COMPAT_MAXN -DLUA_COMPAT_MODULE" "SYSLIBS=$(MYLIBS)" "SYSLDFLAGS=-s" \
+	"MYOBJS=$(MYOBJS)" lxclua.exe
+	TMPDIR=. TMP=. TEMP=. $(MAKE) "LUA_A=liblua.a" "LUAC_T=luac.exe" \
+	"AR=$(AR)" "RANLIB=$(RANLIB)" \
+	"SYSCFLAGS=-DLUA_USE_DLOPEN -DLUA_COMPAT_MATHLIB -DLUA_COMPAT_MAXN -DLUA_COMPAT_MODULE" "SYSLIBS=$(MYLIBS)" "SYSLDFLAGS=-s" \
+	luac.exe
+	TMPDIR=. TMP=. TEMP=. $(MAKE) "LBCDUMP_T=lbcdump.exe" "SYSLDFLAGS=-s" lbcdump.exe
+
 
 posix:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX"

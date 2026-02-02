@@ -5209,9 +5209,9 @@ static int funcname (LexState *ls, expdesc *v) {
 ** 汇编标签结构（用于跳转目标）
 ** 支持前向引用和后向引用
 */
-#define ASM_MAX_LABELS 64    /* 最大标签数量 */
-#define ASM_MAX_PENDING 128  /* 最大待修补跳转数量 */
-#define ASM_MAX_DEFINES 64   /* 最大汇编常量定义数量 */
+#define ASM_INIT_LABELS 16    /* 标签初始容量 */
+#define ASM_INIT_PENDING 32   /* 待修补跳转初始容量 */
+#define ASM_INIT_DEFINES 16   /* 汇编常量定义初始容量 */
 
 typedef struct AsmLabel {
   TString *name;    /* 标签名称 */
@@ -5236,13 +5236,56 @@ typedef struct AsmDefine {
 } AsmDefine;
 
 typedef struct AsmContext {
-  AsmLabel labels[ASM_MAX_LABELS];      /* 标签数组 */
-  int nlabels;                           /* 标签数量 */
-  AsmPending pending[ASM_MAX_PENDING];  /* 待修补跳转数组 */
-  int npending;                          /* 待修补数量 */
-  AsmDefine defines[ASM_MAX_DEFINES];   /* 常量定义数组 */
-  int ndefines;                          /* 常量定义数量 */
+  AsmLabel *labels;       /* 标签动态数组 */
+  int nlabels;            /* 标签数量 */
+  int labels_cap;         /* 标签数组容量 */
+  AsmPending *pending;    /* 待修补跳转动态数组 */
+  int npending;           /* 待修补数量 */
+  int pending_cap;        /* 待修补数组容量 */
+  AsmDefine *defines;     /* 常量定义动态数组 */
+  int ndefines;           /* 常量定义数量 */
+  int defines_cap;        /* 常量定义数组容量 */
+  struct AsmContext *parent;  /* 父级上下文（用于嵌套 asm） */
 } AsmContext;
+
+
+/*
+** 初始化汇编上下文
+** 参数：
+**   L - Lua 状态机（用于内存分配）
+**   ctx - 汇编上下文
+**   parent - 父级上下文（嵌套时非 NULL）
+*/
+static void asm_initcontext (lua_State *L, AsmContext *ctx, AsmContext *parent) {
+  ctx->labels = luaM_newvector(L, ASM_INIT_LABELS, AsmLabel);
+  ctx->nlabels = 0;
+  ctx->labels_cap = ASM_INIT_LABELS;
+  ctx->pending = luaM_newvector(L, ASM_INIT_PENDING, AsmPending);
+  ctx->npending = 0;
+  ctx->pending_cap = ASM_INIT_PENDING;
+  ctx->defines = luaM_newvector(L, ASM_INIT_DEFINES, AsmDefine);
+  ctx->ndefines = 0;
+  ctx->defines_cap = ASM_INIT_DEFINES;
+  ctx->parent = parent;
+}
+
+
+/*
+** 释放汇编上下文
+** 参数：
+**   L - Lua 状态机
+**   ctx - 汇编上下文
+*/
+static void asm_freecontext (lua_State *L, AsmContext *ctx) {
+  luaM_freearray(L, ctx->labels, ctx->labels_cap);
+  luaM_freearray(L, ctx->pending, ctx->pending_cap);
+  luaM_freearray(L, ctx->defines, ctx->defines_cap);
+  ctx->labels = NULL;
+  ctx->pending = NULL;
+  ctx->defines = NULL;
+  ctx->nlabels = ctx->npending = ctx->ndefines = 0;
+  ctx->labels_cap = ctx->pending_cap = ctx->defines_cap = 0;
+}
 
 
 /*
@@ -5301,15 +5344,43 @@ static void asm_deflabel (LexState *ls, AsmContext *ctx, TString *name, int pc, 
     ctx->labels[idx].line = line;
   }
   else {
-    /* 新标签 */
-    if (ctx->nlabels >= ASM_MAX_LABELS) {
-      luaK_semerror(ls, "too many labels in asm (max %d)", ASM_MAX_LABELS);
+    /* 新标签 - 动态扩容 */
+    if (ctx->nlabels >= ctx->labels_cap) {
+      int newcap = ctx->labels_cap * 2;
+      ctx->labels = luaM_reallocvector(ls->L, ctx->labels, ctx->labels_cap, newcap, AsmLabel);
+      ctx->labels_cap = newcap;
     }
     ctx->labels[ctx->nlabels].name = name;
     ctx->labels[ctx->nlabels].pc = pc;
     ctx->labels[ctx->nlabels].line = line;
     ctx->nlabels++;
   }
+}
+
+
+/*
+** 在汇编上下文中查找常量定义（包括父级上下文）
+** 参数：
+**   ctx - 汇编上下文
+**   name - 常量名称
+**   out_ctx - 输出参数，返回找到定义的上下文（可为 NULL）
+** 返回值：
+**   常量索引，如果找不到则返回 -1
+*/
+static int asm_finddefine_ex (AsmContext *ctx, TString *name, AsmContext **out_ctx) {
+  AsmContext *cur = ctx;
+  while (cur != NULL) {
+    int i;
+    for (i = 0; i < cur->ndefines; i++) {
+      if (cur->defines[i].name == name) {
+        if (out_ctx) *out_ctx = cur;
+        return i;
+      }
+    }
+    cur = cur->parent;  /* 向上查找父级上下文 */
+  }
+  if (out_ctx) *out_ctx = NULL;
+  return -1;
 }
 
 
@@ -5322,12 +5393,7 @@ static void asm_deflabel (LexState *ls, AsmContext *ctx, TString *name, int pc, 
 **   常量索引，如果找不到则返回 -1
 */
 static int asm_finddefine (AsmContext *ctx, TString *name) {
-  int i;
-  for (i = 0; i < ctx->ndefines; i++) {
-    if (ctx->defines[i].name == name)
-      return i;
-  }
-  return -1;
+  return asm_finddefine_ex(ctx, name, NULL);
 }
 
 
@@ -5340,20 +5406,26 @@ static int asm_finddefine (AsmContext *ctx, TString *name) {
 **   value - 常量值
 */
 static void asm_adddefine (LexState *ls, AsmContext *ctx, TString *name, lua_Integer value) {
-  int idx = asm_finddefine(ctx, name);
-  if (idx >= 0) {
-    /* 更新已存在的定义 */
-    ctx->defines[idx].value = value;
-  }
-  else {
-    /* 新定义 */
-    if (ctx->ndefines >= ASM_MAX_DEFINES) {
-      luaK_semerror(ls, "too many defines in asm (max %d)", ASM_MAX_DEFINES);
+  int idx;
+  int i;
+  /* 只在当前上下文中查找（不向上查找父级） */
+  for (i = 0; i < ctx->ndefines; i++) {
+    if (ctx->defines[i].name == name) {
+      /* 更新已存在的定义 */
+      ctx->defines[i].value = value;
+      return;
     }
-    ctx->defines[ctx->ndefines].name = name;
-    ctx->defines[ctx->ndefines].value = value;
-    ctx->ndefines++;
   }
+  /* 新定义 - 动态扩容 */
+  if (ctx->ndefines >= ctx->defines_cap) {
+    int newcap = ctx->defines_cap * 2;
+    ctx->defines = luaM_reallocvector(ls->L, ctx->defines, ctx->defines_cap, newcap, AsmDefine);
+    ctx->defines_cap = newcap;
+  }
+  ctx->defines[ctx->ndefines].name = name;
+  ctx->defines[ctx->ndefines].value = value;
+  ctx->ndefines++;
+  (void)idx;  /* unused */
 }
 
 
@@ -5373,8 +5445,11 @@ static int asm_reflabel (LexState *ls, AsmContext *ctx, TString *name) {
   }
   /* 前向引用或未定义，先创建占位标签 */
   if (idx < 0) {
-    if (ctx->nlabels >= ASM_MAX_LABELS) {
-      luaK_semerror(ls, "too many labels in asm (max %d)", ASM_MAX_LABELS);
+    /* 动态扩容 */
+    if (ctx->nlabels >= ctx->labels_cap) {
+      int newcap = ctx->labels_cap * 2;
+      ctx->labels = luaM_reallocvector(ls->L, ctx->labels, ctx->labels_cap, newcap, AsmLabel);
+      ctx->labels_cap = newcap;
     }
     ctx->labels[ctx->nlabels].name = name;
     ctx->labels[ctx->nlabels].pc = -1;  /* 尚未定义 */
@@ -5397,8 +5472,11 @@ static int asm_reflabel (LexState *ls, AsmContext *ctx, TString *name) {
 */
 static void asm_addpending (LexState *ls, AsmContext *ctx, TString *label, 
                             int pc, int line, int isJump) {
-  if (ctx->npending >= ASM_MAX_PENDING) {
-    luaK_semerror(ls, "too many pending jumps in asm (max %d)", ASM_MAX_PENDING);
+  /* 动态扩容 */
+  if (ctx->npending >= ctx->pending_cap) {
+    int newcap = ctx->pending_cap * 2;
+    ctx->pending = luaM_reallocvector(ls->L, ctx->pending, ctx->pending_cap, newcap, AsmPending);
+    ctx->pending_cap = newcap;
   }
   ctx->pending[ctx->npending].label = label;
   ctx->pending[ctx->npending].pc = pc;
@@ -5588,12 +5666,13 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
         return val;
       }
     }
-    /* 检查是否是通过 def 定义的常量 */
+    /* 检查是否是通过 def 定义的常量（包括父级上下文） */
     if (ctx != NULL) {
-      int defIdx = asm_finddefine(ctx, ts);
-      if (defIdx >= 0) {
+      AsmContext *found_ctx = NULL;
+      int defIdx = asm_finddefine_ex(ctx, ts, &found_ctx);
+      if (defIdx >= 0 && found_ctx != NULL) {
         luaX_next(ls);
-        return ctx->defines[defIdx].value;
+        return found_ctx->defines[defIdx].value;
       }
     }
     /* 不是寄存器格式也不是定义的常量，报错 */
@@ -5844,6 +5923,22 @@ static lua_Integer asm_trygetint_ex (LexState *ls, AsmContext *ctx,
 
 
 /*
+** 前向声明：递归解析 asm 块主体
+*/
+static void asm_parse_body (LexState *ls, FuncState *fs, AsmContext *ctx, int line);
+
+
+/*
+** 内联汇编语句解析（内部版本，支持嵌套）
+** 参数：
+**   ls - 词法状态
+**   line - 起始行号
+**   parent_ctx - 父级上下文（用于嵌套 asm，可为 NULL）
+*/
+static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx);
+
+
+/*
 ** 内联汇编语句解析
 ** 语法: asm( 指令序列 )
 ** 
@@ -5883,13 +5978,16 @@ static lua_Integer asm_trygetint_ex (LexState *ls, AsmContext *ctx,
 **   line - 起始行号
 */
 static void asmstat (LexState *ls, int line) {
+  asmstat_ex(ls, line, NULL);
+}
+
+
+static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
   FuncState *fs = ls->fs;
   AsmContext ctx;
   
-  /* 初始化汇编上下文 */
-  ctx.nlabels = 0;
-  ctx.npending = 0;
-  ctx.ndefines = 0;
+  /* 初始化汇编上下文（动态分配，支持嵌套） */
+  asm_initcontext(ls->L, &ctx, parent_ctx);
   
   luaX_next(ls);  /* 跳过 'asm' */
   checknext(ls, '(');
@@ -5904,6 +6002,36 @@ static void asmstat (LexState *ls, int line) {
     TString *pendingLabel = NULL;  /* 待修补的标签 */
     int needsPatch = 0;  /* 是否需要后续修补 */
     int isJumpInst = 0;  /* 是否是跳转指令 */
+    
+    /*
+    ** 跳过注释内容
+    ** 支持的注释语法:
+    **   ; "注释内容"     - 分号后跟字符串
+    **   INSTR args; ; "注释"  - 指令后的分号注释
+    **   comment "内容"   - comment/rem 伪指令
+    ** 
+    ** 当遇到 ';' 时跳过它，如果后面是字符串也跳过
+    ** 当遇到单独的字符串时（上一个分号的注释内容），也跳过
+    */
+    for (;;) {
+      if (ls->t.token == ';') {
+        luaX_next(ls);  /* 跳过 ';' */
+        /* 如果后面是字符串，作为注释内容跳过 */
+        if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+          luaX_next(ls);  /* 跳过注释字符串 */
+        }
+      }
+      else if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+        /* 单独的字符串，视为上一个分号的注释内容，跳过 */
+        luaX_next(ls);
+      }
+      else {
+        break;  /* 不是注释，退出循环 */
+      }
+    }
+    
+    /* 再次检查是否到达结束 */
+    if (ls->t.token == ')') break;
     
     /* 检查是否是标签定义 */
     if (ls->t.token == ':') {
@@ -5922,16 +6050,32 @@ static void asmstat (LexState *ls, int line) {
     
     /*
     ** 伪指令处理
-    ** rep count { ... }    - 循环插入指令
-    ** junk "str" / count   - 插入字符串垃圾或随机指令
-    ** _if expr ... _endif  - 条件汇编
-    ** nop [count]          - 插入NOP指令
-    ** raw value            - 直接插入原始指令值
-    ** align N              - 对齐到N条指令边界
-    ** db/dw/dd value       - 直接嵌入字节/字/双字数据
-    ** emit value [,value]  - 发出多个原始指令
-    ** def name value       - 定义汇编常量（仅在当前asm块有效）
+    ** comment "str"         - 注释（被忽略）
+    ** rep count { ... }     - 循环插入指令
+    ** junk "str" / count    - 插入字符串垃圾或随机指令
+    ** _if expr ... _endif   - 条件汇编
+    ** nop [count]           - 插入NOP指令
+    ** raw value             - 直接插入原始指令值
+    ** align N               - 对齐到N条指令边界
+    ** db/dw/dd value        - 直接嵌入字节/字/双字数据
+    ** emit value [,value]   - 发出多个原始指令
+    ** def name value        - 定义汇编常量（仅在当前asm块有效）
     */
+    
+    /*
+    ** comment 伪指令: comment "str" 或 comment 任意内容
+    ** 用于在 asm 块中添加注释，不生成任何代码
+    */
+    if (strcmp(opname, "comment") == 0 || strcmp(opname, "rem") == 0 ||
+        strcmp(opname, "COMMENT") == 0 || strcmp(opname, "REM") == 0) {
+      luaX_next(ls);  /* 跳过 'comment' */
+      /* 跳过注释内容（如果是字符串） */
+      if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+        luaX_next(ls);
+      }
+      testnext(ls, ';');
+      continue;
+    }
     
     /* nop 伪指令: nop [count] - 插入NOP指令 */
     if (strcmp(opname, "nop") == 0) {
@@ -5979,6 +6123,36 @@ static void asmstat (LexState *ls, int line) {
         luaK_fixline(fs, line);
       } while (testnext(ls, ','));
       
+      testnext(ls, ';');
+      continue;
+    }
+    
+    /*
+    ** 嵌套 asm 伪指令: asm( ... )
+    ** 支持在 asm 块内部嵌套另一个 asm 块
+    ** 内层 asm 块继承外层的常量定义（通过 parent 指针）
+    ** 但拥有独立的标签和待修补列表
+    ** 
+    ** 使用递归调用 asm_parse_body 实现真正的嵌套支持
+    */
+    if (strcmp(opname, "asm") == 0) {
+      int nested_line = ls->linenumber;
+      AsmContext nested_ctx;
+      
+      luaX_next(ls);  /* 跳过 'asm' */
+      checknext(ls, '(');
+      
+      /* 创建子上下文，继承父级的常量定义 */
+      asm_initcontext(ls->L, &nested_ctx, &ctx);
+      
+      /* 递归解析嵌套 asm 块的主体 - 使用与主循环相同的逻辑 */
+      asm_parse_body(ls, fs, &nested_ctx, nested_line);
+      
+      /* 修补并释放子上下文 */
+      asm_patchpending(ls, fs, &nested_ctx);
+      asm_freecontext(ls->L, &nested_ctx);
+      
+      checknext(ls, ')');
       testnext(ls, ';');
       continue;
     }
@@ -6871,7 +7045,240 @@ static void asmstat (LexState *ls, int line) {
   /* 修补所有待处理的前向引用 */
   asm_patchpending(ls, fs, &ctx);
   
+  /* 释放汇编上下文 */
+  asm_freecontext(ls->L, &ctx);
+  
   checknext(ls, ')');
+}
+
+
+/*
+** 递归解析 asm 块主体
+** 这个函数包含 asm 主循环的完整逻辑，支持所有伪指令和嵌套
+** 参数：
+**   ls - 词法状态
+**   fs - 函数状态
+**   ctx - 当前汇编上下文
+**   line - 行号
+*/
+static void asm_parse_body (LexState *ls, FuncState *fs, AsmContext *ctx, int line) {
+  /* 解析指令序列直到遇到 ')' */
+  while (ls->t.token != ')') {
+    const char *opname;
+    int opcode;
+    enum OpMode mode;
+    Instruction inst;
+    int instpc;
+    TString *pendingLabel = NULL;
+    int needsPatch = 0;
+    int isJumpInst = 0;
+    
+    /* 跳过注释内容 */
+    for (;;) {
+      if (ls->t.token == ';') {
+        luaX_next(ls);
+        if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+          luaX_next(ls);
+        }
+      }
+      else if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+        luaX_next(ls);
+      }
+      else {
+        break;
+      }
+    }
+    
+    if (ls->t.token == ')') break;
+    
+    /* 标签定义 */
+    if (ls->t.token == ':') {
+      luaX_next(ls);
+      check(ls, TK_NAME);
+      TString *labelname = ls->t.seminfo.ts;
+      asm_deflabel(ls, ctx, labelname, fs->pc, ls->linenumber);
+      luaX_next(ls);
+      testnext(ls, ';');
+      continue;
+    }
+    
+    check(ls, TK_NAME);
+    opname = getstr(ls->t.seminfo.ts);
+    
+    /* comment/rem 伪指令 */
+    if (strcmp(opname, "comment") == 0 || strcmp(opname, "rem") == 0 ||
+        strcmp(opname, "COMMENT") == 0 || strcmp(opname, "REM") == 0) {
+      luaX_next(ls);
+      if (ls->t.token == TK_STRING || ls->t.token == TK_RAWSTRING) {
+        luaX_next(ls);
+      }
+      testnext(ls, ';');
+      continue;
+    }
+    
+    /* nop 伪指令 */
+    if (strcmp(opname, "nop") == 0) {
+      int nop_count = 1;
+      luaX_next(ls);
+      if (ls->t.token == TK_INT) {
+        nop_count = (int)ls->t.seminfo.i;
+        luaX_next(ls);
+      }
+      for (int j = 0; j < nop_count; j++) {
+        Instruction nop_inst = CREATE_ABCk(OP_MOVE, 0, 0, 0, 0);
+        luaK_code(fs, nop_inst);
+        luaK_fixline(fs, line);
+      }
+      testnext(ls, ';');
+      continue;
+    }
+    
+    /* def 伪指令 */
+    if (strcmp(opname, "def") == 0 || strcmp(opname, "define") == 0) {
+      TString *def_name;
+      lua_Integer def_value;
+      luaX_next(ls);
+      check(ls, TK_NAME);
+      def_name = ls->t.seminfo.ts;
+      luaX_next(ls);
+      def_value = asm_getint_ex(ls, ctx, NULL, NULL);
+      asm_adddefine(ls, ctx, def_name, def_value);
+      testnext(ls, ';');
+      continue;
+    }
+    
+    /* 嵌套 asm 伪指令 - 递归调用 */
+    if (strcmp(opname, "asm") == 0) {
+      int nested_line = ls->linenumber;
+      AsmContext nested_ctx;
+      
+      luaX_next(ls);  /* 跳过 'asm' */
+      checknext(ls, '(');
+      
+      asm_initcontext(ls->L, &nested_ctx, ctx);
+      asm_parse_body(ls, fs, &nested_ctx, nested_line);  /* 递归 */
+      asm_patchpending(ls, fs, &nested_ctx);
+      asm_freecontext(ls->L, &nested_ctx);
+      
+      checknext(ls, ')');
+      testnext(ls, ';');
+      continue;
+    }
+    
+    /* 查找操作码 */
+    opcode = find_opcode(opname);
+    if (opcode < 0) {
+      luaK_semerror(ls, "unknown opcode '%s' in asm", opname);
+    }
+    
+    luaX_next(ls);
+    mode = getOpMode(opcode);
+    instpc = fs->pc;
+    
+    /* 根据操作码格式解析参数 */
+    switch (mode) {
+      case iABC: {
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
+        int b = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel);
+        if (pendingLabel) needsPatch = 1;
+        int c = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        if (pendingLabel && !needsPatch) needsPatch = 1;
+        int k = (int)asm_trygetint(ls, 0);
+        
+        if (opcode == OP_GTI || opcode == OP_GEI || 
+            opcode == OP_LTI || opcode == OP_LEI || 
+            opcode == OP_EQI || opcode == OP_MMBINI) {
+          b = int2sC(b);
+        }
+        else if (opcode == OP_ADDI || opcode == OP_SHLI || opcode == OP_SHRI) {
+          c = int2sC(c);
+        }
+        inst = CREATE_ABCk(opcode, a, b, c, k);
+        break;
+      }
+      case ivABC: {
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
+        int vb = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel);
+        if (pendingLabel) needsPatch = 1;
+        int vc = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        if (pendingLabel && !needsPatch) needsPatch = 1;
+        int k = (int)asm_trygetint(ls, 0);
+        inst = CREATE_vABCk(opcode, a, vb, vc, k);
+        break;
+      }
+      case iABx: {
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
+        unsigned int bx = (unsigned int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        if (pendingLabel) needsPatch = 1;
+        inst = CREATE_ABx(opcode, a, bx);
+        break;
+      }
+      case iAsBx: {
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
+        int sbx = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        if (pendingLabel) { needsPatch = 1; isJumpInst = 1; }
+        inst = CREATE_ABx(opcode, a, cast_uint(sbx + OFFSET_sBx));
+        break;
+      }
+      case iAx: {
+        int ax = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        if (pendingLabel) needsPatch = 1;
+        inst = CREATE_Ax(opcode, ax);
+        break;
+      }
+      case isJ: {
+        int sj = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        if (pendingLabel) { needsPatch = 1; isJumpInst = 1; }
+        inst = CREATE_sJ(opcode, sj + OFFSET_sJ, 0);
+        break;
+      }
+      default:
+        inst = 0;
+        break;
+    }
+    
+    luaK_code(fs, inst);
+    luaK_fixline(fs, line);
+    
+    if (needsPatch && pendingLabel) {
+      asm_addpending(ls, ctx, pendingLabel, instpc, ls->linenumber, isJumpInst);
+    }
+    
+    /* 自动生成 MMBIN 系列指令 */
+    if (opcode >= OP_ADD && opcode <= OP_SHR) {
+      int b = GETARG_B(inst);
+      int c = GETARG_C(inst);
+      TMS tm = cast(TMS, (opcode - OP_ADD) + TM_ADD);
+      luaK_codeABCk(fs, OP_MMBIN, b, c, cast_int(tm), 0);
+      luaK_fixline(fs, line);
+    }
+    else if (opcode == OP_ADDI || opcode == OP_SHLI || opcode == OP_SHRI) {
+      int b = GETARG_B(inst);
+      int sc = GETARG_C(inst);
+      TMS tm = (opcode == OP_ADDI) ? TM_ADD : (opcode == OP_SHLI) ? TM_SHL : TM_SHR;
+      luaK_codeABCk(fs, OP_MMBINI, b, sc, cast_int(tm), 0);
+      luaK_fixline(fs, line);
+    }
+    else if (opcode >= OP_ADDK && opcode <= OP_IDIVK) {
+      int b = GETARG_B(inst);
+      int c = GETARG_C(inst);
+      TMS tm = cast(TMS, (opcode - OP_ADDK) + TM_ADD);
+      luaK_codeABCk(fs, OP_MMBINK, b, c, cast_int(tm), 0);
+      luaK_fixline(fs, line);
+    }
+    
+    /* 更新 freereg */
+    if (testAMode(opcode)) {
+      int a = GETARG_A(inst);
+      if (a >= fs->freereg) {
+        int needed = a + 1 - fs->freereg;
+        luaK_checkstack(fs, needed);
+        fs->freereg = cast_byte(a + 1);
+      }
+    }
+    
+    testnext(ls, ';');
+  }
 }
 
 
@@ -8353,8 +8760,8 @@ static int try_command_call (LexState *ls) {
   luaK_exp2nextreg(fs, &func);
   base = func.u.info;
   
-  /* 解析参数列表 */
-  while (!is_stmt_terminator(ls->t.token) && ls->t.token != TK_EOS) {
+  /* 解析参数列表（只在同一行内解析，换行即停止） */
+  while (!is_stmt_terminator(ls->t.token) && ls->t.token != TK_EOS && ls->linenumber == line) {
     expdesc arg;
     
     /* 检查是否遇到语句结束 */
@@ -8478,10 +8885,10 @@ static int try_command_call (LexState *ls) {
   }
   
 done_args:
-  /* 生成函数调用指令 */
+  /* 生成函数调用指令，C=1表示不需要返回值（C=0是multret会破坏栈状态） */
   init_exp(&func, VCALL, luaK_codeABC(fs, OP_CALL, base, nargs + 1, 1));
   luaK_fixline(fs, line);
-  fs->freereg = base + 1;
+  fs->freereg = base;
   
   return 1;
 }
