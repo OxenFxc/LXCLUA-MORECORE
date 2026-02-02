@@ -210,7 +210,97 @@ wasm-minimal:
 	"LDFLAGS=-sWASM=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 --closure 1 -sINVOKE_RUN=0"
 
 # Targets that do not create files (not all makes understand .PHONY).
-.PHONY: all $(PLATS) help test clean default o a depend echo wasm wasm-minimal
+.PHONY: all $(PLATS) help test clean default o a depend echo wasm wasm-minimal release mingw-release linux-release macos-release wasm-release termux-release
+
+# 发行版打包配置
+RELEASE_NAME= lxclua
+RELEASE_VERSION= $(shell date +%Y%m%d_%H%M%S)
+RELEASE_DIR= release
+SIGNER= DifierLine
+
+# Windows MinGW 发行版 (使用tar，MSYS2自带)
+mingw-release: mingw
+	@echo "Creating Windows release..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Platform: Windows x64 (MinGW)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp lxclua.exe luac.exe lbcdump.exe lua55.dll $(RELEASE_DIR)/
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-windows-x64-$(RELEASE_VERSION).zip -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-windows-x64-$(RELEASE_VERSION).zip"
+
+# Linux 发行版
+linux-release: linux
+	@echo "Creating Linux release..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Platform: Linux x64" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp lxclua luac lbcdump $(RELEASE_DIR)/
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-linux-x64-$(RELEASE_VERSION).tar.gz -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-linux-x64-$(RELEASE_VERSION).tar.gz"
+
+# macOS 发行版
+macos-release: macosx
+	@echo "Creating macOS release..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Platform: macOS (Darwin)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp lxclua luac lbcdump $(RELEASE_DIR)/
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-macos-$(RELEASE_VERSION).tar.gz -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-macos-$(RELEASE_VERSION).tar.gz"
+
+# Termux/Android 发行版
+termux-release: termux
+	@echo "Creating Termux release..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Platform: Android (Termux)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp lxclua luac lbcdump $(RELEASE_DIR)/
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-termux-$(RELEASE_VERSION).tar.gz -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-termux-$(RELEASE_VERSION).tar.gz"
+
+# WebAssembly 发行版
+wasm-release: wasm
+	@echo "Creating WASM release..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Platform: WebAssembly" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp lxclua.js luac.js lbcdump.js $(RELEASE_DIR)/
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-wasm-$(RELEASE_VERSION).zip -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-wasm-$(RELEASE_VERSION).zip"
+
+# 通用发行版打包
+release:
+	@echo "Creating release package..."
+	@mkdir -p $(RELEASE_DIR)
+	@echo "LXCLua Release" > $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Build Time: $$(date '+%Y-%m-%d %H:%M:%S')" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@echo "Signed by: $(SIGNER)" >> $(RELEASE_DIR)/BUILD_INFO.txt
+	@cp $(LUA_T) $(LUAC_T) $(LBCDUMP_T) $(RELEASE_DIR)/ 2>/dev/null || true
+	@cp $(LUA_A) $(RELEASE_DIR)/ 2>/dev/null || true
+	@cp LICENSE README.md README_EN.md $(RELEASE_DIR)/
+	@tar -caf $(RELEASE_NAME)-$(RELEASE_VERSION).tar.gz -C $(RELEASE_DIR) .
+	@rm -rf $(RELEASE_DIR)
+	@echo "Created: $(RELEASE_NAME)-$(RELEASE_VERSION).tar.gz"
 
 # Compiler modules may use special flags.
 llex.o:
