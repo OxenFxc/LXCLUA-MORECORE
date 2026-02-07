@@ -112,6 +112,7 @@ typedef struct CFFContext {
   int num_fake_funcs;       /**< Number of fake functions (interleaving mode). */
   unsigned int seed;        /**< Random seed. */
   int obfuscate_flags;      /**< Obfuscation flags. */
+  int skip_pc0;             /**< True if PC 0 should be skipped during block emission. */
 } CFFContext;
 
 

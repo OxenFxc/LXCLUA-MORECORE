@@ -167,6 +167,50 @@ int luaO_isJumpInstruction (OpCode op) {
 }
 
 
+/* 
+** 每个基本块的最大指令数，超过此值将尝试拆分以增加控制流复杂度 
+*/
+#define MAX_BLOCK_SIZE  10
+
+/*
+** 检查指令是否为成对指令的第一部分（不应该在此指令后拆分基本块）
+** @param op 操作码
+** @return 是成对指令返回1，否则返回0
+*/
+static int isPairedInstruction (OpCode op) {
+  switch (op) {
+    /* 条件测试类：后跟 JMP */
+    case OP_EQ: case OP_LT: case OP_LE:
+    case OP_EQK: case OP_EQI: case OP_LTI:
+    case OP_LEI: case OP_GTI: case OP_GEI:
+    case OP_TEST: case OP_TESTSET: case OP_TESTNIL:
+    case OP_IS: case OP_INSTANCEOF:
+      return 1;
+      
+    /* 算术/位运算类：后跟 MMBIN 系列 (Lua 5.4) */
+    case OP_ADDI: case OP_ADDK: case OP_SUBK: case OP_MULK:
+    case OP_MODK: case OP_POWK: case OP_DIVK: case OP_IDIVK:
+    case OP_BANDK: case OP_BORK: case OP_BXORK: case OP_SHLI:
+    case OP_SHRI: case OP_ADD: case OP_SUB: case OP_MUL:
+    case OP_MOD: case OP_POW: case OP_DIV: case OP_IDIV:
+    case OP_BAND: case OP_BOR: case OP_BXOR: case OP_SHL:
+    case OP_SHR: case OP_UNM: case OP_BNOT: case OP_LEN:
+    case OP_CONCAT:
+      return 1;
+      
+    /* 其他特定对 */
+    case OP_TFORCALL: /* 后跟 TFORLOOP */
+    case OP_LOADKX:   /* 后跟 EXTRAARG */
+    case OP_NEWTABLE: /* 可能后跟 EXTRAARG */
+    case OP_SETLIST:  /* 可能后跟 EXTRAARG */
+      return 1;
+      
+    default:
+      return 0;
+  }
+}
+
+
 /*
 ** 检查指令是否为条件测试指令（后面跟着跳转）
 ** @param op 操作码
@@ -265,6 +309,7 @@ static CFFContext *initContext (lua_State *L, Proto *f, int flags, unsigned int 
   ctx->num_fake_funcs = 0;
   ctx->seed = seed;
   ctx->obfuscate_flags = flags;
+  ctx->skip_pc0 = 0;
   
   /* 分配基本块数组 */
   ctx->blocks = (BasicBlock *)luaM_malloc_(L, sizeof(BasicBlock) * ctx->block_capacity, 0);
@@ -452,8 +497,20 @@ int luaO_identifyBlocks (CFFContext *ctx) {
   CFF_LOG("--- 划分基本块 ---");
   int block_start = 0;
   for (int pc = 1; pc <= code_size; pc++) {
-    /* 当遇到新的起始点或代码结束时，创建一个基本块 */
-    if (pc == code_size || is_leader[pc]) {
+    int force_split = 0;
+    
+    /* 检查是否超过最大块大小，如果是则尝试在此处拆分 */
+    if (pc < code_size && (pc - block_start >= MAX_BLOCK_SIZE)) {
+      /* 只有当前一个指令不是成对指令时，才允许在此处拆分 */
+      OpCode prev_op = GET_OPCODE(f->code[pc-1]);
+      if (!isPairedInstruction(prev_op)) {
+        force_split = 1;
+        CFF_LOG("  在 PC %d 强制拆分长基本块", pc);
+      }
+    }
+
+    /* 当遇到新的起始点、强制拆分点或代码结束时，创建一个基本块 */
+    if (pc == code_size || is_leader[pc] || force_split) {
       int idx = addBlock(ctx, block_start, pc);
       if (idx < 0) {
         luaM_free_(ctx->L, is_leader, code_size);
@@ -717,6 +774,15 @@ static int emitBinarySearch (CFFContext *ctx, StateBlock *sb, int low, int high,
     int jmp_pc = emitInstruction(ctx, jmp_inst);
     if (jmp_pc < 0) return -1;
     all_block_jmp_pcs[sb[low].block_idx] = jmp_pc;
+
+    /* 混淆：在此处插入 NOP 是安全的 */
+    if (ctx->obfuscate_flags & OBFUSCATE_RANDOM_NOP) {
+      int num_nops = 1 + (ctx->seed % 2);
+      for (int i = 0; i < num_nops; i++) {
+        NEXT_RAND(ctx->seed);
+        emitInstruction(ctx, luaO_createNOP(ctx->seed));
+      }
+    }
     return 0;
   } else {
     int mid = low + (high - low) / 2;
@@ -733,10 +799,28 @@ static int emitBinarySearch (CFFContext *ctx, StateBlock *sb, int low, int high,
     /* 跳转到左半部分 */
     int jmp_left_pc = emitInstruction(ctx, CREATE_sJ(OP_JMP, 0, 0));
     if (jmp_left_pc < 0) return -1;
+
+    /* 混淆：在此处插入 NOP 是安全的，因为上面是无条件跳转 */
+    if (ctx->obfuscate_flags & OBFUSCATE_RANDOM_NOP) {
+      int num_nops = 1 + (ctx->seed % 2);
+      for (int i = 0; i < num_nops; i++) {
+        NEXT_RAND(ctx->seed);
+        emitInstruction(ctx, luaO_createNOP(ctx->seed));
+      }
+    }
     
     /* 跳转到右半部分 */
     int jmp_right_pc = emitInstruction(ctx, CREATE_sJ(OP_JMP, 0, 0));
     if (jmp_right_pc < 0) return -1;
+
+    /* 混淆：在此处插入 NOP 是安全的 */
+    if (ctx->obfuscate_flags & OBFUSCATE_RANDOM_NOP) {
+      int num_nops = 1 + (ctx->seed % 2);
+      for (int i = 0; i < num_nops; i++) {
+        NEXT_RAND(ctx->seed);
+        emitInstruction(ctx, luaO_createNOP(ctx->seed));
+      }
+    }
     
     /* 生成左半部分代码 */
     int left_start = ctx->new_code_size;
@@ -790,6 +874,28 @@ static Instruction generateBogusInstruction (CFFContext *ctx, unsigned int *seed
   }
 }
 
+/*
+** 发射状态转移指令
+** @param ctx 上下文
+** @param reg 状态寄存器
+** @param next_state 下一个状态值
+** @return 发射的指令数量
+*/
+static int emitStateTransition (CFFContext *ctx, int reg, int next_state) {
+  if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) {
+    /* 更加复杂的转换：使用加法混淆 */
+    NEXT_RAND(ctx->seed);
+    int delta = (ctx->seed % 100) - 50; /* -50 ~ 49 */
+    if (emitInstruction(ctx, CREATE_ABx(OP_LOADI, reg, (next_state - delta) + OFFSET_sBx)) < 0) return -1;
+    if (emitInstruction(ctx, CREATE_ABCk(OP_ADDI, reg, reg, int2sC(delta), 0)) < 0) return -1;
+    return 2;
+  } else {
+    if (emitInstruction(ctx, CREATE_ABx(OP_LOADI, reg, next_state + OFFSET_sBx)) < 0) return -1;
+    return 1;
+  }
+}
+
+
 /* 生成一个虚假基本块的代码 */
 static int emitBogusBlock (CFFContext *ctx, int bogus_state, unsigned int *seed) {
   int state_reg = ctx->state_reg;
@@ -805,8 +911,7 @@ static int emitBogusBlock (CFFContext *ctx, int bogus_state, unsigned int *seed)
   if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) {
     next_state = luaO_encodeState(next_state, ctx->seed);
   }
-  Instruction state_inst = CREATE_ABx(OP_LOADI, state_reg, next_state + OFFSET_sBx);
-  if (emitInstruction(ctx, state_inst) < 0) return -1;
+  if (emitStateTransition(ctx, state_reg, next_state) < 0) return -1;
   int jmp_offset = ctx->dispatcher_pc - ctx->new_code_size - 1;
   Instruction jmp_inst = CREATE_sJ(OP_JMP, jmp_offset + OFFSET_sJ, 0);
   if (emitInstruction(ctx, jmp_inst) < 0) return -1;
@@ -846,9 +951,12 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
     if (last_op == OP_FORLOOP || last_op == OP_TFORLOOP) {
       int state_body = ctx->blocks[block->original_target].state_id;
       if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) state_body = luaO_encodeState(state_body, ctx->seed);
-      emitInstruction(ctx, CREATE_sJ(OP_JMP, 2 + OFFSET_sJ, 0)); /* 跳过存根 */
-      loop_stub_pc = emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_body + OFFSET_sBx));
+      
+      int skip_stub_pc = emitInstruction(ctx, CREATE_sJ(OP_JMP, 0, 0)); /* 跳过存根 */
+      loop_stub_pc = ctx->new_code_size;
+      emitStateTransition(ctx, state_reg, state_body);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
+      SETARG_sJ(ctx->new_code[skip_stub_pc], ctx->new_code_size - skip_stub_pc - 1);
     }
     
     /* 确定复制范围 */
@@ -858,6 +966,10 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
     
     /* 复制指令 */
     for (int pc = block->start_pc; pc < copy_end; pc++) {
+      if (ctx->skip_pc0 && pc == 0) {
+        CFF_LOG("  跳过 PC 0 (已作为函数序言发射)");
+        continue;
+      }
       if (emitInstruction(ctx, f->code[pc]) < 0) return -1;
     }
     
@@ -883,10 +995,12 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
         state_else = luaO_encodeState(state_else, ctx->seed);
       }
       
-      emitInstruction(ctx, CREATE_sJ(OP_JMP, 2 + OFFSET_sJ, 0)); /* 跳过 then 分支 */
-      emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_then + OFFSET_sBx));
+      int skip_then_pc = emitInstruction(ctx, CREATE_sJ(OP_JMP, 0, 0)); /* 跳过 then 分支 */
+      emitStateTransition(ctx, state_reg, state_then);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
-      emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_else + OFFSET_sBx));
+      SETARG_sJ(ctx->new_code[skip_then_pc], ctx->new_code_size - skip_then_pc - 1);
+      
+      emitStateTransition(ctx, state_reg, state_else);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
       
     } else if (last_op == OP_FORLOOP || last_op == OP_TFORLOOP) {
@@ -900,7 +1014,7 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
       SETARG_Bx(loop_inst, bx);
       emitInstruction(ctx, loop_inst);
       
-      emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_next + OFFSET_sBx));
+      emitStateTransition(ctx, state_reg, state_next);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
       
     } else if (last_op == OP_TFORPREP) {
@@ -908,7 +1022,7 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
       int state_call = ctx->blocks[block->original_target].state_id;
       if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) state_call = luaO_encodeState(state_call, ctx->seed);
       emitInstruction(ctx, CREATE_ABCk(OP_TBC, a + 3, 0, 0, 0));
-      emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_call + OFFSET_sBx));
+      emitStateTransition(ctx, state_reg, state_call);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
 
     } else if (last_op == OP_FORPREP) {
@@ -921,19 +1035,23 @@ static int luaO_emitBlocksAndStubs (CFFContext *ctx, int *all_block_jmp_pcs, int
       }
       int prep_pc = ctx->new_code_size;
       emitInstruction(ctx, prep_inst);
-      emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_enter + OFFSET_sBx));
+      emitStateTransition(ctx, state_reg, state_enter);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
-      emitInstruction(ctx, CREATE_sJ(OP_JMP, 2 + OFFSET_sJ, 0));
-      int skip_stub_pc = emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, state_skip + OFFSET_sBx));
+      
+      int skip_jump_pc = emitInstruction(ctx, CREATE_sJ(OP_JMP, 0, 0));
+      int skip_stub_start = ctx->new_code_size;
+      emitStateTransition(ctx, state_reg, state_skip);
       emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
-      SETARG_Bx(ctx->new_code[prep_pc], skip_stub_pc - prep_pc - 2);
+      
+      SETARG_sJ(ctx->new_code[skip_jump_pc], ctx->new_code_size - skip_jump_pc - 1);
+      SETARG_Bx(ctx->new_code[prep_pc], skip_stub_start - prep_pc - 1);
       
     } else {
       int next_block = (block->original_target >= 0) ? block->original_target : block->fall_through;
       if (next_block >= 0) {
         int next_state = ctx->blocks[next_block].state_id;
         if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) next_state = luaO_encodeState(next_state, ctx->seed);
-        emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, next_state + OFFSET_sBx));
+        emitStateTransition(ctx, state_reg, next_state);
         emitInstruction(ctx, CREATE_sJ(OP_JMP, (ctx->dispatcher_pc - ctx->new_code_size - 1) + OFFSET_sJ, 0));
       }
     }
@@ -954,6 +1072,13 @@ int luaO_generateBinaryDispatcher (CFFContext *ctx) {
   int state_reg = ctx->state_reg;
   unsigned int bogus_seed = ctx->seed;
   CFF_LOG("========== 开始生成二分查找分发器 ==========");
+
+  /* 稳定性保障：确保 VARARGPREP 始终作为第一条指令执行 */
+  if (GET_OPCODE(ctx->f->code[0]) == OP_VARARGPREP) {
+    CFF_LOG("检测到 VARARGPREP，将其保留在 PC 0");
+    emitInstruction(ctx, ctx->f->code[0]);
+    ctx->skip_pc0 = 1;
+  }
   
   int num_bogus_blocks = (ctx->obfuscate_flags & OBFUSCATE_BOGUS_BLOCKS) ? ctx->num_blocks * BOGUS_BLOCK_RATIO : 0;
   int total_blocks = ctx->num_blocks + num_bogus_blocks;
@@ -968,7 +1093,7 @@ int luaO_generateBinaryDispatcher (CFFContext *ctx) {
   }
   int entry_state = ctx->blocks[entry_block].state_id;
   if (ctx->obfuscate_flags & OBFUSCATE_STATE_ENCODE) entry_state = luaO_encodeState(entry_state, ctx->seed);
-  emitInstruction(ctx, CREATE_ABx(OP_LOADI, state_reg, entry_state + OFFSET_sBx));
+  emitStateTransition(ctx, state_reg, entry_state);
   
   ctx->dispatcher_pc = ctx->new_code_size;
   
@@ -1051,6 +1176,13 @@ int luaO_generateDispatcher (CFFContext *ctx) {
   
   CFF_LOG("========== 开始生成扁平化代码 ==========");
   CFF_LOG("状态寄存器: R[%d]", state_reg);
+
+  /* 稳定性保障：确保 VARARGPREP 始终作为第一条指令执行 */
+  if (GET_OPCODE(ctx->f->code[0]) == OP_VARARGPREP) {
+    CFF_LOG("检测到 VARARGPREP，将其保留在 PC 0");
+    emitInstruction(ctx, ctx->f->code[0]);
+    ctx->skip_pc0 = 1;
+  }
   
   /* 计算虚假块数量 */
   int num_bogus_blocks = 0;
@@ -1079,8 +1211,7 @@ int luaO_generateDispatcher (CFFContext *ctx) {
   
   /* LOADI state_reg, entry_state */
   CFF_LOG("生成初始化指令: LOADI R[%d], %d", state_reg, entry_state);
-  Instruction init_inst = CREATE_ABx(OP_LOADI, state_reg, entry_state + OFFSET_sBx);
-  if (emitInstruction(ctx, init_inst) < 0) return -1;
+  if (emitStateTransition(ctx, state_reg, entry_state) < 0) return -1;
   
   /* 如果启用函数交织，初始化函数ID寄存器 */
   int func_id_reg = ctx->func_id_reg;
@@ -1159,6 +1290,15 @@ int luaO_generateDispatcher (CFFContext *ctx) {
       return -1;
     }
     all_block_jmp_pcs[i] = jmp_pc;
+
+    /* 混淆：在此处插入 NOP 是安全的 */
+    if (ctx->obfuscate_flags & OBFUSCATE_RANDOM_NOP) {
+      int num_nops = 1 + (ctx->seed % 2);
+      for (int k = 0; k < num_nops; k++) {
+        NEXT_RAND(ctx->seed);
+        emitInstruction(ctx, luaO_createNOP(ctx->seed));
+      }
+    }
   }
   
   /* 生成状态比较代码 - 虚假块 */
@@ -1187,6 +1327,15 @@ int luaO_generateDispatcher (CFFContext *ctx) {
         return -1;
       }
       all_block_jmp_pcs[ctx->num_blocks + i] = jmp_pc;
+
+      /* 混淆：在此处插入 NOP 是安全的 */
+      if (ctx->obfuscate_flags & OBFUSCATE_RANDOM_NOP) {
+        int num_nops = 1 + (ctx->seed % 2);
+        for (int k = 0; k < num_nops; k++) {
+          NEXT_RAND(ctx->seed);
+          emitInstruction(ctx, luaO_createNOP(ctx->seed));
+        }
+      }
     }
   }
   
