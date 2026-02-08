@@ -4617,8 +4617,13 @@ static void localfunc (LexState *ls) {
 static lu_byte getvarattribute (LexState *ls, lu_byte df) {
   /* attrib -> ['<' NAME '>'] */
   if (testnext(ls, '<')) {
-    TString *ts = str_checkname(ls);
-    const char *attr = getstr(ts);
+    const char *attr;
+    if (ls->t.token == TK_CONST) {
+      attr = "const";
+      luaX_next(ls);
+    }
+    else
+      attr = getstr(str_checkname(ls));
     checknext(ls, '>');
     if (strcmp(attr, "const") == 0)
       return RDKCONST;  /* read-only variable */
@@ -4997,7 +5002,7 @@ static void takestat_full(LexState *ls) {
 }
 
 static void localstat (LexState *ls) {
-  /* stat -> LOCAL NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
+  /* stat -> LOCAL ATTRIB NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   /* stat -> CONST NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   FuncState *fs = ls->fs;
   int base_nactvar = fs->nactvar;
@@ -5008,6 +5013,7 @@ static void localstat (LexState *ls) {
   expdesc e;
   /* check if this is a const declaration */
   int isconst = (ls->lasttoken == TK_CONST);
+  lu_byte defkind = getvarattribute(ls, isconst ? RDKCONST : VDKREG);
   
   do {
     TString *varname = str_checkname(ls);
@@ -5028,8 +5034,7 @@ static void localstat (LexState *ls) {
       }
     }
     vidx = new_localvar(ls, varname);
-    /* if it's a const declaration, default to RDKCONST */
-    kind = getvarattribute(ls, isconst ? RDKCONST : VDKREG);
+    kind = getvarattribute(ls, defkind);
     getlocalvardesc(fs, vidx)->vd.kind = kind;
     nvars++;
   } while (testnext(ls, ','));
