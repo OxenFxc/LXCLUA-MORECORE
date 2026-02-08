@@ -332,6 +332,8 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
     else {  /* 't' is a table */
       lua_assert(isempty(slot));
       tm = fasttm(L, hvalue(t)->metatable, TM_INDEX);  /* table's metamethod */
+      if (tm == LUA_NULLPTR) /* no __index? try __mindex */
+        tm = fasttm(L, hvalue(t)->metatable, TM_MINDEX);
       if (tm == LUA_NULLPTR) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
         return;
@@ -920,6 +922,36 @@ void luaV_finishOp (lua_State *L) {
 
 
 
+
+static void inopr (lua_State *L, StkId ra, TValue *a, TValue *b) {
+  if (ttisstring(a) && ttisstring(b)) {
+    const char *s1 = getstr(tsvalue(a));
+    const char *s2 = getstr(tsvalue(b));
+    size_t l1 = tsslen(tsvalue(a));
+    size_t l2 = tsslen(tsvalue(b));
+    int found = 0;
+    if (l1 <= l2) {
+       size_t i;
+       for (i = 0; i <= l2 - l1; i++) {
+          if (memcmp(s2 + i, s1, l1) == 0) {
+             found = 1;
+             break;
+          }
+       }
+    }
+    if (found) setbtvalue(s2v(ra)); else setbfvalue(s2v(ra));
+  } else {
+    if (LUA_UNLIKELY(!ttistable(b))) {
+      luaG_runerror(L, "expected second 'in' operand to be table or string");
+    }
+    const TValue *res = luaH_get(hvalue(b), a);
+    if (!ttisnil(res)) {
+      setbtvalue(s2v(ra));
+    } else {
+      setbfvalue(s2v(ra));
+    }
+  }
+}
 
 /*
 ** {=======================================================
@@ -2376,6 +2408,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             luaH_set(L, methods, &method_key, &method_val);
           }
         }
+        vmbreak;
+      }
+      vmcase(OP_IN) {
+        StkId ra = RA(i);
+        TValue *a = vRB(i);
+        TValue *b = vRC(i);
+        inopr(L, ra, a, b);
         vmbreak;
       }
       vmcase(OP_SLICE) {

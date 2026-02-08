@@ -122,7 +122,12 @@ static const void *const disptab[NUM_OPCODES] = {
 &&L_OP_GETPROP,
 &&L_OP_SETPROP,
 &&L_OP_INSTANCEOF,
+&&L_OP_IMPLEMENT,
+&&L_OP_SETIFACEFLAG,
+&&L_OP_ADDMETHOD,
+&&L_OP_IN,
 &&L_OP_SLICE,
+&&L_OP_NOP,
 &&L_OP_EXTRAARG
 
 };

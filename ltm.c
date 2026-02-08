@@ -37,7 +37,7 @@ LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTYPES] = {
 
 void luaT_init (lua_State *L) {
   static const char *const luaT_eventname[] = {  /* ORDER TM */
-    "__index", "__newindex",
+    "__index", "__mindex", "__newindex",
     "__gc", "__mode", "__len", "__eq",
     "__add", "__sub", "__mul", "__mod", "__pow",
     "__div", "__idiv",
