@@ -36,6 +36,37 @@
 
 #include "stb_image.h"
 
+#include "aes.h"
+#include "crc.h"
+#include "sha256.h"
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
+
+typedef struct {
+  unsigned char *data;
+  long len;
+  long max_len;
+} PngWriteContext;
+
+static void png_write_callback(void *context, void *data, int size) {
+  PngWriteContext *ctx = (PngWriteContext *)context;
+  long needed_len = ctx->len + size;
+  if (needed_len > ctx->max_len) {
+    // 动态扩展内存，确保有足够的空间
+    long new_max_len = needed_len * 2;
+    unsigned char *new_data = (unsigned char *)realloc(ctx->data, new_max_len);
+    if (!new_data) {
+      // 内存分配失败，直接返回，后续会处理错误
+      return;
+    }
+    ctx->data = new_data;
+    ctx->max_len = new_max_len;
+  }
+  memcpy(ctx->data + ctx->len, data, size);
+  ctx->len += size;
+}
+
 
 /*
 ** maximum number of captures that a pattern can do during
@@ -1240,6 +1271,393 @@ static int str_gsub (lua_State *L) {
 
 /* }=========================================== */
 
+/*
+** {===========================================
+** UTILS AND EXTENDED FUNCTIONS
+** ============================================
+*/
+
+static int str_split (lua_State *L) {
+  size_t l, sep_l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  const char *sep = luaL_optlstring(L, 2, "", &sep_l);
+  const char *e = s + l;
+  int i = 1;
+  
+  lua_newtable(L);
+  
+  if (sep_l == 0) {  /* empty separator: return characters */
+    while (s < e) {
+      lua_pushlstring(L, s++, 1);
+      lua_rawseti(L, -2, i++);
+    }
+  }
+  else {
+    while (s < e) {
+      const char *p = lmemfind(s, e - s, sep, sep_l);
+      if (p == NULL) {
+        lua_pushlstring(L, s, e - s);
+        lua_rawseti(L, -2, i++);
+        break;
+      }
+      lua_pushlstring(L, s, p - s);
+      lua_rawseti(L, -2, i++);
+      s = p + sep_l;
+    }
+    if (s == e && l > 0) { /* trailing empty string if separator was at the end */
+        /* Logic check: if string is "a,b," and sep is ",", we want {"a", "b", ""} */
+        /* lmemfind returns pointer to start of sep. */
+        /* loop breaks when s >= e. */
+        /* If the last char was sep, then s will equal e after s = p + sep_l. */
+        /* But we need to check if the loop condition covers this. */
+        /* Actually, if s == e, it means we finished exactly at end. */
+        /* If original string ended with sep, we pushed the part before sep. */
+        /* Example: "a," split by ",". */
+        /* 1. lmemfind finds "," at offset 1. p points to ",". */
+        /* 2. push "a". i=2. s becomes "," + 1 = end. */
+        /* 3. loop terminates. */
+        /* We need to push empty string? Python's split("a,") -> ['a', '']. */
+        /* Lua's common implementations usually do this. */
+        
+        /* Let's refine the loop logic. */
+    }
+  }
+  
+  /* Re-implementation for correct behavior matching common split */
+  if (sep_l > 0) {
+      /* Reset stack and table */
+      lua_pop(L, 1); 
+      lua_newtable(L);
+      i = 1;
+      s = lua_tostring(L, 1); /* reset s */
+      
+      while (s < e) {
+        const char *p = lmemfind(s, e - s, sep, sep_l);
+        if (p == NULL) {
+          lua_pushlstring(L, s, e - s);
+          lua_rawseti(L, -2, i++);
+          s = e; /* done */
+        } else {
+          lua_pushlstring(L, s, p - s);
+          lua_rawseti(L, -2, i++);
+          s = p + sep_l;
+        }
+      }
+      /* If the string ended with separator, push empty string */
+      /* Check original string length to avoid pushing "" for empty string input if desired, 
+         but "split" usually returns {""} for "" input with any separator. */
+      if (l == 0) {
+          lua_pushliteral(L, "");
+          lua_rawseti(L, -2, 1);
+      }
+      else if (s == e) { 
+          /* If s reached e exactly after a separator, it means last part is empty. */
+          /* We need to know if the last operation was a separator skip. */
+          /* Compare s with previous pointer? */
+          /* Easier way: check if original string ends with separator */
+          if (l >= sep_l && memcmp(e - sep_l, sep, sep_l) == 0) {
+              lua_pushliteral(L, "");
+              lua_rawseti(L, -2, i);
+          }
+      }
+  }
+  
+  return 1;
+}
+
+static int str_trim (lua_State *L) {
+  size_t l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  while (l > 0 && isspace(uchar(*s))) {
+    s++; l--;
+  }
+  while (l > 0 && isspace(uchar(s[l - 1]))) {
+    l--;
+  }
+  lua_pushlstring(L, s, l);
+  return 1;
+}
+
+static int str_ltrim (lua_State *L) {
+  size_t l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  while (l > 0 && isspace(uchar(*s))) {
+    s++; l--;
+  }
+  lua_pushlstring(L, s, l);
+  return 1;
+}
+
+static int str_rtrim (lua_State *L) {
+  size_t l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  while (l > 0 && isspace(uchar(s[l - 1]))) {
+    l--;
+  }
+  lua_pushlstring(L, s, l);
+  return 1;
+}
+
+static int str_startswith (lua_State *L) {
+  size_t ls, lp;
+  const char *s = luaL_checklstring(L, 1, &ls);
+  const char *p = luaL_checklstring(L, 2, &lp);
+  if (lp > ls)
+    lua_pushboolean(L, 0);
+  else
+    lua_pushboolean(L, memcmp(s, p, lp) == 0);
+  return 1;
+}
+
+static int str_endswith (lua_State *L) {
+  size_t ls, lp;
+  const char *s = luaL_checklstring(L, 1, &ls);
+  const char *p = luaL_checklstring(L, 2, &lp);
+  if (lp > ls)
+    lua_pushboolean(L, 0);
+  else
+    lua_pushboolean(L, memcmp(s + ls - lp, p, lp) == 0);
+  return 1;
+}
+
+static int str_contains (lua_State *L) {
+  size_t ls, lp;
+  const char *s = luaL_checklstring(L, 1, &ls);
+  const char *p = luaL_checklstring(L, 2, &lp);
+  lua_pushboolean(L, lmemfind(s, ls, p, lp) != NULL);
+  return 1;
+}
+
+static int str_hex (lua_State *L) {
+  size_t l, i;
+  const char *s = luaL_checklstring(L, 1, &l);
+  luaL_Buffer b;
+  char *h = luaL_buffinitsize(L, &b, l * 2);
+  for (i = 0; i < l; i++) {
+    sprintf(h + i * 2, "%02x", uchar(s[i]));
+  }
+  luaL_pushresultsize(&b, l * 2);
+  return 1;
+}
+
+static int str_fromhex (lua_State *L) {
+  size_t l, i;
+  const char *s = luaL_checklstring(L, 1, &l);
+  luaL_Buffer b;
+  if (l % 2 != 0) return luaL_error(L, "invalid hex string length");
+  char *p = luaL_buffinitsize(L, &b, l / 2);
+  for (i = 0; i < l; i += 2) {
+    unsigned int c;
+    if (sscanf(s + i, "%02x", &c) != 1)
+      return luaL_error(L, "invalid hex string");
+    p[i / 2] = cast_char(c);
+  }
+  luaL_pushresultsize(&b, l / 2);
+  return 1;
+}
+
+static int str_escape (lua_State *L) {
+  size_t l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  luaL_Buffer b;
+  luaL_buffinit(L, &b);
+  for (size_t i = 0; i < l; i++) {
+    if (strchr(SPECIALS, s[i]))
+      luaL_addchar(&b, '%');
+    luaL_addchar(&b, s[i]);
+  }
+  luaL_pushresult(&b);
+  return 1;
+}
+
+/*
+** Cryptographic and Hashing Extensions
+*/
+
+/*
+** AES Encrypt (CBC mode)
+** Args: key (string), data (string), [iv (string)]
+** Returns: encrypted_data (string)
+*/
+static int str_aes_encrypt(lua_State *L) {
+  size_t key_len, data_len, iv_len;
+  const char *key = luaL_checklstring(L, 1, &key_len);
+  const char *data = luaL_checklstring(L, 2, &data_len);
+  const char *iv = luaL_optlstring(L, 3, NULL, &iv_len);
+  
+  if (key_len != AES_KEYLEN) {
+    return luaL_error(L, "Key length must be %d bytes", AES_KEYLEN);
+  }
+  
+  /* Prepare IV */
+  uint8_t iv_buf[AES_BLOCKLEN];
+  if (iv) {
+    if (iv_len != AES_BLOCKLEN) {
+      return luaL_error(L, "IV length must be %d bytes", AES_BLOCKLEN);
+    }
+    memcpy(iv_buf, iv, AES_BLOCKLEN);
+  } else {
+    memset(iv_buf, 0, AES_BLOCKLEN); /* Default zero IV */
+  }
+  
+  /* Calculate padded length (PKCS#7 padding is standard, but here we just pad to block size) */
+  /* For simplicity in this C extension, let's enforce input to be multiple of block size or handle padding manually. */
+  /* AES library usually expects buffer length to be multiple of 16. */
+  
+  size_t padded_len = (data_len + AES_BLOCKLEN - 1) / AES_BLOCKLEN * AES_BLOCKLEN;
+  if (padded_len == 0) padded_len = AES_BLOCKLEN;
+  if (data_len % AES_BLOCKLEN != 0 || data_len == 0) {
+      padded_len = (data_len / AES_BLOCKLEN + 1) * AES_BLOCKLEN;
+  }
+  
+  /* Allocate buffer for encrypted data (including padding space) */
+  /* Note: AES_CBC_encrypt_buffer modifies buffer in place */
+  unsigned char *buf = (unsigned char *)malloc(padded_len);
+  if (!buf) return luaL_error(L, "Memory allocation failed");
+  
+  memset(buf, 0, padded_len);
+  memcpy(buf, data, data_len);
+  
+  /* Init AES Context */
+  struct AES_ctx ctx;
+  AES_init_ctx_iv(&ctx, (const uint8_t*)key, iv_buf);
+  
+  /* Encrypt */
+  AES_CBC_encrypt_buffer(&ctx, buf, (uint32_t)padded_len);
+  
+  lua_pushlstring(L, (const char*)buf, padded_len);
+  free(buf);
+  return 1;
+}
+
+/*
+** AES Decrypt (CBC mode)
+** Args: key (string), data (string), [iv (string)]
+** Returns: decrypted_data (string)
+*/
+static int str_aes_decrypt(lua_State *L) {
+  size_t key_len, data_len, iv_len;
+  const char *key = luaL_checklstring(L, 1, &key_len);
+  const char *data = luaL_checklstring(L, 2, &data_len);
+  const char *iv = luaL_optlstring(L, 3, NULL, &iv_len);
+  
+  if (key_len != AES_KEYLEN) {
+    return luaL_error(L, "Key length must be %d bytes", AES_KEYLEN);
+  }
+  if (data_len % AES_BLOCKLEN != 0) {
+    return luaL_error(L, "Data length must be multiple of %d bytes", AES_BLOCKLEN);
+  }
+  
+  /* Prepare IV */
+  uint8_t iv_buf[AES_BLOCKLEN];
+  if (iv) {
+    if (iv_len != AES_BLOCKLEN) {
+      return luaL_error(L, "IV length must be %d bytes", AES_BLOCKLEN);
+    }
+    memcpy(iv_buf, iv, AES_BLOCKLEN);
+  } else {
+    memset(iv_buf, 0, AES_BLOCKLEN);
+  }
+  
+  unsigned char *buf = (unsigned char *)malloc(data_len);
+  if (!buf) return luaL_error(L, "Memory allocation failed");
+  
+  memcpy(buf, data, data_len);
+  
+  /* Init AES Context */
+  struct AES_ctx ctx;
+  AES_init_ctx_iv(&ctx, (const uint8_t*)key, iv_buf);
+  
+  /* Decrypt */
+  AES_CBC_decrypt_buffer(&ctx, buf, (uint32_t)data_len);
+  
+  lua_pushlstring(L, (const char*)buf, data_len);
+  free(buf);
+  return 1;
+}
+
+/*
+** CRC32
+** Args: data (string)
+** Returns: crc (integer)
+*/
+static int str_crc32(lua_State *L) {
+  size_t len;
+  const char *data = luaL_checklstring(L, 1, &len);
+  unsigned int crc = naga_crc32((unsigned char*)data, (unsigned int)len);
+  lua_pushinteger(L, crc);
+  return 1;
+}
+
+/*
+** SHA256
+** Args: data (string)
+** Returns: hash (hex string)
+*/
+static int str_sha256(lua_State *L) {
+  size_t len;
+  const char *data = luaL_checklstring(L, 1, &len);
+  uint8_t digest[SHA256_DIGEST_SIZE];
+  
+  SHA256((const uint8_t*)data, len, digest);
+  
+  char hex_digest[SHA256_DIGEST_SIZE * 2 + 1];
+  for (int i = 0; i < SHA256_DIGEST_SIZE; i++) {
+    sprintf(hex_digest + i * 2, "%02x", digest[i]);
+  }
+  lua_pushstring(L, hex_digest);
+  return 1;
+}
+
+/*
+** Image Resize (Binary string -> Binary string)
+** Args: png_data (string), width (int), height (int)
+** Returns: resized_png_data (string)
+*/
+static int str_resize_image(lua_State *L) {
+  size_t len;
+  const char *data = luaL_checklstring(L, 1, &len);
+  int w = (int)luaL_checkinteger(L, 2);
+  int h = (int)luaL_checkinteger(L, 3);
+  
+  int iw, ih, channels;
+  unsigned char *img = stbi_load_from_memory((const unsigned char*)data, (int)len, &iw, &ih, &channels, 0);
+  if (!img) {
+    return luaL_error(L, "Failed to decode image");
+  }
+  
+  unsigned char *resized = stbir_resize_uint8_linear(img, iw, ih, 0, NULL, w, h, 0, (stbir_pixel_layout)channels);
+  stbi_image_free(img);
+  
+  if (!resized) {
+    return luaL_error(L, "Failed to resize image");
+  }
+  
+  /* Encode back to PNG */
+  PngWriteContext ctx = {0};
+  ctx.max_len = w * h * channels + 1024; /* Rough estimate */
+  ctx.data = (unsigned char *)malloc(ctx.max_len);
+  
+  if (!ctx.data) {
+    free(resized);
+    return luaL_error(L, "Memory allocation failed");
+  }
+  
+  int res = stbi_write_png_to_func(png_write_callback, &ctx, w, h, channels, resized, 0);
+  free(resized);
+  
+  if (!res) {
+    free(ctx.data);
+    return luaL_error(L, "Failed to encode resized image");
+  }
+  
+  lua_pushlstring(L, (const char*)ctx.data, ctx.len);
+  free(ctx.data);
+  return 1;
+}
+
+/* }=========================================== */
+
 
 
 /*
@@ -2100,30 +2518,6 @@ static int str_unpack (lua_State *L) {
 
 #include <math.h>
 
-typedef struct {
-  unsigned char *data;
-  long len;
-  long max_len;
-} PngWriteContext;
-
-static void png_write_callback(void *context, void *data, int size) {
-  PngWriteContext *ctx = (PngWriteContext *)context;
-  long needed_len = ctx->len + size;
-  if (needed_len > ctx->max_len) {
-    // 动态扩展内存，确保有足够的空间
-    long new_max_len = needed_len * 2;
-    unsigned char *new_data = (unsigned char *)realloc(ctx->data, new_max_len);
-    if (!new_data) {
-      // 内存分配失败，直接返回，后续会处理错误
-      return;
-    }
-    ctx->data = new_data;
-    ctx->max_len = new_max_len;
-  }
-  memcpy(ctx->data + ctx->len, data, size);
-  ctx->len += size;
-}
-
 extern int stbi_write_png_compression_level;
 extern int stbi_write_force_png_filter;
 
@@ -2564,30 +2958,45 @@ static int str_data (lua_State *L) {
 }
 
 static const luaL_Reg strlib[] = {
+  {"aes_decrypt", str_aes_decrypt},
+  {"aes_encrypt", str_aes_encrypt},
   {"byte", str_byte},
   {"char", str_char},
+  {"contains", str_contains},
+  {"crc32", str_crc32},
   {"data", str_data},
   {"data2png", str_data2png},
   {"dump", str_dump},
+  {"endswith", str_endswith},
+  {"escape", str_escape},
   {"file", str_file},
   {"file2png", str_file2png},
   {"find", str_find},
-  {"gfind", gfind},
   {"format", str_format},
+  {"fromhex", str_fromhex},
+  {"gfind", gfind},
   {"gmatch", gmatch},
   {"gsub", str_gsub},
+  {"hex", str_hex},
+  {"imageresize", str_resize_image},
   {"len", str_len},
   {"lower", str_lower},
+  {"ltrim", str_ltrim},
   {"match", str_match},
+  {"pack", str_pack},
+  {"packsize", str_packsize},
   {"png2data", str_png2data},
   {"png2file", str_png2file},
   {"rep", str_rep},
   {"reverse", str_reverse},
+  {"rtrim", str_rtrim},
+  {"sha256", str_sha256},
+  {"split", str_split},
+  {"startswith", str_startswith},
   {"sub", str_sub},
-  {"upper", str_upper},
-  {"pack", str_pack},
-  {"packsize", str_packsize},
+  {"trim", str_trim},
   {"unpack", str_unpack},
+  {"upper", str_upper},
   {NULL, NULL}
 };
 
