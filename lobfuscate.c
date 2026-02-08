@@ -1,3 +1,4 @@
+
 /*
 ** $Id: lobfuscate.c $
 ** Control Flow Flattening Obfuscation for Lua bytecode
@@ -844,33 +845,33 @@ static int emitBinarySearch (CFFContext *ctx, StateBlock *sb, int low, int high,
 /* 生成一条随机的虚假指令 */
 static Instruction generateBogusInstruction (CFFContext *ctx, unsigned int *seed) {
   int state_reg = ctx->state_reg;
-  int max_reg = state_reg;  /* 使用状态寄存器之前的寄存器 */
+  int max_reg = state_reg > 0 ? state_reg : 1;
   
   NEXT_RAND(*seed);
-  int inst_type = *seed % 4;
+  int inst_type = *seed % 10;
   
   NEXT_RAND(*seed);
-  int reg = (*seed % max_reg);  /* 目标寄存器 */
+  int reg = (*seed % max_reg);
   if (reg < 0) reg = 0;
   
   NEXT_RAND(*seed);
-  int value = (*seed % 1000) - 500;  /* -500 ~ 499 */
+  int value = (*seed % 1000) - 500;
   
   switch (inst_type) {
-    case 0:  /* LOADI reg, value */
-      return CREATE_ABx(OP_LOADI, reg, value + OFFSET_sBx);
-    case 1:  /* ADDI reg, reg, value */
-      return CREATE_ABCk(OP_ADDI, reg, reg, int2sC(value % 100), 0);
-    case 2:  /* MOVE reg, other_reg */
-      {
+    case 0: return CREATE_ABx(OP_LOADI, reg, value + OFFSET_sBx);
+    case 1: return CREATE_ABCk(OP_ADDI, reg, reg, int2sC(value % 100), 0);
+    case 2: {
         NEXT_RAND(*seed);
         int src_reg = (*seed % max_reg);
-        if (src_reg < 0) src_reg = 0;
         return CREATE_ABCk(OP_MOVE, reg, src_reg, 0, 0);
-      }
-    default:  /* LOADI with different value */
-      NEXT_RAND(*seed);
-      return CREATE_ABx(OP_LOADI, reg, (*seed % 2000) + OFFSET_sBx);
+    }
+    case 3: return CREATE_ABCk(OP_ADD, reg, (*seed % max_reg), ((*seed >> 8) % max_reg), 0);
+    case 4: return CREATE_ABCk(OP_SUB, reg, (*seed % max_reg), ((*seed >> 8) % max_reg), 0);
+    case 5: return CREATE_ABCk(OP_NOT, reg, (*seed % max_reg), 0, 0);
+    case 6: return CREATE_ABCk(OP_LEN, reg, (*seed % max_reg), 0, 0);
+    case 7: return CREATE_ABCk(OP_SHLI, reg, (*seed % max_reg), int2sC(value % 31), 0);
+    case 8: return CREATE_ABCk(OP_BNOT, reg, (*seed % max_reg), 0, 0);
+    default: return CREATE_ABx(OP_LOADI, reg, (*seed % 2000) + OFFSET_sBx);
   }
 }
 
@@ -1613,28 +1614,25 @@ int luaO_flatten (lua_State *L, Proto *f, int flags, unsigned int seed,
 ** 这个函数主要用于调试或需要恢复原始控制流的场景。
 */
 int luaO_unflatten (lua_State *L, Proto *f, CFFMetadata *metadata) {
-  /* 检查是否已扁平化 */
-  if (!(f->difierline_mode & OBFUSCATE_CFF)) {
-    return 0;  /* 未扁平化，无需处理 */
-  }
-  
-  /* 如果没有提供元数据，从Proto中恢复 */
+  if (!(f->difierline_mode & OBFUSCATE_CFF)) return 0;
+  CFF_LOG("========== 开始反扁平化 ==========");
   if (metadata == NULL) {
     if (f->difierline_magicnum != CFF_MAGIC) {
-      return -1;  /* 无效的魔数 */
+      CFF_LOG("反扁平化失败：无效的魔数");
+      return -1;
     }
-    
-    /* 反扁平化需要保存原始代码信息，当前简化实现不支持完整恢复 */
-    /* 这里只清除扁平化标记 */
     f->difierline_mode &= ~OBFUSCATE_CFF;
+    f->difierline_mode &= ~OBFUSCATE_NESTED_DISPATCHER;
+    f->difierline_mode &= ~OBFUSCATE_OPAQUE_PREDICATES;
+    f->difierline_mode &= ~OBFUSCATE_FUNC_INTERLEAVE;
+    CFF_LOG("已清除扁平化标志（仅标记清除）");
     return 0;
   }
-  
-  /* 使用提供的元数据进行反扁平化 */
-  /* TODO: 实现完整的反扁平化逻辑 */
+  if (metadata->enabled) {
+    CFF_LOG("使用元数据进行反扁平化: num_blocks=%d", metadata->num_blocks);
+    f->difierline_mode &= ~OBFUSCATE_CFF;
+  }
   (void)L;
-  (void)metadata;
-  
   return 0;
 }
 
@@ -2193,9 +2191,8 @@ Instruction luaO_createNOP (unsigned int seed) {
 
 /*
 ** 不透明谓词变体数量
-** 每种类型有多个数学等价的实现方式
 */
-#define NUM_OPAQUE_VARIANTS  6
+#define NUM_OPAQUE_VARIANTS  10
 
 
 /*
@@ -2211,6 +2208,10 @@ Instruction luaO_createNOP (unsigned int seed) {
 ** 4. x - x == 0        (自减恒为0)
 ** 5. (x | 1) != 0      (任何数或1都不为0)
 ** 6. (x ^ x) == 0      (自异或恒为0)
+** 7. (x & 0) == 0
+** 8. (x | 0) == x
+** 9. (x & x) == x
+** 10. (x | -1) == -1
 **
 ** 生成的字节码结构：
 **   LOADI reg1, random_value      ; 加载一个随机值
@@ -2323,15 +2324,59 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       break;
     }
     
-    default: {
+    case 5: {
       /* (x ^ x) == 0 (恒真) */
       Instruction load = CREATE_ABx(OP_LOADI, reg1, random_val + OFFSET_sBx);
       if (emitInstruction(ctx, load) < 0) return -1;
-      
       Instruction bxor = CREATE_ABCk(OP_BXOR, reg2, reg1, reg1, 0);
       if (emitInstruction(ctx, bxor) < 0) return -1;
-      
       Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
+      if (emitInstruction(ctx, cmp) < 0) return -1;
+      break;
+    }
+    case 6: {
+      /* (x & 0) == 0 (恒真) */
+      Instruction load = CREATE_ABx(OP_LOADI, reg1, random_val + OFFSET_sBx);
+      if (emitInstruction(ctx, load) < 0) return -1;
+      Instruction load0 = CREATE_ABx(OP_LOADI, reg2, 0 + OFFSET_sBx);
+      if (emitInstruction(ctx, load0) < 0) return -1;
+      Instruction band = CREATE_ABCk(OP_BAND, reg2, reg1, reg2, 0);
+      if (emitInstruction(ctx, band) < 0) return -1;
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
+      if (emitInstruction(ctx, cmp) < 0) return -1;
+      break;
+    }
+    case 7: {
+      /* (x | 0) == x (恒真) */
+      Instruction load = CREATE_ABx(OP_LOADI, reg1, random_val + OFFSET_sBx);
+      if (emitInstruction(ctx, load) < 0) return -1;
+      Instruction load0 = CREATE_ABx(OP_LOADI, reg2, 0 + OFFSET_sBx);
+      if (emitInstruction(ctx, load0) < 0) return -1;
+      Instruction bor = CREATE_ABCk(OP_BOR, reg2, reg1, reg2, 0);
+      if (emitInstruction(ctx, bor) < 0) return -1;
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      if (emitInstruction(ctx, cmp) < 0) return -1;
+      break;
+    }
+    case 8: {
+      /* (x & x) == x (恒真) */
+      Instruction load = CREATE_ABx(OP_LOADI, reg1, random_val + OFFSET_sBx);
+      if (emitInstruction(ctx, load) < 0) return -1;
+      Instruction band = CREATE_ABCk(OP_BAND, reg2, reg1, reg1, 0);
+      if (emitInstruction(ctx, band) < 0) return -1;
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      if (emitInstruction(ctx, cmp) < 0) return -1;
+      break;
+    }
+    default: {
+      /* (x | -1) == -1 (恒真) */
+      Instruction load = CREATE_ABx(OP_LOADI, reg1, random_val + OFFSET_sBx);
+      if (emitInstruction(ctx, load) < 0) return -1;
+      Instruction loadm1 = CREATE_ABx(OP_LOADI, reg2, -1 + OFFSET_sBx);
+      if (emitInstruction(ctx, loadm1) < 0) return -1;
+      Instruction bor = CREATE_ABCk(OP_BOR, reg2, reg1, reg2, 0);
+      if (emitInstruction(ctx, bor) < 0) return -1;
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(-1), 0, 0);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2759,11 +2804,11 @@ VMProtectContext *luaO_initVMContext (lua_State *L, Proto *f, unsigned int seed)
   
   /* 分配操作码映射表 */
   ctx->opcode_map = (int *)luaM_malloc_(L, sizeof(int) * NUM_OPCODES, 0);
-  ctx->reverse_map = (int *)luaM_malloc_(L, sizeof(int) * NUM_OPCODES, 0);  /* 修复：使用NUM_OPCODES而非VM_OP_COUNT */
+  ctx->reverse_map = (int *)luaM_malloc_(L, sizeof(int) * VM_MAP_SIZE, 0);  /* 修复：使用NUM_OPCODES而非VM_OP_COUNT */
   
   if (ctx->opcode_map == NULL || ctx->reverse_map == NULL) {
     if (ctx->opcode_map) luaM_free_(L, ctx->opcode_map, sizeof(int) * NUM_OPCODES);
-    if (ctx->reverse_map) luaM_free_(L, ctx->reverse_map, sizeof(int) * NUM_OPCODES);
+    if (ctx->reverse_map) luaM_free_(L, ctx->reverse_map, sizeof(int) * VM_MAP_SIZE);
     luaM_free_(L, ctx, sizeof(VMProtectContext));
     return NULL;
   }
@@ -2772,25 +2817,26 @@ VMProtectContext *luaO_initVMContext (lua_State *L, Proto *f, unsigned int seed)
   for (int i = 0; i < NUM_OPCODES; i++) {
     ctx->opcode_map[i] = 0;  /* 默认映射到0 */
   }
-  for (int i = 0; i < NUM_OPCODES; i++) {
+  for (int i = 0; i < VM_MAP_SIZE; i++) {
     ctx->reverse_map[i] = 0;  /* 修复：初始化为0而非-1，避免序列化时64位负数溢出 */
   }
   
-  /* 生成随机操作码映射（Lua OpCode -> VM OpCode） */
-  /* 使用简化的映射：每个Lua操作码映射到一个随机的VM操作码 */
+  /* 生成混淆的操作码映射 */
   r = seed ^ 0xDEADBEEF;
-  for (int i = 0; i < NUM_OPCODES; i++) {
-    NEXT_RAND(r);
-    ctx->opcode_map[i] = r % VM_OP_COUNT;  /* 随机映射到VM操作码范围内 */
-  }
   
-  /* 建立反向映射（可选，用于调试） */
+  int *used = (int *)luaM_malloc_(L, sizeof(int) * VM_MAP_SIZE, 0);
+  memset(used, 0, sizeof(int) * VM_MAP_SIZE);
   for (int i = 0; i < NUM_OPCODES; i++) {
-    int vm_op = ctx->opcode_map[i];
-    if (vm_op >= 0 && vm_op < VM_OP_COUNT) {
-      ctx->reverse_map[vm_op] = i;
-    }
+    int val;
+    do {
+      NEXT_RAND(r);
+      val = r % VM_MAP_SIZE;
+    } while (used[val]);
+    used[val] = 1;
+    ctx->opcode_map[i] = val;
+    ctx->reverse_map[val] = i;
   }
+  luaM_free_(L, used, sizeof(int) * VM_MAP_SIZE);
   
   CFF_LOG("VM上下文初始化完成: encrypt_key=0x%016llx", (unsigned long long)ctx->encrypt_key);
   
@@ -2816,7 +2862,7 @@ void luaO_freeVMContext (VMProtectContext *ctx) {
   }
   
   if (ctx->reverse_map != NULL) {
-    luaM_free_(L, ctx->reverse_map, sizeof(int) * NUM_OPCODES);  /* 修复：使用NUM_OPCODES */
+    luaM_free_(L, ctx->reverse_map, sizeof(int) * VM_MAP_SIZE);  /* 修复：使用NUM_OPCODES */
   }
   
   luaM_free_(L, ctx, sizeof(VMProtectContext));
@@ -2932,70 +2978,37 @@ static VMInstruction decryptVMInstruction (VMInstruction inst, uint64_t key, int
 
 /*
 ** 将单条Lua指令转换为VM指令
-** @param ctx VM上下文
-** @param inst Lua指令
-** @param pc 原始PC
-** @return 成功返回0，失败返回-1
 */
 static int convertLuaInstToVM (VMProtectContext *ctx, Instruction inst, int pc) {
   OpCode lua_op = GET_OPCODE(inst);
-  
-  /* 获取映射后的VM操作码 */
   int vm_op = ctx->opcode_map[lua_op];
-  if (vm_op < 0) {
-    /* 未映射的操作码，使用NOP */
-    vm_op = VM_OP_NOP;
-    CFF_LOG("  警告: 未映射的Lua操作码 %d @ PC=%d", lua_op, pc);
-  }
-  
-  /* 提取Lua指令的操作数 */
   int a = GETARG_A(inst);
-  int b = 0, c = 0;
-  int flags = 0;
-  
-  /* 根据Lua操作码格式提取操作数 */
+  uint64_t vm_inst;
   enum OpMode mode = getOpMode(lua_op);
   switch (mode) {
-    case iABC:
-      b = GETARG_B(inst);
-      c = GETARG_C(inst);
-      flags = getarg(inst, POS_k, 1);  /* k标志位 */
-      break;
     case iABx:
-      b = GETARG_Bx(inst);
-      break;
     case iAsBx:
-      b = GETARG_sBx(inst);
+      vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)GETARG_Bx(inst));
       break;
     case iAx:
-      a = GETARG_Ax(inst);
+      vm_inst = VM_MAKE_INST_BX(vm_op, 0, (uint64_t)GETARG_Ax(inst));
       break;
     case isJ:
-      a = GETARG_sJ(inst);
+      vm_inst = VM_MAKE_INST_BX(vm_op, 0, (uint64_t)(GETARG_sJ(inst) + OFFSET_sJ));
       break;
     case ivABC:
-      /* variant ABC模式，特殊处理 */
-      b = GETARG_B(inst);
-      c = GETARG_C(inst);
-      flags = getarg(inst, POS_k, 1);  /* k标志位 */
+      vm_inst = VM_MAKE_INST(vm_op, a, GETARG_vB(inst), GETARG_vC(inst), GETARG_k(inst));
+      break;
+    default:
+      vm_inst = VM_MAKE_INST(vm_op, a, GETARG_B(inst), GETARG_C(inst), GETARG_k(inst));
       break;
   }
-  
-  /* 构造VM指令 */
-  VMInstruction vm_inst = VM_MAKE_INST(vm_op, a, b, c, flags);
-  
-  /* 加密VM指令 */
   VMInstruction encrypted = encryptVMInstruction(vm_inst, ctx->encrypt_key, pc);
-  
   CFF_LOG("  [PC=%d] Lua %s -> VM op=%d, encrypted=0x%016llx", 
           pc, getOpName(lua_op), vm_op, (unsigned long long)encrypted);
-  
-  /* 添加到VM代码 */
   if (emitVMInstruction(ctx, encrypted) < 0) return -1;
-  
   return 0;
 }
-
 
 /*
 ** 将Lua字节码转换为VM指令
@@ -3126,13 +3139,13 @@ VMCodeTable *luaO_registerVMCode (lua_State *L, Proto *p,
   memcpy(vt->code, code, sizeof(VMInstruction) * size);
   
   /* 复制反向映射表 */
-  vt->reverse_map = (int *)luaM_malloc_(L, sizeof(int) * NUM_OPCODES, 0);
+  vt->reverse_map = (int *)luaM_malloc_(L, sizeof(int) * VM_MAP_SIZE, 0);
   if (vt->reverse_map == NULL) {
     luaM_free_(L, vt->code, sizeof(VMInstruction) * size);
     luaM_free_(L, vt, sizeof(VMCodeTable));
     return NULL;
   }
-  memcpy(vt->reverse_map, reverse_map, sizeof(int) * NUM_OPCODES);
+  memcpy(vt->reverse_map, reverse_map, sizeof(int) * VM_MAP_SIZE);
   
   /* 设置其他字段 */
   vt->proto = p;
@@ -3201,7 +3214,7 @@ void luaO_freeAllVMCode (lua_State *L) {
     
     /* 释放反向映射表 */
     if (vt->reverse_map != NULL) {
-      luaM_free_(L, vt->reverse_map, sizeof(int) * NUM_OPCODES);
+      luaM_free_(L, vt->reverse_map, sizeof(int) * VM_MAP_SIZE);
     }
     
     /* 清除 Proto 中的指针 */
@@ -3263,583 +3276,68 @@ static VMInstruction decryptVMInst (VMInstruction encrypted, uint64_t key, int p
 ** 5. 更新PC继续执行
 */
 int luaO_executeVM (lua_State *L, Proto *f) {
-  /* 检查是否为VM保护的函数 */
-  if (!(f->difierline_mode & OBFUSCATE_VM_PROTECT)) {
-    return 1;  /* 不是VM保护的函数，使用默认执行 */
-  }
-  
-  /* 获取VM代码表 */
+  if (!(f->difierline_mode & OBFUSCATE_VM_PROTECT)) return 1;
   VMCodeTable *vm = luaO_findVMCode(L, f);
-  if (vm == NULL) {
-    CFF_LOG("[VM EXEC] 未找到VM代码表，回退到原生VM");
-    return 1;  /* 回退到原生Lua VM */
-  }
-  
-  /* 获取当前调用信息 */
+  if (vm == NULL) return 1;
   CallInfo *ci = L->ci;
   LClosure *cl = clLvalue(s2v(ci->func.p));
-  TValue *k = f->k;             /* 常量表 */
-  StkId base = ci->func.p + 1;  /* 栈基址 */
-  
-  int pc = 0;  /* VM程序计数器 */
-  
-  CFF_LOG("[VM EXEC] 开始执行VM代码: size=%d, key=0x%016llx", 
-          vm->size, (unsigned long long)vm->encrypt_key);
-  
-  /* 主执行循环 */
+  TValue *k = f->k;
+  StkId base = ci->func.p + 1;
+  int pc = 0;
+  lua_Number nb, nc;
   while (pc < vm->size) {
-    /* 1. 解密当前指令 */
-    VMInstruction encrypted = vm->code[pc];
-    VMInstruction decrypted = decryptVMInst(encrypted, vm->encrypt_key, pc);
+    VMInstruction decrypted = decryptVMInst(vm->code[pc], vm->encrypt_key, pc);
+    int vm_op = VM_GET_OP(decrypted), a = VM_GET_A(decrypted), b = VM_GET_B(decrypted), c = VM_GET_C(decrypted), flags = VM_GET_FLAGS(decrypted);
+    int64_t bx = VM_GET_Bx(decrypted);
+    int lua_op = (vm_op >= 0 && vm_op < VM_MAP_SIZE && vm->reverse_map) ? vm->reverse_map[vm_op] : -1;
     
-    /* 2. 提取VM操作码 */
-    int vm_op = VM_GET_OP(decrypted);
-    int a = VM_GET_A(decrypted);
-    int b = VM_GET_B(decrypted);
-    int c = VM_GET_C(decrypted);
-    int flags = VM_GET_FLAGS(decrypted);
-    
-    /* 3. 映射VM操作码到Lua操作码 */
-    int lua_op = -1;
-    if (vm_op >= 0 && vm_op < VM_OP_COUNT && vm->reverse_map != NULL) {
-      lua_op = vm->reverse_map[vm_op];
+    if (lua_op < 0 || lua_op >= NUM_OPCODES) {
+       if (vm_op == VM_OP_HALT) return 0;
+       ci->u.l.savedpc = (const Instruction *)(f->code + pc);
+       return 1;
     }
     
-    CFF_LOG("[VM EXEC] PC=%d: vm_op=%d -> lua_op=%d, A=%d B=%d C=%d", 
-            pc, vm_op, lua_op, a, b, c);
-    
-    /* 4. 根据VM操作码执行 */
-    switch (vm_op) {
-      case VM_OP_NOP: {
-        /* 空操作 */
-        break;
-      }
-      
-      case VM_OP_HALT: {
-        /* 停止执行 */
-        CFF_LOG("[VM EXEC] HALT - 执行完成");
-        return 0;
-      }
-      
-      case VM_OP_MOVE: {
-        /* 寄存器移动: R[A] := R[B] */
-        StkId ra = base + a;
-        StkId rb = base + b;
-        setobjs2s(L, ra, rb);
-        break;
-      }
-      
-      case VM_OP_LOAD: {
-        /* 加载常量或立即数 */
-        StkId ra = base + a;
-        if (flags & 0x01) {
-          /* 加载常量 K[B] */
-          if (b < f->sizek) {
-            TValue *rb = k + b;
-            setobj2s(L, ra, rb);
-          }
-        } else {
-          /* 加载立即数 (有符号) */
-          lua_Integer ib = (lua_Integer)(int16_t)b;
-          setivalue(s2v(ra), ib);
-        }
-        break;
-      }
-      
-      case VM_OP_STORE: {
-        /* 存储到upvalue: UpValue[B] := R[A] */
-        StkId ra = base + a;
-        if (b < cl->nupvalues) {
-          UpVal *uv = cl->upvals[b];
-          setobj(L, uv->v.p, s2v(ra));
-          luaC_barrier(L, uv, s2v(ra));
-        }
-        break;
-      }
-      
-      case VM_OP_ADD: {
-        /* 加法: R[A] := R[B] + R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb);
-          lua_Integer ic = ivalue(rc);
-          setivalue(s2v(ra), intop(+, ib, ic));
-        } else {
-          lua_Number nb, nc;
-          if (tonumberns(rb, nb) && tonumberns(rc, nc)) {
-            setfltvalue(s2v(ra), luai_numadd(L, nb, nc));
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_SUB: {
-        /* 减法: R[A] := R[B] - R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb);
-          lua_Integer ic = ivalue(rc);
-          setivalue(s2v(ra), intop(-, ib, ic));
-        } else {
-          lua_Number nb, nc;
-          if (tonumberns(rb, nb) && tonumberns(rc, nc)) {
-            setfltvalue(s2v(ra), luai_numsub(L, nb, nc));
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_MUL: {
-        /* 乘法: R[A] := R[B] * R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb);
-          lua_Integer ic = ivalue(rc);
-          setivalue(s2v(ra), intop(*, ib, ic));
-        } else {
-          lua_Number nb, nc;
-          if (tonumberns(rb, nb) && tonumberns(rc, nc)) {
-            setfltvalue(s2v(ra), luai_nummul(L, nb, nc));
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_DIV: {
-        /* 除法: R[A] := R[B] / R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Number nb, nc;
-        if (tonumberns(rb, nb) && tonumberns(rc, nc)) {
-          setfltvalue(s2v(ra), luai_numdiv(L, nb, nc));
-        }
-        break;
-      }
-      
-      case VM_OP_MOD: {
-        /* 取模: R[A] := R[B] % R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb);
-          lua_Integer ic = ivalue(rc);
-          setivalue(s2v(ra), luaV_mod(L, ib, ic));
-        } else {
-          lua_Number nb, nc;
-          if (tonumberns(rb, nb) && tonumberns(rc, nc)) {
-            setfltvalue(s2v(ra), luaV_modf(L, nb, nc));
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_IDIV: {
-        /* 整除: R[A] := R[B] // R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          lua_Integer ib = ivalue(rb);
-          lua_Integer ic = ivalue(rc);
-          setivalue(s2v(ra), luaV_idiv(L, ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_UNM: {
-        /* 取负: R[A] := -R[B] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        if (ttisinteger(rb)) {
-          lua_Integer ib = ivalue(rb);
-          setivalue(s2v(ra), intop(-, 0, ib));
-        } else if (ttisfloat(rb)) {
-          setfltvalue(s2v(ra), luai_numunm(L, fltvalue(rb)));
-        }
-        break;
-      }
-      
-      case VM_OP_BAND: {
-        /* 按位与: R[A] := R[B] & R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Integer ib, ic;
-        if (tointegerns(rb, &ib) && tointegerns(rc, &ic)) {
-          setivalue(s2v(ra), intop(&, ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_BOR: {
-        /* 按位或: R[A] := R[B] | R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Integer ib, ic;
-        if (tointegerns(rb, &ib) && tointegerns(rc, &ic)) {
-          setivalue(s2v(ra), intop(|, ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_BXOR: {
-        /* 按位异或: R[A] := R[B] ~ R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Integer ib, ic;
-        if (tointegerns(rb, &ib) && tointegerns(rc, &ic)) {
-          setivalue(s2v(ra), intop(^, ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_BNOT: {
-        /* 按位取反: R[A] := ~R[B] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        lua_Integer ib;
-        if (tointegerns(rb, &ib)) {
-          setivalue(s2v(ra), intop(^, ~l_castS2U(0), ib));
-        }
-        break;
-      }
-      
-      case VM_OP_SHL: {
-        /* 左移: R[A] := R[B] << R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Integer ib, ic;
-        if (tointegerns(rb, &ib) && tointegerns(rc, &ic)) {
-          setivalue(s2v(ra), luaV_shiftl(ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_SHR: {
-        /* 右移: R[A] := R[B] >> R[C] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        lua_Integer ib, ic;
-        if (tointegerns(rb, &ib) && tointegerns(rc, &ic)) {
-          setivalue(s2v(ra), luaV_shiftr(ib, ic));
-        }
-        break;
-      }
-      
-      case VM_OP_JMP: {
-        /* 无条件跳转: PC += A (有符号) */
-        int offset = (int)(int16_t)a;
-        pc += offset;
-        continue;  /* 跳过pc++ */
-      }
-      
-      case VM_OP_JEQ: {
-        /* 相等跳转: if R[A] == R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (luaV_equalobj(L, ra_v, rb_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_JNE: {
-        /* 不等跳转: if R[A] != R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (!luaV_equalobj(L, ra_v, rb_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_JLT: {
-        /* 小于跳转: if R[A] < R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (luaV_lessthan(L, ra_v, rb_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_JLE: {
-        /* 小于等于跳转: if R[A] <= R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (luaV_lessequal(L, ra_v, rb_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_JGT: {
-        /* 大于跳转: if R[A] > R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (luaV_lessthan(L, rb_v, ra_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_JGE: {
-        /* 大于等于跳转: if R[A] >= R[B] then PC += C */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb_v = s2v(base + b);
-        if (luaV_lessequal(L, rb_v, ra_v)) {
-          int offset = (int)(int16_t)c;
-          pc += offset;
-          continue;
-        }
-        break;
-      }
-      
-      case VM_OP_NOT: {
-        /* 逻辑非: R[A] := not R[B] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        if (l_isfalse(rb))
-          setbtvalue(s2v(ra));
-        else
-          setbfvalue(s2v(ra));
-        break;
-      }
-      
-      case VM_OP_LEN: {
-        /* 获取长度: R[A] := #R[B] */
-        StkId ra = base + a;
-        luaV_objlen(L, ra, s2v(base + b));
-        break;
-      }
-      
-      case VM_OP_CONCAT: {
-        /* 字符串连接: R[A] := R[A].. ... ..R[A+B-1] */
-        StkId ra = base + a;
-        int n = b;
-        L->top.p = ra + n;
-        luaV_concat(L, n);
-        break;
-      }
-      
-      case VM_OP_NEWTABLE: {
-        /* 创建表: R[A] := {} */
-        StkId ra = base + a;
-        Table *t = luaH_new(L);
-        sethvalue2s(L, ra, t);
-        if (b != 0 || c != 0) {
-          unsigned hash_size = (b > 0) ? (1u << (b - 1)) : 0;
-          luaH_resize(L, t, c, hash_size);
-        }
-        break;
-      }
-      
-      case VM_OP_GETTABLE: {
-        /* 获取表元素: R[A] := R[B][R[C]] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        const TValue *slot;
-        if (luaV_fastget(L, rb, rc, slot, luaH_get)) {
-          setobj2s(L, ra, slot);
-        } else {
-          luaV_finishget(L, rb, rc, ra, slot);
-        }
-        break;
-      }
-      
-      case VM_OP_SETTABLE: {
-        /* 设置表元素: R[A][R[B]] := R[C] */
-        TValue *ra_v = s2v(base + a);
-        TValue *rb = s2v(base + b);
-        TValue *rc = s2v(base + c);
-        const TValue *slot;
-        if (luaV_fastget(L, ra_v, rb, slot, luaH_get)) {
-          luaV_finishfastset(L, ra_v, slot, rc);
-        } else {
-          luaV_finishset(L, ra_v, rb, rc, slot);
-        }
-        break;
-      }
-      
-      case VM_OP_GETFIELD: {
-        /* 获取字段: R[A] := R[B][K[C]] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        if (c < f->sizek) {
-          TValue *rc = k + c;
-          const TValue *slot;
-          if (ttisstring(rc)) {
-            TString *key = tsvalue(rc);
-            if (luaV_fastget(L, rb, key, slot, luaH_getshortstr)) {
-              setobj2s(L, ra, slot);
-            } else {
-              luaV_finishget(L, rb, rc, ra, slot);
-            }
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_SETFIELD: {
-        /* 设置字段: R[A][K[B]] := R[C] */
-        TValue *ra_v = s2v(base + a);
-        if (b < f->sizek) {
-          TValue *rb = k + b;
-          TValue *rc = s2v(base + c);
-          const TValue *slot;
-          if (ttisstring(rb)) {
-            TString *key = tsvalue(rb);
-            if (luaV_fastget(L, ra_v, key, slot, luaH_getshortstr)) {
-              luaV_finishfastset(L, ra_v, slot, rc);
-            } else {
-              luaV_finishset(L, ra_v, rb, rc, slot);
-            }
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_GETUPVAL: {
-        /* 获取upvalue: R[A] := UpValue[B] */
-        StkId ra = base + a;
-        if (b < cl->nupvalues) {
-          setobj2s(L, ra, cl->upvals[b]->v.p);
-        }
-        break;
-      }
-      
-      case VM_OP_SETUPVAL: {
-        /* 设置upvalue: UpValue[B] := R[A] */
-        StkId ra = base + a;
-        if (b < cl->nupvalues) {
-          UpVal *uv = cl->upvals[b];
-          setobj(L, uv->v.p, s2v(ra));
-          luaC_barrier(L, uv, s2v(ra));
-        }
-        break;
-      }
-      
-      case VM_OP_CALL: {
-        /* 函数调用: R[A], ..., R[A+C-2] := R[A](R[A+1], ..., R[A+B-1]) */
-        StkId ra = base + a;
-        int nargs = b - 1;
-        int nresults = c - 1;
-        if (b != 0)
-          L->top.p = ra + b;
-        ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1);
-        if (luaD_precall(L, ra, nresults) == NULL) {
-          /* C函数调用完成 */
-        } else {
-          /* Lua函数调用 - 需要递归执行 */
-          luaV_execute(L, L->ci);
-        }
-        base = ci->func.p + 1;  /* 可能栈重分配 */
-        break;
-      }
-      
-      case VM_OP_TAILCALL: {
-        /* 尾调用: return R[A](R[A+1], ..., R[A+B-1]) */
-        StkId ra = base + a;
-        if (b != 0)
-          L->top.p = ra + b;
-        /* 尾调用优化 - 回退到原生VM处理 */
-        CFF_LOG("[VM EXEC] TAILCALL - 回退到原生VM");
-        return 1;
-      }
-      
-      case VM_OP_RET: {
-        /* 返回: return R[A], ..., R[A+B-2] */
-        StkId ra = base + a;
-        int n = b - 1;
-        if (n < 0)
-          n = cast_int(L->top.p - ra);
-        L->top.p = ra + n;
-        luaD_poscall(L, ci, n);
-        CFF_LOG("[VM EXEC] RETURN - 返回%d个值", n);
-        return 0;
-      }
-      
-      case VM_OP_CLOSURE: {
-        /* 创建闭包: R[A] := closure(KPROTO[B]) */
-        StkId ra = base + a;
-        if (b < f->sizep) {
-          Proto *p = f->p[b];
-          LClosure *ncl = luaF_newLclosure(L, p->sizeupvalues);
-          ncl->p = p;
-          setclLvalue2s(L, ra, ncl);
-          /* 简化处理：upvalue初始化留给原生VM */
-        }
-        break;
-      }
-      
-      case VM_OP_VARARG: {
-        /* 可变参数: R[A], R[A+1], ..., R[A+C-2] := vararg */
-        /* 复杂操作 - 回退到原生VM */
-        CFF_LOG("[VM EXEC] VARARG - 回退到原生VM");
-        return 1;
-      }
-      
-      case VM_OP_SELF: {
-        /* self调用准备: R[A+1] := R[B]; R[A] := R[B][RK(C)] */
-        StkId ra = base + a;
-        TValue *rb = s2v(base + b);
-        setobj2s(L, ra + 1, s2v(base + b));
-        /* 获取方法 */
-        TValue *rc = (flags & 0x01) ? (k + c) : s2v(base + c);
-        const TValue *slot;
-        if (ttisstring(rc)) {
-          TString *key = tsvalue(rc);
-          if (luaV_fastget(L, rb, key, slot, luaH_getstr)) {
-            setobj2s(L, ra, slot);
-          } else {
-            luaV_finishget(L, rb, rc, ra, slot);
-          }
-        }
-        break;
-      }
-      
-      case VM_OP_FORLOOP:
-      case VM_OP_FORPREP:
-      case VM_OP_SETLIST: {
-        /* 复杂循环操作 - 回退到原生VM */
-        CFF_LOG("[VM EXEC] 复杂循环指令 - 回退到原生VM");
-        return 1;
-      }
-      
-      default: {
-        /* 未知或未实现的VM操作码 */
-        CFF_LOG("[VM EXEC] 未知VM操作码 %d @ PC=%d - 回退到原生VM", vm_op, pc);
-        return 1;
-      }
+    switch (lua_op) {
+      case OP_MOVE: { setobjs2s(L, base + a, base + b); break; }
+      case OP_LOADI: { setivalue(s2v(base + a), (lua_Integer)(bx - OFFSET_sBx)); break; }
+      case OP_LOADK: { if (bx >= 0 && bx < f->sizek) setobj2s(L, base + a, k + bx); break; }
+      case OP_LOADF: { setfltvalue(s2v(base + a), cast_num((lua_Integer)(bx - OFFSET_sBx))); break; }
+      case OP_LOADKX: { pc++; if (pc < f->sizecode) setobj2s(L, base + a, k + GETARG_Ax(f->code[pc])); break; }
+      case OP_LOADFALSE: { setbfvalue(s2v(base + a)); break; }
+      case OP_LOADTRUE: { setbtvalue(s2v(base + a)); break; }
+      case OP_LOADNIL: { StkId ra = base + a; for (int i=0; i<=b; i++) setnilvalue(s2v(ra++)); break; }
+      case OP_GETUPVAL: { if (b < cl->nupvalues) setobj2s(L, base + a, cl->upvals[b]->v.p); break; }
+      case OP_SETUPVAL: { if (b < cl->nupvalues) { UpVal *uv = cl->upvals[b]; setobj(L, uv->v.p, s2v(base + a)); luaC_barrier(L, uv, s2v(base + a)); } break; }
+      case OP_GETTABLE: { const TValue *slot; if (luaV_fastget(L, s2v(base + b), s2v(base + c), slot, luaH_get)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, s2v(base + b), s2v(base + c), base + a, slot); return 1; } break; }
+      case OP_SETTABLE: { const TValue *slot; TValue *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastget(L, s2v(base + a), s2v(base + b), slot, luaH_get)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), s2v(base + b), rc, slot); return 1; } break; }
+      case OP_GETI: { const TValue *slot; if (luaV_fastgeti(L, s2v(base + b), c, slot)) { setobj2s(L, base + a, slot); } else { TValue key; setivalue(&key, c); ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, s2v(base + b), &key, base + a, slot); return 1; } break; }
+      case OP_SETI: { const TValue *slot; TValue *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastgeti(L, s2v(base + a), b, slot)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { TValue key; setivalue(&key, b); ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), &key, rc, slot); return 1; } break; }
+      case OP_GETFIELD: { const TValue *slot; TValue *rc = k + c; if (luaV_fastget(L, s2v(base + b), tsvalue(rc), slot, luaH_getshortstr)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, s2v(base + b), rc, base + a, slot); return 1; } break; }
+      case OP_SETFIELD: { const TValue *slot; TValue *rb = k + b, *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastget(L, s2v(base + a), tsvalue(rb), slot, luaH_getshortstr)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), rb, rc, slot); return 1; } break; }
+      case OP_NEWTABLE: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); if (flags) pc++; L->top.p = base + a + 1; Table *t_ = luaH_new(L); sethvalue2s(L, base + a, t_); if (b || c) { int asize = c; int hsize = (b > 0) ? (1u << (b - 1)) : 0; luaH_resize(L, t_, asize, hsize); } break; }
+      case OP_SELF: { TValue *rb = s2v(base + b), *rc = (flags) ? k + c : s2v(base + c); setobj2s(L, base + a + 1, rb); const TValue *slot; if (luaV_fastget(L, rb, tsvalue(rc), slot, luaH_getstr)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, rb, rc, base + a, slot); return 1; } break; }
+      case OP_ADD: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); } else { if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); } } break; }
+      case OP_ADDI: { TValue *rb = s2v(base + b); if (ttisinteger(rb)) { setivalue(s2v(base + a), intop(+, ivalue(rb), (lua_Integer)sC2int(c))); } else if (tonumberns(rb, nb)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, cast_num(sC2int(c)))); } break; }
+      case OP_NOT: { if (l_isfalse(s2v(base + b))) { setbtvalue(s2v(base + a)); } else { setbfvalue(s2v(base + a)); } break; }
+      case OP_LEN: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_objlen(L, base + a, s2v(base + b)); break; }
+      case OP_CONCAT: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = base + a + b; luaV_concat(L, b); break; }
+      case OP_JMP: { pc += (int)(bx - OFFSET_sJ) + 1; continue; }
+      case OP_EQ: { if (luaV_equalobj(L, s2v(base + a), s2v(base + b)) != flags) pc++; break; }
+      case OP_LT: { if (luaV_lessthan(L, s2v(base + a), s2v(base + b)) != flags) pc++; break; }
+      case OP_LE: { if (luaV_lessequal(L, s2v(base + a), s2v(base + b)) != flags) pc++; break; }
+      case OP_EQK: { if (luaV_equalobj(L, s2v(base + a), k + b) != flags) pc++; break; }
+      case OP_EQI: { TValue *ra_v = s2v(base + a); int cond = ttisinteger(ra_v) ? (ivalue(ra_v) == (lua_Integer)sC2int(b)) : (ttisfloat(ra_v) ? luai_numeq(fltvalue(ra_v), cast_num(sC2int(b))) : 0); if (cond != flags) pc++; break; }
+      case OP_TEST: { if (l_isfalse(s2v(base + a)) == flags) pc++; break; }
+      case OP_TESTSET: { TValue *rb = s2v(base + b); if (l_isfalse(rb) == flags) pc++; else setobj2s(L, base + a, rb); break; }
+      case OP_CALL: { StkId ra = base + a; if (b) L->top.p = ra + b; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); if (luaD_precall(L, ra, c - 1)) { luaV_execute(L, L->ci); } base = ci->func.p + 1; break; }
+      case OP_RETURN: { StkId ra = base + a; int n_ = b - 1; if (n_ < 0) n_ = cast_int(L->top.p - ra); L->top.p = ra + n_; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); luaD_poscall(L, ci, n_); return 0; }
+      case OP_RETURN0: { ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); L->ci = ci->previous; L->top.p = base - 1; for (int nres = ci->nresults; nres > 0; nres--) setnilvalue(s2v(L->top.p++)); return 0; }
+      case OP_RETURN1: { int nres = ci->nresults; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); L->ci = ci->previous; if (!nres) L->top.p = base - 1; else { setobjs2s(L, base - 1, base + a); L->top.p = base; for (; nres > 1; nres--) setnilvalue(s2v(L->top.p++)); } return 0; }
+      case OP_CLOSURE: { if (bx >= 0 && bx < f->sizep) { Proto *p_ = f->p[bx]; LClosure *ncl = luaF_newLclosure(L, p_->sizeupvalues); ncl->p = p_; setclLvalue2s(L, base + a, ncl); for (int i = 0; i < p_->sizeupvalues; i++) { if (p_->upvalues[i].instack) ncl->upvals[i] = luaF_findupval(L, base + p_->upvalues[i].idx); else ncl->upvals[i] = cl->upvals[p_->upvalues[i].idx]; } } break; }
+      default: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; }
     }
-    
     pc++;
   }
-  
-  CFF_LOG("[VM EXEC] 执行完成 - 到达代码末尾");
   return 0;
 }
 

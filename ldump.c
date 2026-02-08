@@ -597,8 +597,8 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
       dumpVar(D, vt->code[i]);
     }
     /* 写入反向映射表 */
-    dumpInt(D, NUM_OPCODES);
-    for (int i = 0; i < NUM_OPCODES; i++) {
+    dumpInt(D, VM_MAP_SIZE);
+    for (int i = 0; i < VM_MAP_SIZE; i++) {
       dumpInt(D, vt->reverse_map[i]);
     }
   } else {
