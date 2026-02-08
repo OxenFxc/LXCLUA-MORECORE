@@ -11,6 +11,8 @@
 #define lobfuscate_h
 
 #include "lobject.h"
+
+#define VM_MAP_SIZE 1024
 #include "lopcodes.h"
 #include "lstate.h"
 
@@ -348,17 +350,34 @@ typedef enum {
   VM_OP_SETTABLE,
   VM_OP_GETFIELD,
   VM_OP_SETFIELD,
+  VM_OP_GETI,
+  VM_OP_SETI,
+  VM_OP_GETTABUP,
+  VM_OP_SETTABUP,
   VM_OP_CLOSURE,
   VM_OP_GETUPVAL,
   VM_OP_SETUPVAL,
   VM_OP_CONCAT,
   VM_OP_LEN,
   VM_OP_NOT,
+  VM_OP_TEST,
+  VM_OP_TESTSET,
   VM_OP_FORLOOP,
   VM_OP_FORPREP,
+  VM_OP_TFORPREP,
+  VM_OP_TFORCALL,
+  VM_OP_TFORLOOP,
   VM_OP_VARARG,
+  VM_OP_VARARGPREP,
   VM_OP_SELF,
   VM_OP_SETLIST,
+  VM_OP_LOADKX,
+  VM_OP_LOADFALSE,
+  VM_OP_LOADTRUE,
+  VM_OP_LOADNIL,
+  VM_OP_MMBIN,
+  VM_OP_MMBINI,
+  VM_OP_MMBINK,
   VM_OP_EXT1,
   VM_OP_EXT2,
   VM_OP_HALT,
@@ -371,17 +390,26 @@ typedef uint64_t VMInstruction;
 
 /** @name VM Instruction Field Macros */
 /**@{*/
-#define VM_GET_OP(inst)    ((int)(((inst) >> 56) & 0xFF))
-#define VM_GET_A(inst)     ((int)(((inst) >> 40) & 0xFFFF))
+#define VM_GET_OP(inst)    ((int)((inst) & 0xFF))
+#define VM_GET_A(inst)     ((int)(((inst) >> 8) & 0xFFFF))
 #define VM_GET_B(inst)     ((int)(((inst) >> 24) & 0xFFFF))
-#define VM_GET_C(inst)     ((int)(((inst) >> 8) & 0xFFFF))
-#define VM_GET_FLAGS(inst) ((int)((inst) & 0xFF))
+#define VM_GET_C(inst)     ((int)(((inst) >> 40) & 0xFFFF))
+#define VM_GET_Bx(inst)    ((int64_t)(((inst) >> 24) & 0xFFFFFFFFFFULL))
+#define VM_GET_FLAGS(inst) ((int)(((inst) >> 56) & 0xFF))
 /**@}*/
 
 /** @brief Constructs a VM instruction. */
 #define VM_MAKE_INST(op, a, b, c, flags) \
-  (((uint64_t)(op) << 56) | ((uint64_t)(a) << 40) | \
-   ((uint64_t)(b) << 24) | ((uint64_t)(c) << 8) | (uint64_t)(flags))
+  (((uint64_t)(op) & 0xFF) | \
+   (((uint64_t)(a) & 0xFFFF) << 8) | \
+   (((uint64_t)(b) & 0xFFFF) << 24) | \
+   (((uint64_t)(c) & 0xFFFF) << 40) | \
+   (((uint64_t)(flags) & 0xFF) << 56))
+
+#define VM_MAKE_INST_BX(op, a, bx) \
+  (((uint64_t)(op) & 0xFF) | \
+   (((uint64_t)(a) & 0xFFFF) << 8) | \
+   (((uint64_t)(bx) & 0xFFFFFFFFFFULL) << 24))
 
 
 /** @brief VM Protection context. */

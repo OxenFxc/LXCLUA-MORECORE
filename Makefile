@@ -135,7 +135,7 @@ ios:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_IOS"
 
 Linux linux:
-	$(MAKE) $(ALL) CC="clang -std=c23" CFLAGS="-O2 -fPIC -DNDEBUG -D_DEFAULT_SOURCE" SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lm" SYSLDFLAGS="-s"
+	$(MAKE) $(ALL) CC="gcc -std=c11" CFLAGS="-O2 -fPIC -DNDEBUG -D_DEFAULT_SOURCE" SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lm" SYSLDFLAGS="-s"
 	strip --strip-unneeded $(LUA_T) $(LUAC_T) || true
 
 termux:
