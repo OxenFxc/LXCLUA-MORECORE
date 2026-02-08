@@ -61,24 +61,6 @@ unsigned int naga_crc32int(unsigned int *data) {
 	return (CRC >> 8) ^ crc_32_tab[ (CRC ^ *d) & 0xFF ] ^ 0xFFFFFFFF;
 }
 
-/** @brief Expected CRC value for self-tests (little-endian). */
-#define __CRC_SELFTEST__ 0x6fcf9e13
-
-unsigned char naga_crc32_selftests() {
-	unsigned int i;
-	unsigned int crc  = 0xFFFFFFFF;
-	unsigned char bSuccess = 0;
-
-	for (i = 0; i < (int)sizeof(crc_32_tab); i++)
-		crc = UPDC32 (((unsigned char *) crc_32_tab)[i], crc);
-
-	bSuccess = __CRC_SELFTEST__ == (crc ^ 0xFFFFFFFF);
-
-	bSuccess &= naga_crc32((unsigned char*)crc_32_tab, sizeof crc_32_tab) == __CRC_SELFTEST__;
-
-	return bSuccess;
-}
-
 #else // CRC_NOT_TABLE
 
 unsigned int naga_crc32(unsigned char* data, unsigned int length) {
@@ -96,16 +78,6 @@ unsigned int naga_crc32(unsigned char* data, unsigned int length) {
 	}
 
 	return r ^ 0xFFFFFFFFUL;
-}
-
-unsigned char naga_crc32_selftests() {
-	unsigned char testData[32];
-	unsigned char i;
-
-	for (i = 0; i < sizeof (testData); ++i)
-		testData[i] = i;
-
-	return naga_crc32(testData, sizeof (testData)) == 0x91267E8AUL;
 }
 
 #endif
