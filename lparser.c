@@ -5000,7 +5000,7 @@ static void localstat (LexState *ls) {
   /* stat -> LOCAL NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   /* stat -> CONST NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   FuncState *fs = ls->fs;
-  int toclose = -1;  /* index of to-be-closed variable (if any) */
+  int base_nactvar = fs->nactvar;
   Vardesc *var;  /* last variable */
   int vidx, kind;
   int nvars = 0;
@@ -5031,11 +5031,6 @@ static void localstat (LexState *ls) {
     /* if it's a const declaration, default to RDKCONST */
     kind = getvarattribute(ls, isconst ? RDKCONST : VDKREG);
     getlocalvardesc(fs, vidx)->vd.kind = kind;
-    if (kind == RDKTOCLOSE) {  /* to-be-closed? */
-      if (toclose != -1)  /* one already present? */
-        luaK_semerror(ls, "multiple to-be-closed variables in local list");
-      toclose = fs->nactvar + nvars;
-    }
     nvars++;
   } while (testnext(ls, ','));
   if (testnext(ls, '='))
@@ -5059,7 +5054,14 @@ static void localstat (LexState *ls) {
     adjust_assign(ls, nvars, nexps, &e);
     adjustlocalvars(ls, nvars);
   }
-  checktoclose(fs, toclose);
+  /* handle to-be-closed variables */
+  for (int i = 0; i < nvars; i++) {
+    int idx = base_nactvar + i;
+    Vardesc *vd = getlocalvardesc(fs, idx);
+    if (vd->vd.kind == RDKTOCLOSE) {
+      checktoclose(fs, idx);
+    }
+  }
 }
 
 
@@ -5505,8 +5507,40 @@ static void asm_patchpending (LexState *ls, FuncState *fs, AsmContext *ctx) {
         SETARG_sBx(*inst, offset);
       }
       else {
-        /* 其他格式：直接设置为目标 PC */
-        SETARG_Bx(*inst, cast_uint(target));
+        /* 其他格式：检查是否是 loop 相关指令 (iABx 格式) */
+        if (op == OP_FORLOOP || op == OP_TFORLOOP) {
+          /* FORLOOP/TFORLOOP 使用无符号 Bx 表示向后跳转偏移: pc -= Bx */
+          /* offset = target - (pc + 1) */
+          /* 所以 Bx = -offset = (pc + 1) - target */
+          if (offset > 0) {
+            luaK_semerror(ls, "jump target for loop instruction must be backward");
+          }
+          offset = -offset;
+          if (offset > MAXARG_Bx) {
+            luaK_semerror(ls, "control structure too long");
+          }
+          SETARG_Bx(*inst, cast_uint(offset));
+        }
+        else if (op == OP_FORPREP || op == OP_TFORPREP) {
+          /* FORPREP/TFORPREP 使用无符号 Bx 表示向前跳转偏移: pc += Bx (+1 for FORPREP) */
+          /* 注意：FORPREP 在 lvm.c 中 pc += Bx + 1，所以 Bx = offset - 1 */
+          /* TFORPREP 在 lvm.c 中 pc += Bx，所以 Bx = offset */
+
+          if (offset < 0) {
+            luaK_semerror(ls, "jump target for prep instruction must be forward");
+          }
+
+          if (op == OP_FORPREP) offset--;
+
+          if (offset < 0 || offset > MAXARG_Bx) {
+             luaK_semerror(ls, "control structure too long or invalid target");
+          }
+          SETARG_Bx(*inst, cast_uint(offset));
+        }
+        else {
+          /* 其他情况：直接设置为目标 PC */
+          SETARG_Bx(*inst, cast_uint(target));
+        }
       }
     }
     else {
@@ -5588,12 +5622,13 @@ static void asm_checkrange_signed (LexState *ls, lua_Integer val,
 **   解析到的整数值
 */
 static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx, 
-                                   int *pendingPc, TString **pendingLabel) {
+                                   int *pendingPc, TString **pendingLabel, int *isLabelRef) {
   lua_Integer val;
   FuncState *fs = ls->fs;
   
   if (pendingPc) *pendingPc = -1;
   if (pendingLabel) *pendingLabel = NULL;
+  if (isLabelRef) *isLabelRef = 0;
   
   if (ls->t.token == TK_INT) {
     val = ls->t.seminfo.i;
@@ -5802,6 +5837,7 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
           if (pendingLabel) *pendingLabel = labelname;
           return 0;  /* 临时返回 0，后续修补 */
         }
+        if (isLabelRef) *isLabelRef = 1;
         return labelpc;
       }
       /* 如果是已定义的常量而不是标签，回退让其作为当前PC处理 */
@@ -5853,7 +5889,7 @@ static lua_Integer asm_getint_ex (LexState *ls, AsmContext *ctx,
 ** 解析汇编指令中的整数参数（简化版，不支持前向标签引用）
 */
 static lua_Integer asm_getint (LexState *ls) {
-  return asm_getint_ex(ls, NULL, NULL, NULL);
+  return asm_getint_ex(ls, NULL, NULL, NULL, NULL);
 }
 
 
@@ -5890,22 +5926,23 @@ static lua_Integer asm_trygetint (LexState *ls, lua_Integer defval) {
 */
 static lua_Integer asm_trygetint_ex (LexState *ls, AsmContext *ctx,
                                       lua_Integer defval,
-                                      int *pendingPc, TString **pendingLabel) {
+                                      int *pendingPc, TString **pendingLabel, int *isLabelRef) {
   if (ls->t.token == TK_INT || ls->t.token == '-' ||
       ls->t.token == TK_DOLLAR || ls->t.token == '^' || 
       ls->t.token == '#' || ls->t.token == TK_OR ||
       ls->t.token == TK_NOT || ls->t.token == '%') {
-    return asm_getint_ex(ls, ctx, pendingPc, pendingLabel);
+    return asm_getint_ex(ls, ctx, pendingPc, pendingLabel, isLabelRef);
   }
   /* 检查是否是 Rn 格式的寄存器引用 */
   if (ls->t.token == TK_NAME) {
     const char *name = getstr(ls->t.seminfo.ts);
     if ((name[0] == 'R' || name[0] == 'r') && name[1] >= '0' && name[1] <= '9') {
-      return asm_getint_ex(ls, ctx, pendingPc, pendingLabel);
+      return asm_getint_ex(ls, ctx, pendingPc, pendingLabel, isLabelRef);
     }
   }
   if (pendingPc) *pendingPc = -1;
   if (pendingLabel) *pendingLabel = NULL;
+  if (isLabelRef) *isLabelRef = 0;
   return defval;
 }
 
@@ -6091,7 +6128,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
     if (strcmp(opname, "raw") == 0) {
       luaX_next(ls);  /* 跳过 'raw' */
       
-      lua_Integer raw_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+      lua_Integer raw_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       Instruction raw_inst = (Instruction)raw_val;
       luaK_code(fs, raw_inst);
       luaK_fixline(fs, line);
@@ -6105,7 +6142,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 'emit' */
       
       do {
-        lua_Integer emit_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        lua_Integer emit_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         Instruction emit_inst = (Instruction)emit_val;
         luaK_code(fs, emit_inst);
         luaK_fixline(fs, line);
@@ -6204,7 +6241,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       int align_val;
       luaX_next(ls);  /* 跳过 'align' */
       
-      align_val = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
+      align_val = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       if (align_val < 1) {
         luaK_semerror(ls, "align value must be positive");
       }
@@ -6231,7 +6268,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过常量名 */
       
       /* 获取常量值 */
-      def_value = asm_getint_ex(ls, &ctx, NULL, NULL);
+      def_value = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       
       /* 添加到常量定义表 */
       asm_adddefine(ls, &ctx, def_name, def_value);
@@ -6260,7 +6297,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
             ls->t.token == TK_DOLLAR || ls->t.token == '%' ||
             ls->t.token == TK_NOT || ls->t.token == TK_OR ||
             ls->t.token == TK_NAME) {
-          lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           printf("[ASM] %s: %lld\n", msg, (long long)val);
         }
         else {
@@ -6272,7 +6309,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
                ls->t.token == TK_NOT || ls->t.token == TK_OR ||
                ls->t.token == TK_NAME) {
         /* 没有消息，直接打印值 */
-        lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        lua_Integer val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         printf("[ASM] value: %lld\n", (long long)val);
       }
       else {
@@ -6289,28 +6326,28 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 '_assert' */
       
       /* 解析左操作数 */
-      left_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+      left_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       
       /* 检查是否有比较运算符 */
       if (ls->t.token == TK_EQ) {  /* == */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val == right_val);
       }
       else if (ls->t.token == TK_NE) {  /* ~= 或 != */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val != right_val);
       }
       else if (ls->t.token == '>') {
         luaX_next(ls);
         if (ls->t.token == '=') {  /* >= */
           luaX_next(ls);
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val >= right_val);
         }
         else {  /* > */
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val > right_val);
         }
       }
@@ -6318,22 +6355,22 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
         luaX_next(ls);
         if (ls->t.token == '=') {  /* <= */
           luaX_next(ls);
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val <= right_val);
         }
         else {  /* < */
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val < right_val);
         }
       }
       else if (ls->t.token == TK_GE) {  /* >= */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val >= right_val);
       }
       else if (ls->t.token == TK_LE) {  /* <= */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val <= right_val);
       }
       else {
@@ -6380,7 +6417,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 'db' */
       
       do {
-        lua_Integer byte_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        lua_Integer byte_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         if (byte_count < 4) {
           bytes[byte_count++] = (unsigned char)(byte_val & 0xFF);
         }
@@ -6412,7 +6449,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 'dw' */
       
       do {
-        lua_Integer word_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        lua_Integer word_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         if (word_count < 2) {
           words[word_count++] = (unsigned short)(word_val & 0xFFFF);
         }
@@ -6442,7 +6479,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 'dd' */
       
       do {
-        lua_Integer dword_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        lua_Integer dword_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         Instruction dd_inst = (Instruction)(dword_val & 0xFFFFFFFF);
         luaK_code(fs, dd_inst);
         luaK_fixline(fs, line);
@@ -6496,7 +6533,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 'rep' */
       
       /* 获取循环次数 */
-      rep_count = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
+      rep_count = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       if (rep_count < 0) {
         luaK_semerror(ls, "rep count must be non-negative");
       }
@@ -6543,47 +6580,67 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
         /* 根据格式解析参数并生成指令 */
         switch (inner_mode) {
           case iABC: {
-            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-            int b = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &inner_pendingLabel);
+            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+            int b = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &inner_pendingLabel, NULL);
             if (inner_pendingLabel) inner_needsPatch = 1;
-            int c = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, inner_pendingLabel ? NULL : &inner_pendingLabel);
+            int c = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, inner_pendingLabel ? NULL : &inner_pendingLabel, NULL);
             if (inner_pendingLabel && !inner_needsPatch) inner_needsPatch = 1;
             int k = (int)asm_trygetint(ls, 0);
             inner_inst = CREATE_ABCk(inner_opcode, a, b, c, k);
             break;
           }
           case ivABC: {
-            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-            int vb = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &inner_pendingLabel);
+            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+            int vb = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &inner_pendingLabel, NULL);
             if (inner_pendingLabel) inner_needsPatch = 1;
-            int vc = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, inner_pendingLabel ? NULL : &inner_pendingLabel);
+            int vc = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, inner_pendingLabel ? NULL : &inner_pendingLabel, NULL);
             if (inner_pendingLabel && !inner_needsPatch) inner_needsPatch = 1;
             int k = (int)asm_trygetint(ls, 0);
             inner_inst = CREATE_vABCk(inner_opcode, a, vb, vc, k);
             break;
           }
           case iABx: {
-            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-            unsigned int bx = (unsigned int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel);
-            if (inner_pendingLabel) inner_needsPatch = 1;
+            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+            int isLabelRef = 0;
+            unsigned int bx = (unsigned int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel, &isLabelRef);
+            if (inner_pendingLabel) {
+              inner_needsPatch = 1;
+              if (inner_opcode == OP_FORLOOP || inner_opcode == OP_TFORLOOP ||
+                  inner_opcode == OP_FORPREP || inner_opcode == OP_TFORPREP) {
+                inner_isJump = 1;
+              }
+            } else if (isLabelRef) {
+               int offset;
+               int target = (int)bx;
+               if (inner_opcode == OP_FORLOOP || inner_opcode == OP_TFORLOOP) {
+                 offset = (inner_instpc + 1) - target;
+                 if (offset <= 0) luaK_semerror(ls, "jump target for loop instruction must be backward");
+                 bx = (unsigned int)offset;
+               } else if (inner_opcode == OP_FORPREP || inner_opcode == OP_TFORPREP) {
+                 offset = target - (inner_instpc + 1);
+                 if (offset < 0) luaK_semerror(ls, "jump target for prep instruction must be forward");
+                 if (inner_opcode == OP_FORPREP) offset--;
+                 bx = (unsigned int)offset;
+               }
+            }
             inner_inst = CREATE_ABx(inner_opcode, a, bx);
             break;
           }
           case iAsBx: {
-            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-            int sbx = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel);
+            int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+            int sbx = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel, NULL);
             if (inner_pendingLabel) { inner_needsPatch = 1; inner_isJump = 1; }
             inner_inst = CREATE_ABx(inner_opcode, a, cast_uint(sbx + OFFSET_sBx));
             break;
           }
           case iAx: {
-            int ax = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel);
+            int ax = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel, NULL);
             if (inner_pendingLabel) inner_needsPatch = 1;
             inner_inst = CREATE_Ax(inner_opcode, ax);
             break;
           }
           case isJ: {
-            int sj = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel);
+            int sj = (int)asm_getint_ex(ls, &ctx, NULL, &inner_pendingLabel, NULL);
             if (inner_pendingLabel) { inner_needsPatch = 1; inner_isJump = 1; }
             inner_inst = CREATE_sJ(inner_opcode, sj + OFFSET_sJ, 0);
             break;
@@ -6714,28 +6771,28 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       luaX_next(ls);  /* 跳过 '_if' */
       
       /* 解析左操作数 */
-      left_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+      left_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
       
       /* 检查是否有比较运算符 */
       if (ls->t.token == TK_EQ) {  /* == */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val == right_val);
       }
       else if (ls->t.token == TK_NE) {  /* ~= 或 != */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val != right_val);
       }
       else if (ls->t.token == '>') {
         luaX_next(ls);
         if (ls->t.token == '=') {  /* >= */
           luaX_next(ls);
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val >= right_val);
         }
         else {  /* > */
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val > right_val);
         }
       }
@@ -6743,22 +6800,22 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
         luaX_next(ls);
         if (ls->t.token == '=') {  /* <= */
           luaX_next(ls);
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val <= right_val);
         }
         else {  /* < */
-          right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+          right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
           cond_result = (left_val < right_val);
         }
       }
       else if (ls->t.token == TK_GE) {  /* >= */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val >= right_val);
       }
       else if (ls->t.token == TK_LE) {  /* <= */
         luaX_next(ls);
-        right_val = asm_getint_ex(ls, &ctx, NULL, NULL);
+        right_val = asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
         cond_result = (left_val <= right_val);
       }
       else {
@@ -6837,10 +6894,10 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
     switch (mode) {
       case iABC: {
         /* iABC 格式: A [B] [C] [k] - B、C、k 参数可选，默认为 0 */
-        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-        int b = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+        int b = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
-        int c = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        int c = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel, NULL);
         if (pendingLabel && !needsPatch) needsPatch = 1;
         int k = (int)asm_trygetint(ls, 0);
         
@@ -6876,10 +6933,10 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       }
       case ivABC: {
         /* ivABC 格式: A [vB] [vC] [k] - vB、vC、k 参数可选，默认为 0 */
-        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-        int vb = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+        int vb = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
-        int vc = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        int vc = (int)asm_trygetint_ex(ls, &ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel, NULL);
         if (pendingLabel && !needsPatch) needsPatch = 1;
         int k = (int)asm_trygetint(ls, 0);
         
@@ -6894,9 +6951,32 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       }
       case iABx: {
         /* iABx 格式: A Bx */
-        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-        unsigned int bx = (unsigned int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel);
-        if (pendingLabel) needsPatch = 1;
+        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+        int isLabelRef = 0;
+        unsigned int bx = (unsigned int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel, &isLabelRef);
+        if (pendingLabel) {
+          needsPatch = 1;
+          if (opcode == OP_FORLOOP || opcode == OP_TFORLOOP ||
+              opcode == OP_FORPREP || opcode == OP_TFORPREP) {
+            isJumpInst = 1;
+          }
+        } else if (isLabelRef) {
+          /* 标签已解析，如果是跳转指令，需要计算相对偏移 */
+          int offset;
+          int target = (int)bx;
+          if (opcode == OP_FORLOOP || opcode == OP_TFORLOOP) {
+             /* Backward: Bx = (pc + 1) - target */
+             offset = (instpc + 1) - target;
+             if (offset <= 0) luaK_semerror(ls, "jump target for loop instruction must be backward");
+             bx = (unsigned int)offset;
+          } else if (opcode == OP_FORPREP || opcode == OP_TFORPREP) {
+             /* Forward: Bx = target - (pc + 1) */
+             offset = target - (instpc + 1);
+             if (offset < 0) luaK_semerror(ls, "jump target for prep instruction must be forward");
+             if (opcode == OP_FORPREP) offset--; /* pc += Bx + 1 */
+             bx = (unsigned int)offset;
+          }
+        }
         
         /* 参数范围检查 */
         asm_checkrange(ls, a, MAXARG_A, "A");
@@ -6907,8 +6987,8 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       }
       case iAsBx: {
         /* iAsBx 格式: A sBx (带符号偏移) */
-        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL);
-        int sbx = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, &ctx, NULL, NULL, NULL);
+        int sbx = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel, NULL);
         if (pendingLabel) {
           needsPatch = 1;
           isJumpInst = 1;  /* FORLOOP, FORPREP 等使用相对偏移 */
@@ -6924,7 +7004,7 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       }
       case iAx: {
         /* iAx 格式: Ax */
-        int ax = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel);
+        int ax = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
         
         /* 参数范围检查 */
@@ -6935,10 +7015,15 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
       }
       case isJ: {
         /* isJ 格式: sJ (带符号跳转偏移) */
-        int sj = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel);
+        int isLabelRef = 0;
+        int sj = (int)asm_getint_ex(ls, &ctx, NULL, &pendingLabel, &isLabelRef);
         if (pendingLabel) {
           needsPatch = 1;
           isJumpInst = 1;  /* JMP 使用相对偏移 */
+        } else if (isLabelRef) {
+          /* 标签已解析: sj 是目标 PC，需转为 offset */
+          /* offset = target - (pc + 1) */
+          sj = sj - (instpc + 1);
         }
         
         /* 参数范围检查 */
@@ -7129,7 +7214,7 @@ static void asm_parse_body (LexState *ls, FuncState *fs, AsmContext *ctx, int li
       check(ls, TK_NAME);
       def_name = ls->t.seminfo.ts;
       luaX_next(ls);
-      def_value = asm_getint_ex(ls, ctx, NULL, NULL);
+      def_value = asm_getint_ex(ls, ctx, NULL, NULL, NULL);
       asm_adddefine(ls, ctx, def_name, def_value);
       testnext(ls, ';');
       continue;
@@ -7166,10 +7251,10 @@ static void asm_parse_body (LexState *ls, FuncState *fs, AsmContext *ctx, int li
     /* 根据操作码格式解析参数 */
     switch (mode) {
       case iABC: {
-        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
-        int b = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL, NULL);
+        int b = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
-        int c = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        int c = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel, NULL);
         if (pendingLabel && !needsPatch) needsPatch = 1;
         int k = (int)asm_trygetint(ls, 0);
         
@@ -7185,37 +7270,43 @@ static void asm_parse_body (LexState *ls, FuncState *fs, AsmContext *ctx, int li
         break;
       }
       case ivABC: {
-        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
-        int vb = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL, NULL);
+        int vb = (int)asm_trygetint_ex(ls, ctx, 0, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
-        int vc = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel);
+        int vc = (int)asm_trygetint_ex(ls, ctx, 0, NULL, pendingLabel ? NULL : &pendingLabel, NULL);
         if (pendingLabel && !needsPatch) needsPatch = 1;
         int k = (int)asm_trygetint(ls, 0);
         inst = CREATE_vABCk(opcode, a, vb, vc, k);
         break;
       }
       case iABx: {
-        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
-        unsigned int bx = (unsigned int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
-        if (pendingLabel) needsPatch = 1;
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL, NULL);
+        unsigned int bx = (unsigned int)asm_getint_ex(ls, ctx, NULL, &pendingLabel, NULL);
+        if (pendingLabel) {
+          needsPatch = 1;
+          if (opcode == OP_FORLOOP || opcode == OP_TFORLOOP ||
+              opcode == OP_FORPREP || opcode == OP_TFORPREP) {
+            isJumpInst = 1;
+          }
+        }
         inst = CREATE_ABx(opcode, a, bx);
         break;
       }
       case iAsBx: {
-        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL);
-        int sbx = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        int a = (int)asm_getint_ex(ls, ctx, NULL, NULL, NULL);
+        int sbx = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel, NULL);
         if (pendingLabel) { needsPatch = 1; isJumpInst = 1; }
         inst = CREATE_ABx(opcode, a, cast_uint(sbx + OFFSET_sBx));
         break;
       }
       case iAx: {
-        int ax = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        int ax = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel, NULL);
         if (pendingLabel) needsPatch = 1;
         inst = CREATE_Ax(opcode, ax);
         break;
       }
       case isJ: {
-        int sj = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel);
+        int sj = (int)asm_getint_ex(ls, ctx, NULL, &pendingLabel, NULL);
         if (pendingLabel) { needsPatch = 1; isJumpInst = 1; }
         inst = CREATE_sJ(opcode, sj + OFFSET_sJ, 0);
         break;
