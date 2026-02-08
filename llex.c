@@ -62,7 +62,7 @@ static const char *getF (lua_State *L, void *ud, size_t *size) {
   return lf->buff;
 }
 
-static void luaX_pushincludefile(LexState *ls, const char *filename) {
+void luaX_pushincludefile(LexState *ls, const char *filename) {
   FILE *f = fopen(filename, "r");
   if (f == NULL) {
     luaX_syntaxerror(ls, luaO_pushfstring(ls->L, "cannot open file '%s'", filename));
@@ -112,7 +112,7 @@ static void luaX_popincludefile(LexState *ls) {
   }
 }
 
-static void luaX_addalias(LexState *ls, TString *name, Token *tokens, int ntokens) {
+void luaX_addalias(LexState *ls, TString *name, Token *tokens, int ntokens) {
   Alias *a = luaM_new(ls->L, Alias);
   a->name = name;
   a->tokens = tokens;
@@ -125,7 +125,7 @@ static void luaX_addalias(LexState *ls, TString *name, Token *tokens, int ntoken
 /* ORDER RESERVED */
 static const char *const luaX_tokens [] = {
     "and", "asm", "break", "case", "catch", "command", "const", "continue", "default", "do", "else", "elseif",
-    "end", "enum", "false", "finally", "for", "function", "global", "goto", "if", "in", "is", "keyword", "lambda", "local", "nil", "not", "operator", "or",
+    "end", "enum", "export", "false", "finally", "for", "function", "global", "goto", "if", "in", "is", "keyword", "lambda", "local", "nil", "not", "operator", "or",
     "repeat",
     "return", "switch", "take", "then", "true", "try", "until", "when", "while", "with",
     "//", "..", "...", "==", ">=", "<=", "~",  "<<", ">>", "|>", "<|", "|?>",

@@ -1768,6 +1768,10 @@ void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
       luaK_exp2anyreg(fs, v);
       break;
     }
+    case OPR_IN: {
+      luaK_exp2anyreg(fs, v);
+      break;
+    }
     default: lua_assert(0);
   }
 }
@@ -1915,6 +1919,15 @@ void luaK_posfix (FuncState *fs, BinOpr opr,
         e1->u.info = condjump(fs, OP_INSTANCEOF, r1, r2, 0, 1);
         e1->k = VJMP;
       }
+      break;
+    }
+    case OPR_IN: {
+      int r1 = luaK_exp2anyreg(fs, e1);
+      int r2 = luaK_exp2anyreg(fs, e2);
+      freeexps(fs, e1, e2);
+      e1->u.info = luaK_codeABC(fs, OP_IN, 0, r1, r2);
+      e1->k = VRELOC;
+      luaK_fixline(fs, line);
       break;
     }
     case OPR_PIPE: {

@@ -61,6 +61,11 @@ typedef struct BlockCnt {
   lu_byte upval;  /* true if some variable in the block is an upvalue */
   lu_byte isloop;  /* true if 'block' is a loop */
   lu_byte insidetbc;  /* true if inside the scope of a to-be-closed var. */
+  struct {
+    TString **arr;
+    int n;
+    int size;
+  } exports;
 } BlockCnt;
 
 
@@ -77,9 +82,9 @@ static int new_varkind (LexState *ls, TString *name, lu_byte kind);
 static void switchstat (LexState *ls, int line);  /* switch语句的前向声明 */
 static void trystat (LexState *ls, int line);     /* try语句的前向声明 */
 static void withstat (LexState *ls, int line);    /* with语句的前向声明 */
-static void classstat (LexState *ls, int line, int class_flags);   /* class语句的前向声明 */
+static void classstat (LexState *ls, int line, int class_flags, int isexport);   /* class语句的前向声明 */
 static void interfacestat (LexState *ls, int line); /* interface语句的前向声明 */
-static void enumstat (LexState *ls, int line);    /* enum语句的前向声明 */
+static void enumstat (LexState *ls, int line, int isexport);    /* enum语句的前向声明 */
 static void newexpr (LexState *ls, expdesc *v);   /* onew表达式的前向声明 */
 static void superexpr (LexState *ls, expdesc *v); /* osuper表达式的前向声明 */
 static void cond_expr (LexState *ls, expdesc *v); /* 条件表达式的前向声明（不将{作为函数调用） */
@@ -1056,6 +1061,9 @@ static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
   bl->insidetbc = (fs->bl != NULL && fs->bl->insidetbc);
   bl->previous = fs->bl;
   fs->bl = bl;
+  bl->exports.arr = NULL;
+  bl->exports.n = 0;
+  bl->exports.size = 0;
   lua_assert(fs->freereg == luaY_nvarstack(fs));
 }
 
@@ -1077,9 +1085,46 @@ static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
 }
 
 
+static void add_export(LexState *ls, TString *name) {
+  BlockCnt *bl = ls->fs->bl;
+  if (bl->exports.n >= bl->exports.size) {
+    bl->exports.size = (bl->exports.size == 0) ? 4 : bl->exports.size * 2;
+    bl->exports.arr = luaM_reallocvector(ls->L, bl->exports.arr,
+                                         bl->exports.n, bl->exports.size, TString*);
+  }
+  bl->exports.arr[bl->exports.n++] = name;
+}
+
 static void leaveblock (FuncState *fs) {
   BlockCnt *bl = fs->bl;
   LexState *ls = fs->ls;
+  if (bl->exports.n > 0) {
+    int reg = fs->freereg;
+    int pc = luaK_codeABC(fs, OP_NEWTABLE, reg, 0, 0);
+    expdesc t;
+    int i;
+    luaK_code(fs, 0); /* Extra arg for NEWTABLE */
+    init_exp(&t, VNONRELOC, reg);
+    luaK_reserveregs(fs, 1);
+
+    for (i = 0; i < bl->exports.n; i++) {
+       expdesc k, v;
+       TString *name = bl->exports.arr[i];
+       expdesc t_copy = t;
+       codestring(&k, name);
+       singlevaraux(fs, name, &v, 1);
+       luaK_exp2anyreg(fs, &v);
+       luaK_indexed(fs, &t_copy, &k);
+       luaK_storevar(fs, &t_copy, &v);
+    }
+    luaK_settablesize(fs, pc, reg, 0, bl->exports.n);
+    luaK_ret(fs, reg, 1);
+
+    luaM_freearray(ls->L, bl->exports.arr, bl->exports.size);
+    bl->exports.n = 0;
+    bl->exports.size = 0;
+    bl->exports.arr = NULL;
+  }
   int hasclose = 0;
   int stklevel = reglevel(fs, bl->nactvar);  /* level outside the block */
   if (bl->isloop)  /* fix pending breaks? */
@@ -3386,6 +3431,7 @@ static BinOpr getbinopr (int op) {
     case TK_IS: return OPR_IS;
     case TK_AND: return OPR_AND;
     case TK_OR: return OPR_OR;
+    case TK_IN: return OPR_IN;
     case TK_NULLCOAL: return OPR_NULLCOAL;
     default: return OPR_NOBINOPR;
   }
@@ -3411,6 +3457,7 @@ static const struct {
    {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
    {3, 3},                   /* <=> (spaceship) */
    {3, 3},                   /* is */
+   {3, 3},                   /* in */
    {2, 2}, {1, 1},           /* and, or */
    {1, 1}                    /* ?? (null coalescing, right associative) */
 };
@@ -4618,11 +4665,13 @@ static void withstat (LexState *ls, int line) {
 //========================================================================================
 
 
-static void localfunc (LexState *ls) {
+static void localfunc (LexState *ls, int isexport) {
   expdesc b;
   FuncState *fs = ls->fs;
   int fvar = fs->nactvar;  /* function's variable index */
-  new_localvar(ls, str_checkname(ls));  /* new local variable */
+  TString *name = str_checkname(ls);
+  new_localvar(ls, name);  /* new local variable */
+  if (isexport) add_export(ls, name);
   adjustlocalvars(ls, 1);  /* enter its scope */
   body(ls, &b, 0, ls->linenumber);  /* function created in next register */
   /* debug information will only see the variable after this point! */
@@ -5017,7 +5066,7 @@ static void takestat_full(LexState *ls) {
   adjustlocalvars(ls, nvars);
 }
 
-static void localstat (LexState *ls) {
+static void localstat (LexState *ls, int isexport) {
   /* stat -> LOCAL ATTRIB NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   /* stat -> CONST NAME ATTRIB { ',' NAME ATTRIB } ['=' explist] */
   FuncState *fs = ls->fs;
@@ -5050,6 +5099,9 @@ static void localstat (LexState *ls) {
       }
     }
     vidx = new_localvar(ls, varname);
+    if (isexport) {
+        add_export(ls, varname);
+    }
     kind = getvarattribute(ls, defkind);
     getlocalvardesc(fs, vidx)->vd.kind = kind;
     nvars++;
@@ -8022,7 +8074,7 @@ static void class_final_method(LexState *ls, int class_reg, int is_static, int a
 **     成员定义...
 **   end
 */
-static void classstat(LexState *ls, int line, int class_flags) {
+static void classstat(LexState *ls, int line, int class_flags, int isexport) {
   FuncState *fs = ls->fs;
   expdesc class_exp, parent_exp, v;
   TString *classname;
@@ -8219,7 +8271,14 @@ static void classstat(LexState *ls, int line, int class_flags) {
   
   /* 将类存储到变量中 */
   /* 检查是在全局还是局部作用域 */
-  buildglobal(ls, classname, &v);
+  if (isexport) {
+     new_localvar(ls, classname);
+     add_export(ls, classname);
+     adjustlocalvars(ls, 1);
+     init_var(fs, &v, fs->nactvar - 1);
+  } else {
+     buildglobal(ls, classname, &v);
+  }
   init_exp(&class_exp, VNONRELOC, class_reg);
   luaK_storevar(fs, &v, &class_exp);
   
@@ -8321,7 +8380,7 @@ static void interfacestat(LexState *ls, int line) {
 ** 枚举会被编译为一个表，其中枚举成员作为键，值为整数
 ** 如果没有显式赋值，则从0开始自动递增
 */
-static void enumstat(LexState *ls, int line) {
+static void enumstat(LexState *ls, int line, int isexport) {
   FuncState *fs = ls->fs;
   expdesc enum_exp, v;
   TString *enumname;
@@ -8437,7 +8496,14 @@ static void enumstat(LexState *ls, int line) {
   luaK_settablesize(fs, pc, enum_reg, 0, nh);
   
   /* 将枚举表存储到全局变量中 */
-  buildglobal(ls, enumname, &v);
+  if (isexport) {
+     new_localvar(ls, enumname);
+     add_export(ls, enumname);
+     adjustlocalvars(ls, 1);
+     init_var(fs, &v, fs->nactvar - 1);
+  } else {
+     buildglobal(ls, enumname, &v);
+  }
   init_exp(&enum_exp, VNONRELOC, enum_reg);
   luaK_storevar(fs, &v, &enum_exp);
   
@@ -9103,7 +9169,7 @@ static void constexprdefinestat (LexState *ls) {
   if (ls->defines == NULL) {
      ls->defines = luaH_new(ls->L);
      /* anchor defines table to prevent GC */
-     sethvalue(ls->L, ls->L->top.p, ls->defines);
+     sethvalue2s(ls->L, ls->L->top.p, ls->defines);
      ls->L->top.p++;
   }
 
@@ -9314,7 +9380,50 @@ static void statement (LexState *ls) {
       break;
     }
     case TK_ENUM: {  /* stat -> enumstat */
-      enumstat(ls, line);
+      enumstat(ls, line, 0);
+      break;
+    }
+    case TK_EXPORT: {
+      luaX_next(ls);
+      if (testnext(ls, TK_FUNCTION)) {
+        localfunc(ls, 1);
+      }
+      else if (testnext(ls, TK_LOCAL)) {
+        localstat(ls, 1);
+      }
+      else if (ls->t.token == TK_ENUM) {
+        enumstat(ls, line, 1);
+      }
+      else {
+        SoftKWID skw = softkw_check(ls, SOFTKW_CTX_STMT_BEGIN);
+        if (skw == SKW_CLASS) {
+          classstat(ls, line, 0, 1);
+        }
+        else if (skw == SKW_ABSTRACT) {
+          luaX_next(ls);
+          if (softkw_check(ls, SOFTKW_CTX_STMT_BEGIN) == SKW_CLASS)
+             classstat(ls, line, CLASS_FLAG_ABSTRACT, 1);
+          else
+             luaX_syntaxerror(ls, "'abstract' export must be followed by 'class'");
+        }
+        else if (skw == SKW_FINAL) {
+          luaX_next(ls);
+          if (softkw_check(ls, SOFTKW_CTX_STMT_BEGIN) == SKW_CLASS)
+             classstat(ls, line, CLASS_FLAG_FINAL, 1);
+          else
+             luaX_syntaxerror(ls, "'final' export must be followed by 'class'");
+        }
+        else if (skw == SKW_SEALED) {
+          luaX_next(ls);
+          if (softkw_check(ls, SOFTKW_CTX_STMT_BEGIN) == SKW_CLASS)
+             classstat(ls, line, CLASS_FLAG_SEALED, 1);
+          else
+             luaX_syntaxerror(ls, "'sealed' export must be followed by 'class'");
+        }
+        else {
+          luaX_syntaxerror(ls, "unexpected token after export");
+        }
+      }
       break;
     }
     case TK_COMMAND: {  /* stat -> commandstat */
@@ -9332,11 +9441,11 @@ static void statement (LexState *ls) {
     case TK_LOCAL: {  /* stat -> localstat */
       luaX_next(ls);  /* skip LOCAL */
       if (testnext(ls, TK_FUNCTION))  /* local function? */
-        localfunc(ls);
+        localfunc(ls, 0);
       else if (testnext(ls, TK_TAKE))  /* local take {...} = expr 解构? */
         takestat_full(ls);
       else
-        localstat(ls);
+        localstat(ls, 0);
       break;
     }
     case TK_CONST: {  /* stat -> conststat */
@@ -9344,7 +9453,7 @@ static void statement (LexState *ls) {
       if (testnext(ls, TK_FUNCTION))  /* const function? */
         luaK_semerror(ls, "function cannot be declared as const");
       else
-        localstat(ls);
+        localstat(ls, 0);
       break;
     }
     case TK_GLOBAL: {  /* stat -> globalstatfunc */
@@ -9386,7 +9495,7 @@ static void statement (LexState *ls) {
       SoftKWID skw = softkw_check(ls, SOFTKW_CTX_STMT_BEGIN);
       if (skw == SKW_CLASS) {
         /* class 作为软关键字，触发类定义解析 */
-        classstat(ls, line, 0);  /* 无修饰符 */
+        classstat(ls, line, 0, 0);  /* 无修饰符 */
         break;
       }
       else if (skw == SKW_INTERFACE) {
@@ -9399,7 +9508,7 @@ static void statement (LexState *ls) {
         luaX_next(ls);  /* 跳过 'abstract' */
         SoftKWID next_skw = softkw_check(ls, SOFTKW_CTX_STMT_BEGIN);
         if (next_skw == SKW_CLASS) {
-          classstat(ls, line, CLASS_FLAG_ABSTRACT);
+          classstat(ls, line, CLASS_FLAG_ABSTRACT, 0);
         } else {
           luaX_syntaxerror(ls, "'abstract' 后必须跟 'class'");
         }
@@ -9410,7 +9519,7 @@ static void statement (LexState *ls) {
         luaX_next(ls);  /* 跳过 'final' */
         SoftKWID next_skw = softkw_check(ls, SOFTKW_CTX_STMT_BEGIN);
         if (next_skw == SKW_CLASS) {
-          classstat(ls, line, CLASS_FLAG_FINAL);
+          classstat(ls, line, CLASS_FLAG_FINAL, 0);
         } else {
           luaX_syntaxerror(ls, "'final' 后必须跟 'class'");
         }
@@ -9421,7 +9530,7 @@ static void statement (LexState *ls) {
         luaX_next(ls);  /* 跳过 'sealed' */
         SoftKWID next_skw = softkw_check(ls, SOFTKW_CTX_STMT_BEGIN);
         if (next_skw == SKW_CLASS) {
-          classstat(ls, line, CLASS_FLAG_SEALED);
+          classstat(ls, line, CLASS_FLAG_SEALED, 0);
         } else {
           luaX_syntaxerror(ls, "'sealed' 后必须跟 'class'");
         }

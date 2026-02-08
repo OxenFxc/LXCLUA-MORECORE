@@ -366,6 +366,8 @@ OP_IMPLEMENT,/*	A B	R[A] implements R[B]，类实现接口			*/
 OP_SETIFACEFLAG,/*A	设置R[A]为接口（设置CLASS_FLAG_INTERFACE）	*/
 OP_ADDMETHOD,/*	A B C	R[A].__methods[K[B]] := K[C]，添加接口方法签名	*/
 
+OP_IN,/*	A B C	R[A] := R[B] in R[C]				*/
+
 /*----------------------------------------------------------------------
   切片操作码 - 支持 Python 风格的切片语法 t[start:end:step]
 ------------------------------------------------------------------------*/

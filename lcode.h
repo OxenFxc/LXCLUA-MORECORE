@@ -41,6 +41,8 @@ typedef enum BinOpr {
   OPR_SPACESHIP,
   /* type check operator */
   OPR_IS,
+  /* in operator */
+  OPR_IN,
   /* logical operators */
   OPR_AND, OPR_OR,
   /* null coalescing operator */
