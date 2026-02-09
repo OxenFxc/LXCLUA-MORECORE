@@ -26,7 +26,7 @@
 #include "lgc.h"
 #include <stdint.h>
 
-#if defined(__ANDROID__) && defined(ANDROID_NDK)
+#ifdef __ANDROID__
 #include <android/log.h>
 #define LOG_TAG "lua"
 #define LOGD(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
