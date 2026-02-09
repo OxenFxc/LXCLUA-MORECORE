@@ -5597,15 +5597,15 @@ static void destructuring (LexState *ls) {
      init_exp(&k, VKSTR, 0);
      k.u.strval = names[i];
 
-     expdesc v;
      luaK_indexed(ls->fs, &t, &k);
+     /* 't' now contains the indexed variable expression */
 
      expdesc lvar;
      init_exp(&lvar, VLOCAL, 0);
      lvar.u.var.vidx = 0;
      lvar.u.var.ridx = base + i;
 
-     luaK_storevar(ls->fs, &lvar, &v);
+     luaK_storevar(ls->fs, &lvar, &t);
    }
 
    adjustlocalvars(ls, nnames);
@@ -5643,15 +5643,15 @@ static void arraydestructuring (LexState *ls) {
      init_exp(&k, VKINT, 0);
      k.u.ival = i + 1;
 
-     expdesc v;
      luaK_indexed(ls->fs, &t, &k);
+     /* 't' now contains the indexed variable expression */
 
      expdesc lvar;
      init_exp(&lvar, VLOCAL, 0);
      lvar.u.var.vidx = 0;
      lvar.u.var.ridx = base + i;
 
-     luaK_storevar(ls->fs, &lvar, &v);
+     luaK_storevar(ls->fs, &lvar, &t);
    }
 
    adjustlocalvars(ls, nnames);
