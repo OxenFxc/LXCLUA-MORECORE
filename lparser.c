@@ -2540,7 +2540,19 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         break;
       }
       case ':': {  /* ':' NAME funcargs */
-        if (ls->expr_flags & E_NO_COLON) return;
+        if (ls->expr_flags & E_NO_COLON) {
+           int next = luaX_lookahead(ls);
+           if (next == TK_NAME) {
+               int next2 = luaX_lookahead2(ls);
+               if (next2 == '(' || next2 == '{' || next2 == TK_STRING || next2 == TK_INTERPSTRING || next2 == TK_RAWSTRING) {
+                   /* It IS a method call, proceed */
+               } else {
+                   return;
+               }
+           } else {
+               return;
+           }
+        }
         expdesc key;
         luaX_next(ls);
         codename(ls, &key);
