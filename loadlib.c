@@ -312,7 +312,10 @@ static void setpath (lua_State *L, const char *fieldname,
     }
     luaL_pushresult(&b);
   }
- // setprogdir(L);
+  	#ifndef _WIN32
+	setprogdir(L);
+	#endif
+
   lua_setfield(L, -3, fieldname);  /* package[fieldname] = path value */
   lua_pop(L, 1);  /* pop versioned variable name ('nver') */
 }
