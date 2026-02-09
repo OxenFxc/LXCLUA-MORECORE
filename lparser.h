@@ -106,18 +106,18 @@ typedef struct expdesc {
 
 /* types of values, for type hinting and propagation */
 typedef enum {
-  VT_NONE = 0,
-  VT_ANY,
-  VT_NULL,  /* used to represent an implicit nil (when the assignment has too few values) */
-  VT_NIL,
-  VT_NUMBER,
-  VT_INT,
-  VT_FLT,
-  VT_BOOL,
-  VT_STR,
-  VT_TABLE,
-  VT_FUNC,
-  VT_USERDATA,
+  LVT_NONE = 0,
+  LVT_ANY,
+  LVT_NULL,  /* used to represent an implicit nil (when the assignment has too few values) */
+  LVT_NIL,
+  LVT_NUMBER,
+  LVT_INT,
+  LVT_FLT,
+  LVT_BOOL,
+  LVT_STR,
+  LVT_TABLE,
+  LVT_FUNC,
+  LVT_USERDATA,
 } ValType;
 
 struct TypeHint;
