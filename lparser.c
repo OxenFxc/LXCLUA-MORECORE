@@ -2103,7 +2103,7 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
            
            if (f_hint) {
               for (int i=0; i<MAX_TYPE_DESCS; i++) {
-                 if (f_hint->descs[i].type == VT_FUNC) {
+                 if (f_hint->descs[i].type == LVT_FUNC) {
                     if (n < f_hint->descs[i].nparam)
                        check_type_compatibility(ls, f_hint->descs[i].params[n], &args);
                  }
@@ -5384,7 +5384,7 @@ static void takestat_full(LexState *ls) {
 static TypeHint *typehint_new(LexState *ls) {
   TypeHint *th = luaM_new(ls->L, TypeHint);
   for (int i = 0; i < MAX_TYPE_DESCS; i++) {
-    th->descs[i].type = VT_NONE;
+    th->descs[i].type = LVT_NONE;
     th->descs[i].nparam = -1;
     th->descs[i].nret = -1;
     th->descs[i].proto = NULL;
@@ -5408,15 +5408,15 @@ static void typehint_free(LexState *ls) {
 static void th_emplace_desc(TypeHint *th, TypeDesc td) {
   for (int i = 0; i < MAX_TYPE_DESCS; i++) {
     if (th->descs[i].type == td.type) return; /* Already present */
-    if (th->descs[i].type == VT_NONE) {
+    if (th->descs[i].type == LVT_NONE) {
       th->descs[i] = td;
       return;
     }
   }
   /* Full: degrade to ANY */
-  th->descs[0].type = VT_ANY;
-  th->descs[1].type = VT_NONE;
-  th->descs[2].type = VT_NONE;
+  th->descs[0].type = LVT_ANY;
+  th->descs[1].type = LVT_NONE;
+  th->descs[2].type = LVT_NONE;
 }
 
 static void checktypehint (LexState *ls, TypeHint *th);
@@ -5432,14 +5432,14 @@ static TypeHint* get_named_type_opt(LexState* ls, const TString* name) {
 
 static void checktypehint (LexState *ls, TypeHint *th) {
   if (testnext(ls, '?')) {
-    TypeDesc td; td.type = VT_NULL;
+    TypeDesc td; td.type = LVT_NULL;
     th_emplace_desc(th, td);
   }
   do {
     if (ls->t.token == '{') { /* Table type */
       luaX_next(ls);
       TypeDesc td;
-      td.type = VT_TABLE;
+      td.type = LVT_TABLE;
       td.nfields = 0;
       while (ls->t.token != '}') {
         TString *ts = str_checkname(ls);
@@ -5469,16 +5469,16 @@ static void checktypehint (LexState *ls, TypeHint *th) {
     }
 
     TypeDesc td;
-    td.type = VT_NONE;
+    td.type = LVT_NONE;
     
-    if (strcmp(tname, "number") == 0) td.type = VT_NUMBER;
-    else if (strcmp(tname, "int") == 0 || strcmp(tname, "integer") == 0) td.type = VT_INT;
-    else if (strcmp(tname, "float") == 0) td.type = VT_FLT;
-    else if (strcmp(tname, "table") == 0) td.type = VT_TABLE;
-    else if (strcmp(tname, "string") == 0) td.type = VT_STR;
-    else if (strcmp(tname, "boolean") == 0 || strcmp(tname, "bool") == 0) td.type = VT_BOOL;
+    if (strcmp(tname, "number") == 0) td.type = LVT_NUMBER;
+    else if (strcmp(tname, "int") == 0 || strcmp(tname, "integer") == 0) td.type = LVT_INT;
+    else if (strcmp(tname, "float") == 0) td.type = LVT_FLT;
+    else if (strcmp(tname, "table") == 0) td.type = LVT_TABLE;
+    else if (strcmp(tname, "string") == 0) td.type = LVT_STR;
+    else if (strcmp(tname, "boolean") == 0 || strcmp(tname, "bool") == 0) td.type = LVT_BOOL;
     else if (strcmp(tname, "function") == 0) {
-      td.type = VT_FUNC;
+      td.type = LVT_FUNC;
       td.nparam = -1;
       td.nret = -1;
       if (testnext(ls, '(')) {
@@ -5530,32 +5530,32 @@ static void checktypehint (LexState *ls, TypeHint *th) {
          }
       }
     }
-    else if (strcmp(tname, "any") == 0) td.type = VT_ANY;
-    else if (strcmp(tname, "nil") == 0) td.type = VT_NIL;
+    else if (strcmp(tname, "any") == 0) td.type = LVT_ANY;
+    else if (strcmp(tname, "nil") == 0) td.type = LVT_NIL;
     else if (strcmp(tname, "void") == 0) {
-       td.type = VT_NULL;
+       td.type = LVT_NULL;
     }
-    else if (strcmp(tname, "userdata") == 0) td.type = VT_USERDATA;
+    else if (strcmp(tname, "userdata") == 0) td.type = LVT_USERDATA;
     else {
       TypeHint *named = get_named_type_opt(ls, ts);
       if (named) {
         /* Merge named type */
         for (int i=0; i<MAX_TYPE_DESCS; i++) {
-           if (named->descs[i].type != VT_NONE)
+           if (named->descs[i].type != LVT_NONE)
              th_emplace_desc(th, named->descs[i]);
         }
-        td.type = VT_NONE; /* processed */
+        td.type = LVT_NONE; /* processed */
       } else {
         luaX_syntaxerror(ls, luaO_pushfstring(ls->L, "unknown type hint '%s'", tname));
       }
     }
     
-    if (td.type != VT_NONE) th_emplace_desc(th, td);
+    if (td.type != LVT_NONE) th_emplace_desc(th, td);
     
   } while (testnext(ls, '|'));
   
   if (testnext(ls, '?')) {
-     TypeDesc td; td.type = VT_NULL;
+     TypeDesc td; td.type = LVT_NULL;
      th_emplace_desc(th, td);
   }
 }
@@ -5573,23 +5573,23 @@ static void check_type_compatibility(LexState *ls, TypeHint *target, expdesc *e)
   /* Very basic check for literals */
   if (!target || !e) return;
   
-  ValType e_type = VT_NONE;
-  if (e->k == VKINT) e_type = VT_INT;
-  else if (e->k == VKFLT) e_type = VT_FLT;
-  else if (e->k == VKSTR) e_type = VT_STR;
-  else if (e->k == VTRUE || e->k == VFALSE) e_type = VT_BOOL;
-  else if (e->k == VNIL) e_type = VT_NIL;
+  ValType e_type = LVT_NONE;
+  if (e->k == VKINT) e_type = LVT_INT;
+  else if (e->k == VKFLT) e_type = LVT_FLT;
+  else if (e->k == VKSTR) e_type = LVT_STR;
+  else if (e->k == VTRUE || e->k == VFALSE) e_type = LVT_BOOL;
+  else if (e->k == VNIL) e_type = LVT_NIL;
   
-  if (e_type == VT_NONE) return; /* Unknown compile time type */
+  if (e_type == LVT_NONE) return; /* Unknown compile time type */
   
   int compatible = 0;
   for (int i=0; i<MAX_TYPE_DESCS; i++) {
     ValType t = target->descs[i].type;
-    if (t == VT_ANY) { compatible = 1; break; }
+    if (t == LVT_ANY) { compatible = 1; break; }
     if (t == e_type) { compatible = 1; break; }
-    if (t == VT_NUMBER && (e_type == VT_INT || e_type == VT_FLT)) { compatible = 1; break; }
-    if (t == VT_BOOL && (e_type == VT_BOOL)) { compatible = 1; break; }
-    if (t == VT_NULL && e_type == VT_NIL) { compatible = 1; break; }
+    if (t == LVT_NUMBER && (e_type == LVT_INT || e_type == LVT_FLT)) { compatible = 1; break; }
+    if (t == LVT_BOOL && (e_type == LVT_BOOL)) { compatible = 1; break; }
+    if (t == LVT_NULL && e_type == LVT_NIL) { compatible = 1; break; }
   }
   
   if (!compatible) {
