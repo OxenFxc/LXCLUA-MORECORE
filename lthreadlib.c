@@ -76,6 +76,41 @@ static int thread_join(lua_State *L) {
     return nres;
 }
 
+static int thread_createx(lua_State *L) {
+    int n = lua_gettop(L);
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+    lua_State *L1 = lua_newthread(L);
+
+    // Move function and arguments to L1
+    lua_pushvalue(L, 1);
+    lua_xmove(L, L1, 1);
+    for (int i = 2; i <= n; ++i) {
+        lua_pushvalue(L, i);
+        lua_xmove(L, L1, 1);
+    }
+
+    l_thread_t thread;
+    if (l_thread_create(&thread, thread_entry, L1) != 0) {
+        return luaL_error(L, "failed to create thread");
+    }
+
+    l_thread_join(thread, NULL);
+
+    int nres = lua_gettop(L1);
+    if (nres > 0) {
+        if (!lua_checkstack(L, nres)) {
+             return luaL_error(L, "too many results to move");
+        }
+        lua_xmove(L1, L, nres);
+    }
+
+    // Remove L1 from stack (it is at index n + 1)
+    lua_remove(L, n + 1);
+
+    return nres;
+}
+
 static const luaL_Reg thread_methods[] = {
     {"join", thread_join},
     {NULL, NULL}
@@ -83,6 +118,7 @@ static const luaL_Reg thread_methods[] = {
 
 static const luaL_Reg thread_funcs[] = {
     {"create", thread_create},
+    {"createx", thread_createx},
     {NULL, NULL}
 };
 
