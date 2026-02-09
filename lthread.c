@@ -109,7 +109,18 @@ int l_thread_create(l_thread_t *t, l_thread_func func, void *arg) {
   t->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, NULL);
   return (t->thread != NULL) ? 0 : 1;
 #else
-  return pthread_create(&t->thread, NULL, func, arg);
+  pthread_attr_t attr;
+  int ret;
+  if (pthread_attr_init(&attr) != 0)
+    return 1;
+  /* Set stack size to 8MB on non-Windows platforms (e.g., Android default is small) */
+  if (pthread_attr_setstacksize(&attr, 8 * 1024 * 1024) != 0) {
+    pthread_attr_destroy(&attr);
+    return 1;
+  }
+  ret = pthread_create(&t->thread, &attr, func, arg);
+  pthread_attr_destroy(&attr);
+  return ret;
 #endif
 }
 
