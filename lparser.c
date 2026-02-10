@@ -4995,7 +4995,7 @@ static void forlist (LexState *ls, TString *indexname) {
   }
   if (ls->t.token == TK_IN) luaX_next(ls);
   line = ls->linenumber;
-  adjust_assign(ls, 3, explist(ls, &e), &e);
+  adjust_assign(ls, 4, explist(ls, &e), &e);
   adjustlocalvars(ls, 3);  /* control variables */
   marktobeclosed(fs);  /* last control var. must be closed */
   luaK_checkstack(fs, 3);  /* extra space to call generator */
