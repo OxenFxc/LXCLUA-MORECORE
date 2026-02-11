@@ -1,0 +1,55 @@
+\doxysection{Thread\+Handle Struct Reference}
+\hypertarget{struct_thread_handle}{}\label{struct_thread_handle}\index{ThreadHandle@{ThreadHandle}}
+
+
+Thread handle structure for managing Lua threads.  
+
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{structl__thread__t}{l\+\_\+thread\+\_\+t}} \doxymbox{\hyperlink{struct_thread_handle_a1b9b5eb3072bcd283310cabedba2ff57}{thread}}
+\item 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_thread_handle_a2804aad06c52d64696e252a6020c8daf}{L\+\_\+thread}}
+\item 
+int \doxymbox{\hyperlink{struct_thread_handle_accb5f5f3582fa51085077bfc01509d6b}{ref}}
+\item 
+char \doxymbox{\hyperlink{struct_thread_handle_aa9b3660839bd70f98c340c1c7ee149b2}{name}} \+[64]\+
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Thread handle structure for managing Lua threads. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_thread_handle_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_thread_handle_a2804aad06c52d64696e252a6020c8daf}\index{ThreadHandle@{ThreadHandle}!L\_thread@{L\_thread}}
+\index{L\_thread@{L\_thread}!ThreadHandle@{ThreadHandle}}
+\doxysubsubsection{\texorpdfstring{L\_thread}{L\_thread}}
+{\footnotesize\ttfamily \label{struct_thread_handle_a2804aad06c52d64696e252a6020c8daf} 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}}\texorpdfstring{$\ast$}{*} Thread\+Handle::\+\+L\+\_\+thread}
+
+Lua state associated with the thread \Hypertarget{struct_thread_handle_aa9b3660839bd70f98c340c1c7ee149b2}\index{ThreadHandle@{ThreadHandle}!name@{name}}
+\index{name@{name}!ThreadHandle@{ThreadHandle}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily \label{struct_thread_handle_aa9b3660839bd70f98c340c1c7ee149b2} 
+char Thread\+Handle::\+name\+[64]\+}
+
+Thread name \Hypertarget{struct_thread_handle_accb5f5f3582fa51085077bfc01509d6b}\index{ThreadHandle@{ThreadHandle}!ref@{ref}}
+\index{ref@{ref}!ThreadHandle@{ThreadHandle}}
+\doxysubsubsection{\texorpdfstring{ref}{ref}}
+{\footnotesize\ttfamily \label{struct_thread_handle_accb5f5f3582fa51085077bfc01509d6b} 
+int Thread\+Handle::\+ref}
+
+Registry reference to the thread state \Hypertarget{struct_thread_handle_a1b9b5eb3072bcd283310cabedba2ff57}\index{ThreadHandle@{ThreadHandle}!thread@{thread}}
+\index{thread@{thread}!ThreadHandle@{ThreadHandle}}
+\doxysubsubsection{\texorpdfstring{thread}{thread}}
+{\footnotesize\ttfamily \label{struct_thread_handle_a1b9b5eb3072bcd283310cabedba2ff57} 
+\doxymbox{\hyperlink{structl__thread__t}{l\+\_\+thread\+\_\+t}} Thread\+Handle::\+thread}
+
+Native thread handle 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lthreadlib.\+c\end{DoxyCompactItemize}

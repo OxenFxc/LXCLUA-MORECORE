@@ -1,0 +1,108 @@
+\doxysection{lmem.\+h}
+\hypertarget{lmem_8h_source}{}\label{lmem_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lmem.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Interface\ to\ Memory\ Manager}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ lmem\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ lmem\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}llimits.h"{}}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#include\ "{}lua.h"{}}}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#define\ luaM\_error(L)\ \ \ luaD\_throw(L,\ LUA\_ERRMEM)}}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00021\ \textcolor{comment}{**\ This\ macro\ tests\ whether\ it\ is\ safe\ to\ multiply\ 'n'\ by\ the\ size\ of}}
+\DoxyCodeLine{00022\ \textcolor{comment}{**\ type\ 't'\ without\ overflows.\ Because\ 'e'\ is\ always\ constant,\ it\ avoids}}
+\DoxyCodeLine{00023\ \textcolor{comment}{**\ the\ runtime\ division\ MAX\_SIZET/(e).}}
+\DoxyCodeLine{00024\ \textcolor{comment}{**\ (The\ macro\ is\ somewhat\ complex\ to\ avoid\ warnings:\ \ The\ 'sizeof'}}
+\DoxyCodeLine{00025\ \textcolor{comment}{**\ comparison\ avoids\ a\ runtime\ comparison\ when\ overflow\ cannot\ occur.}}
+\DoxyCodeLine{00026\ \textcolor{comment}{**\ The\ compiler\ should\ be\ able\ to\ optimize\ the\ real\ test\ by\ itself,\ but}}
+\DoxyCodeLine{00027\ \textcolor{comment}{**\ when\ it\ does\ it,\ it\ may\ give\ a\ warning\ about\ "{}comparison\ is\ always}}
+\DoxyCodeLine{00028\ \textcolor{comment}{**\ false\ due\ to\ limited\ range\ of\ data\ type"{};\ the\ +1\ tricks\ the\ compiler,}}
+\DoxyCodeLine{00029\ \textcolor{comment}{**\ avoiding\ this\ warning\ but\ also\ this\ optimization.)}}
+\DoxyCodeLine{00030\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#define\ luaM\_testsize(n,e)\ \ \(\backslash\)}}
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\ \ \ \ (sizeof(n)\ >=\ sizeof(size\_t)\ \&\&\ cast\_sizet((n))\ +\ 1\ >\ MAX\_SIZET/(e))}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\#define\ luaM\_checksize(L,n,e)\ \ \(\backslash\)}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\ \ \ \ (luaM\_testsize(n,e)\ ?\ luaM\_toobig(L)\ :\ cast\_void(0))}}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00039\ \textcolor{comment}{**\ Computes\ the\ minimum\ between\ 'n'\ and\ 'MAX\_SIZET/sizeof(t)',\ so\ that}}
+\DoxyCodeLine{00040\ \textcolor{comment}{**\ the\ result\ is\ not\ larger\ than\ 'n'\ and\ cannot\ overflow\ a\ 'size\_t'}}
+\DoxyCodeLine{00041\ \textcolor{comment}{**\ when\ multiplied\ by\ the\ size\ of\ type\ 't'.\ (Assumes\ that\ 'n'\ is\ an}}
+\DoxyCodeLine{00042\ \textcolor{comment}{**\ 'int'\ or\ 'unsigned\ int'\ and\ that\ 'int'\ is\ not\ larger\ than\ 'size\_t'.)}}
+\DoxyCodeLine{00043\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\#define\ luaM\_limitN(n,t)\ \ \(\backslash\)}}
+\DoxyCodeLine{00045\ \textcolor{preprocessor}{\ \ ((cast\_sizet(n)\ <=\ MAX\_SIZET/sizeof(t))\ ?\ (n)\ :\ \ \(\backslash\)}}
+\DoxyCodeLine{00046\ \textcolor{preprocessor}{\ \ \ \ \ cast\_uint((MAX\_SIZET/sizeof(t))))}}
+\DoxyCodeLine{00047\ }
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00050\ \textcolor{comment}{**\ Arrays\ of\ chars\ do\ not\ need\ any\ test}}
+\DoxyCodeLine{00051\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#define\ luaM\_reallocvchar(L,b,on,n)\ \ \(\backslash\)}}
+\DoxyCodeLine{00053\ \textcolor{preprocessor}{\ \ cast\_charp(luaM\_saferealloc\_(L,\ (b),\ (on)*sizeof(char),\ (n)*sizeof(char)))}}
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#define\ luaM\_freemem(L,\ b,\ s)\ \ \ luaM\_free\_(L,\ (b),\ (s))}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#define\ luaM\_free(L,\ b)\ \ \ \ \ luaM\_free\_(L,\ (b),\ sizeof(*(b)))}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#define\ luaM\_freearray(L,\ b,\ n)\ \ \ luaM\_free\_(L,\ (b),\ (n)*sizeof(*(b)))}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \textcolor{preprocessor}{\#define\ luaM\_new(L,t)\ \ \ \ \ \ \ cast(t*,\ luaM\_malloc\_(L,\ sizeof(t),\ 0))}}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\#define\ luaM\_newvector(L,n,t)\ \ \ cast(t*,\ luaM\_malloc\_(L,\ (n)*sizeof(t),\ 0))}}
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#define\ luaM\_newvectorchecked(L,n,t)\ \(\backslash\)}}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\ \ (luaM\_checksize(L,n,sizeof(t)),\ luaM\_newvector(L,n,t))}}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#define\ luaM\_newobject(L,tag,s)\ luaM\_malloc\_(L,\ (s),\ tag)}}
+\DoxyCodeLine{00065\ }
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#define\ luaM\_newblock(L,\ size)\ \ luaM\_newvector(L,\ size,\ char)}}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#define\ luaM\_growvector(L,v,nelems,size,t,limit,e)\ \(\backslash\)}}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\ \ \ \ ((v)=cast(t\ *,\ luaM\_growaux\_(L,v,nelems,\&(size),sizeof(t),\ \(\backslash\)}}
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ luaM\_limitN(limit,t),e)))}}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#define\ luaM\_reallocvector(L,\ v,oldn,n,t)\ \(\backslash\)}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\ \ \ (cast(t\ *,\ luaM\_realloc\_(L,\ v,\ cast\_sizet(oldn)\ *\ sizeof(t),\ \(\backslash\)}}
+\DoxyCodeLine{00074\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ cast\_sizet(n)\ *\ sizeof(t))))}}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \textcolor{preprocessor}{\#define\ luaM\_shrinkvector(L,v,size,fs,t)\ \(\backslash\)}}
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\ \ \ ((v)=cast(t\ *,\ luaM\_shrinkvector\_(L,\ v,\ \&(size),\ fs,\ sizeof(t))))}}
+\DoxyCodeLine{00078\ }
+\DoxyCodeLine{00079\ LUAI\_FUNC\ l\_noret\ \doxymbox{\hyperlink{lmem_8c_a8fc7df43dd830ccbe7581fd53f65bdbe}{luaM\_toobig}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00080\ }
+\DoxyCodeLine{00081\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_afb4cbf701f74de76eb0e9888c2a5700d}{luaM\_poolalloc}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00082\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_a8b2853c6431505988f2effe820760f51}{luaM\_poolfree}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00083\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_a19ccb3767812ae4a8aaebd6bdea1ffac}{luaM\_poolshrink}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00084\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_a2b799ad1487e9ddf680e6b6144195cc2}{luaM\_poolgc}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00085\ LUAI\_FUNC\ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{lmem_8c_a2012d0404a309e3a5c60d7def8751c2a}{luaM\_poolgetusage}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00086\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_acda8ef2431606c4333f4899dd1837b2d}{luaM\_poolinit}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00087\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_a6109e5dda01b147bad1063bb485be930}{luaM\_poolshutdown}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00089\ \textcolor{comment}{/*\ not\ to\ be\ called\ directly\ */}}
+\DoxyCodeLine{00090\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_a7dd4e9ddf6987797216fa9cf4bc23954}{luaM\_realloc\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{size\_t}\ oldsize,}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00092\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_a8cb94bca57e8ae6aff344d3e6e4593af}{luaM\_saferealloc\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{size\_t}\ oldsize,}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00094\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lmem_8c_a36b12d49a937e5de982e2a2a135e6824}{luaM\_free\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{size\_t}\ osize);}
+\DoxyCodeLine{00095\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_a1c0358fd91c39b2040eebb75ed4c14e5}{luaM\_growaux\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{int}\ nelems,}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ *size,\ \textcolor{keywordtype}{int}\ size\_elem,\ \textcolor{keywordtype}{int}\ limit,}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *what);}
+\DoxyCodeLine{00098\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_a7fe3cdb7f4720a11dc0054167d2be20b}{luaM\_shrinkvector\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *block,\ \textcolor{keywordtype}{int}\ *nelem,}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ final\_n,\ \textcolor{keywordtype}{int}\ size\_elem);}
+\DoxyCodeLine{00100\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ *\doxymbox{\hyperlink{lmem_8c_af0c92d038f767832eb8dd29eb0678096}{luaM\_malloc\_}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{size\_t}\ size,\ \textcolor{keywordtype}{int}\ tag);}
+\DoxyCodeLine{00101\ }
+\DoxyCodeLine{00102\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00103\ }
+
+\end{DoxyCode}

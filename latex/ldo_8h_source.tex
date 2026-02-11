@@ -1,0 +1,93 @@
+\doxysection{ldo.\+h}
+\hypertarget{ldo_8h_source}{}\label{ldo_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ ldo.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Stack\ and\ Call\ structure\ of\ Lua}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ ldo\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ ldo\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}llimits.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}lstate.h"{}}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#include\ "{}lzio.h"{}}}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00018\ \textcolor{comment}{**\ Macro\ to\ check\ stack\ size\ and\ grow\ stack\ if\ needed.\ \ Parameters}}
+\DoxyCodeLine{00019\ \textcolor{comment}{**\ 'pre'/'pos'\ allow\ the\ macro\ to\ preserve\ a\ pointer\ into\ the}}
+\DoxyCodeLine{00020\ \textcolor{comment}{**\ stack\ across\ reallocations,\ doing\ the\ work\ only\ when\ needed.}}
+\DoxyCodeLine{00021\ \textcolor{comment}{**\ It\ also\ allows\ the\ running\ of\ one\ GC\ step\ when\ the\ stack\ is}}
+\DoxyCodeLine{00022\ \textcolor{comment}{**\ reallocated.}}
+\DoxyCodeLine{00023\ \textcolor{comment}{**\ 'condmovestack'\ is\ used\ in\ heavy\ tests\ to\ force\ a\ stack\ reallocation}}
+\DoxyCodeLine{00024\ \textcolor{comment}{**\ at\ every\ check.}}
+\DoxyCodeLine{00025\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#define\ luaD\_checkstackaux(L,n,pre,pos)\ \ \(\backslash\)}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\ \ \ \ if\ (l\_unlikely(L-\/>stack\_last.p\ -\/\ L-\/>top.p\ <=\ (n)))\ \(\backslash\)}}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\ \ \ \ \ \ \{\ pre;\ luaD\_growstack(L,\ n,\ 1);\ pos;\ \}\ \(\backslash\)}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ else\ \{\ condmovestack(L,pre,pos);\ \}}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{comment}{/*\ In\ general,\ 'pre'/'pos'\ are\ empty\ (nothing\ to\ save)\ */}}
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#define\ luaD\_checkstack(L,n)\ \ \ \ luaD\_checkstackaux(L,n,(void)0,(void)0)}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\#define\ savestack(L,pt)\ \ \ \ \ (cast\_charp(pt)\ -\/\ cast\_charp(L-\/>stack.p))}}
+\DoxyCodeLine{00037\ \textcolor{preprocessor}{\#define\ restorestack(L,n)\ \ \ cast(StkId,\ cast\_charp(L-\/>stack.p)\ +\ (n))}}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \textcolor{comment}{/*\ macro\ to\ check\ stack\ size,\ preserving\ 'p'\ */}}
+\DoxyCodeLine{00041\ \textcolor{preprocessor}{\#define\ checkstackp(L,n,p)\ \ \(\backslash\)}}
+\DoxyCodeLine{00042\ \textcolor{preprocessor}{\ \ luaD\_checkstackaux(L,\ n,\ \(\backslash\)}}
+\DoxyCodeLine{00043\ \textcolor{preprocessor}{\ \ \ \ ptrdiff\_t\ t\_\_\ =\ savestack(L,\ p),\ \ }\textcolor{comment}{/*\ save\ 'p'\ */}\textcolor{preprocessor}{\ \(\backslash\)}}
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\ \ \ \ p\ =\ restorestack(L,\ t\_\_))\ \ }\textcolor{comment}{/*\ 'pos'\ part:\ restore\ 'p'\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \textcolor{comment}{/*\ macro\ to\ check\ stack\ size\ and\ GC,\ preserving\ 'p'\ */}}
+\DoxyCodeLine{00048\ \textcolor{preprocessor}{\#define\ checkstackGCp(L,n,p)\ \ \(\backslash\)}}
+\DoxyCodeLine{00049\ \textcolor{preprocessor}{\ \ luaD\_checkstackaux(L,\ n,\ \(\backslash\)}}
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\ \ \ \ ptrdiff\_t\ t\_\_\ =\ savestack(L,\ p);\ \ }\textcolor{comment}{/*\ save\ 'p'\ */}\textcolor{preprocessor}{\ \(\backslash\)}}
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\ \ \ \ luaC\_checkGC(L),\ \ }\textcolor{comment}{/*\ stack\ grow\ uses\ memory\ */}\textcolor{preprocessor}{\ \(\backslash\)}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\ \ \ \ p\ =\ restorestack(L,\ t\_\_))\ \ }\textcolor{comment}{/*\ 'pos'\ part:\ restore\ 'p'\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \textcolor{comment}{/*\ macro\ to\ check\ stack\ size\ and\ GC\ */}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#define\ checkstackGC(L,fsize)\ \ \(\backslash\)}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\ \ \ \ luaD\_checkstackaux(L,\ (fsize),\ luaC\_checkGC(L),\ (void)0)}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ }
+\DoxyCodeLine{00060\ \textcolor{comment}{/*\ type\ of\ protected\ functions,\ to\ be\ ran\ by\ 'runprotected'\ */}}
+\DoxyCodeLine{00061\ \textcolor{keyword}{typedef}\ void\ (*Pfunc)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{void}\ *ud);}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ LUAI\_FUNC\ l\_noret\ luaD\_errerr\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00064\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a9153a47dea14648c3ab2233c0e1adf72}{luaD\_seterrorobj}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ errcode,\ StkId\ oldtop);}
+\DoxyCodeLine{00065\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{ldo_8c_a0d18a041994ac3c6eda251e309ba363a}{luaD\_protectedparser}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ ZIO\ *z,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *name,}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *mode);}
+\DoxyCodeLine{00067\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_aa74dd2ed1bf68092213c0cd69d3a8aab}{luaD\_hook}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ event,\ \textcolor{keywordtype}{int}\ line,}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ fTransfer,\ \textcolor{keywordtype}{int}\ nTransfer);}
+\DoxyCodeLine{00069\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a5f30116d7e47e3db1fd226e22e903d08}{luaD\_hookcall}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_call_info}{CallInfo}}\ *ci);}
+\DoxyCodeLine{00070\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaD\_pretailcall\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_call_info}{CallInfo}}\ *ci,\ StkId\ func,}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ narg1,\ \textcolor{keywordtype}{int}\ delta);}
+\DoxyCodeLine{00072\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_call_info}{CallInfo}}\ *\doxymbox{\hyperlink{ldo_8c_a0a4192014fb6fe7580d97802a2bbaccb}{luaD\_precall}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ StkId\ func,\ \textcolor{keywordtype}{int}\ nResults);}
+\DoxyCodeLine{00073\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a5483fddd87ca999e7d037bf397ab7997}{luaD\_call}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ StkId\ func,\ \textcolor{keywordtype}{int}\ nResults);}
+\DoxyCodeLine{00074\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a61c0a0185ef5ae1493dad10027f4db7e}{luaD\_callnoyield}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ StkId\ func,\ \textcolor{keywordtype}{int}\ nResults);}
+\DoxyCodeLine{00075\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaD\_closeprotected\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ ptrdiff\_t\ level,\ \textcolor{keywordtype}{int}\ status);}
+\DoxyCodeLine{00076\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{ldo_8c_a1ad7f845cc62b110e3fcc0ae187d7c85}{luaD\_pcall}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ Pfunc\ func,\ \textcolor{keywordtype}{void}\ *u,}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ptrdiff\_t\ oldtop,\ ptrdiff\_t\ ef);}
+\DoxyCodeLine{00078\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a93ef0e89dcfdd64224670aa54d7e4f5b}{luaD\_poscall}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_call_info}{CallInfo}}\ *ci,\ \textcolor{keywordtype}{int}\ nres);}
+\DoxyCodeLine{00079\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{ldo_8c_a75b8b0016e9182d4fd9f71c1a7238e8a}{luaD\_reallocstack}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ newsize,\ \textcolor{keywordtype}{int}\ raiseerror);}
+\DoxyCodeLine{00080\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{ldo_8c_a728937587ac9d9e316bd410991f11221}{luaD\_growstack}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ n,\ \textcolor{keywordtype}{int}\ raiseerror);}
+\DoxyCodeLine{00081\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a219aa86777779dccae2c1bf9008db70a}{luaD\_shrinkstack}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00082\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{ldo_8c_a4dd006aa3210fdc854d0441e2a98c9af}{luaD\_inctop}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ LUAI\_FUNC\ l\_noret\ \doxymbox{\hyperlink{ldo_8c_a717a80f91a6e8dd85101173268d94eca}{luaD\_throw}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ errcode);}
+\DoxyCodeLine{00085\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{ldo_8c_ab0872b1738a995ecbf1cdc8a9bc0fdf6}{luaD\_rawrunprotected}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ Pfunc\ f,\ \textcolor{keywordtype}{void}\ *ud);}
+\DoxyCodeLine{00086\ }
+\DoxyCodeLine{00087\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00088\ }
+
+\end{DoxyCode}

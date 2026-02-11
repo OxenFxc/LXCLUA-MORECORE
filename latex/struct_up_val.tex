@@ -1,0 +1,75 @@
+\doxysection{Up\+Val Struct Reference}
+\hypertarget{struct_up_val}{}\label{struct_up_val}\index{UpVal@{UpVal}}
+
+
+Upvalues for Lua closures.  
+
+
+
+
+{\ttfamily \+\#include $<$lobject.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{struct_up_val_a4e31d0a4bda814a7173a9ef5ca88ba3c}\label{struct_up_val_a4e31d0a4bda814a7173a9ef5ca88ba3c} 
+{\bfseries Common\+Header}
+\item 
+\Hypertarget{struct_up_val_ae884e7120e776fd0699a9bdc02403480}\label{struct_up_val_ae884e7120e776fd0699a9bdc02403480} 
+\begin{tabbing}
+xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=\kill
+union \{\\
+\>\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_up_val_a8e9dff354074323b0df2bd0795b6e9d3}{p}}\\
+\>ptrdiff\_t \doxymbox{\hyperlink{struct_up_val_a5181153fb4139bfe1246bfff44700216}{offset}}\\
+\} {\bfseries v}\\
+
+\end{tabbing}\item 
+\Hypertarget{struct_up_val_a3e874535cf761992620ec6b3a1ddedd7}\label{struct_up_val_a3e874535cf761992620ec6b3a1ddedd7} 
+\begin{tabbing}
+xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=\kill
+union \{\\
+\>struct \{\\
+\>\>struct \doxymbox{\hyperlink{struct_up_val}{UpVal}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_up_val_ad60d3e0af32d663d3cde2e033bbdefd8}{next}}\\
+\>\>struct \doxymbox{\hyperlink{struct_up_val}{UpVal}} \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} {\bfseries previous}\\
+\>\} {\bfseries open}\\
+\>\doxymbox{\hyperlink{struct_t_value}{TValue}} \doxymbox{\hyperlink{struct_up_val_abc22d06bbcaf3f197af9c6069c562505}{value}}\\
+\} {\bfseries u}\\
+
+\end{tabbing}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Upvalues for Lua closures. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_up_val_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_up_val_ad60d3e0af32d663d3cde2e033bbdefd8}\index{UpVal@{UpVal}!next@{next}}
+\index{next@{next}!UpVal@{UpVal}}
+\doxysubsubsection{\texorpdfstring{next}{next}}
+{\footnotesize\ttfamily \label{struct_up_val_ad60d3e0af32d663d3cde2e033bbdefd8} 
+struct \doxymbox{\hyperlink{struct_up_val}{Up\+Val}}\texorpdfstring{$\ast$}{*} Up\+Val::\+next}
+
+linked list \Hypertarget{struct_up_val_a5181153fb4139bfe1246bfff44700216}\index{UpVal@{UpVal}!offset@{offset}}
+\index{offset@{offset}!UpVal@{UpVal}}
+\doxysubsubsection{\texorpdfstring{offset}{offset}}
+{\footnotesize\ttfamily \label{struct_up_val_a5181153fb4139bfe1246bfff44700216} 
+ptrdiff\+\_\+t Up\+Val::\+offset}
+
+used while the stack is being reallocated \Hypertarget{struct_up_val_a8e9dff354074323b0df2bd0795b6e9d3}\index{UpVal@{UpVal}!p@{p}}
+\index{p@{p}!UpVal@{UpVal}}
+\doxysubsubsection{\texorpdfstring{p}{p}}
+{\footnotesize\ttfamily \label{struct_up_val_a8e9dff354074323b0df2bd0795b6e9d3} 
+\doxymbox{\hyperlink{struct_t_value}{TValue}}\texorpdfstring{$\ast$}{*} Up\+Val::\+p}
+
+points to stack or to its own value \Hypertarget{struct_up_val_abc22d06bbcaf3f197af9c6069c562505}\index{UpVal@{UpVal}!value@{value}}
+\index{value@{value}!UpVal@{UpVal}}
+\doxysubsubsection{\texorpdfstring{value}{value}}
+{\footnotesize\ttfamily \label{struct_up_val_abc22d06bbcaf3f197af9c6069c562505} 
+\doxymbox{\hyperlink{struct_t_value}{TValue}} Up\+Val::\+value}
+
+the value (when closed) 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lobject.\+h\end{DoxyCompactItemize}

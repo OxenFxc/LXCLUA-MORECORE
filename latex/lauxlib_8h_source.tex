@@ -1,0 +1,343 @@
+\doxysection{lauxlib.\+h}
+\hypertarget{lauxlib_8h_source}{}\label{lauxlib_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lauxlib.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Auxiliary\ functions\ for\ building\ Lua\ libraries}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#ifndef\ lauxlib\_h}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#define\ lauxlib\_h}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#include\ "{}luaconf.h"{}}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#include\ "{}lua.h"{}}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#define\ LUA\_GNAME\ \ \ "{}\_G"{}}}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00026\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ \doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}};}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#define\ LUA\_ERRFILE\ \ \ \ \ (LUA\_ERRERR+1)}}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\#define\ LUA\_LOADED\_TABLE\ \ \ \ "{}\_LOADED"{}}}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00038\ \textcolor{preprocessor}{\#define\ LUA\_PRELOAD\_TABLE\ \ \ "{}\_PRELOAD"{}}}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00047\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structlua_l___reg}{luaL\_Reg}}\ \{}
+\DoxyCodeLine{00048\ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\doxymbox{\hyperlink{structlua_l___reg_a58b99f63b304e5c489b90d812f92cba2}{name}};\ \ }
+\DoxyCodeLine{00049\ \ \ lua\_CFunction\ \doxymbox{\hyperlink{structlua_l___reg_a54aa8f9955870caf78148514e61196ce}{func}};\ }
+\DoxyCodeLine{00050\ \}\ \doxymbox{\hyperlink{structlua_l___reg}{luaL\_Reg}};}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ }
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#define\ LUAL\_NUMSIZES\ \ \ (sizeof(lua\_Integer)*16\ +\ sizeof(lua\_Number))}}
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00063\ LUALIB\_API\ void\ (luaL\_checkversion\_)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ lua\_Number\ ver,\ \textcolor{keywordtype}{size\_t}\ sz);}
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#define\ luaL\_checkversion(L)\ \ \(\backslash\)}}
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\ \ \ \ \ \ luaL\_checkversion\_(L,\ LUA\_VERSION\_NUM,\ LUAL\_NUMSIZES)}}
+\DoxyCodeLine{00072\ }
+\DoxyCodeLine{00081\ LUALIB\_API\ int\ (luaL\_getmetafield)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ obj,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *e);}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00091\ LUALIB\_API\ int\ (luaL\_callmeta)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ obj,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *e);}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00101\ LUALIB\_API\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *(luaL\_tolstring)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ idx,\ \textcolor{keywordtype}{size\_t}\ *len);}
+\DoxyCodeLine{00102\ }
+\DoxyCodeLine{00111\ LUALIB\_API\ int\ (luaL\_argerror)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *extramsg);}
+\DoxyCodeLine{00112\ }
+\DoxyCodeLine{00121\ LUALIB\_API\ int\ (luaL\_typeerror)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tname);}
+\DoxyCodeLine{00122\ }
+\DoxyCodeLine{00131\ LUALIB\_API\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *(luaL\_checklstring)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ *l);}
+\DoxyCodeLine{00133\ }
+\DoxyCodeLine{00143\ LUALIB\_API\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *(luaL\_optlstring)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *def,\ \textcolor{keywordtype}{size\_t}\ *l);}
+\DoxyCodeLine{00145\ }
+\DoxyCodeLine{00153\ LUALIB\_API\ lua\_Number\ (luaL\_checknumber)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg);}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00163\ LUALIB\_API\ lua\_Number\ (luaL\_optnumber)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,\ lua\_Number\ def);}
+\DoxyCodeLine{00164\ }
+\DoxyCodeLine{00172\ LUALIB\_API\ lua\_Integer\ (luaL\_checkinteger)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg);}
+\DoxyCodeLine{00173\ }
+\DoxyCodeLine{00182\ LUALIB\_API\ lua\_Integer\ (luaL\_optinteger)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lua\_Integer\ def);}
+\DoxyCodeLine{00184\ }
+\DoxyCodeLine{00192\ LUALIB\_API\ void\ (luaL\_checkstack)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ sz,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *msg);}
+\DoxyCodeLine{00193\ }
+\DoxyCodeLine{00201\ LUALIB\_API\ void\ (luaL\_checktype)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,\ \textcolor{keywordtype}{int}\ t);}
+\DoxyCodeLine{00202\ }
+\DoxyCodeLine{00209\ LUALIB\_API\ void\ (luaL\_checkany)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg);}
+\DoxyCodeLine{00210\ }
+\DoxyCodeLine{00218\ LUALIB\_API\ int\ \ \ (luaL\_newmetatable)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tname);}
+\DoxyCodeLine{00219\ }
+\DoxyCodeLine{00226\ LUALIB\_API\ void\ \ (luaL\_setmetatable)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tname);}
+\DoxyCodeLine{00227\ }
+\DoxyCodeLine{00236\ LUALIB\_API\ \textcolor{keywordtype}{void}\ *(luaL\_testudata)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ ud,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tname);}
+\DoxyCodeLine{00237\ }
+\DoxyCodeLine{00246\ LUALIB\_API\ \textcolor{keywordtype}{void}\ *(luaL\_checkudata)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ ud,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tname);}
+\DoxyCodeLine{00247\ }
+\DoxyCodeLine{00254\ LUALIB\_API\ void\ (luaL\_where)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ lvl);}
+\DoxyCodeLine{00255\ }
+\DoxyCodeLine{00264\ LUALIB\_API\ int\ (luaL\_error)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *fmt,\ ...);}
+\DoxyCodeLine{00265\ }
+\DoxyCodeLine{00275\ LUALIB\_API\ int\ (luaL\_checkoption)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ arg,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *def,}
+\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\textcolor{keyword}{const}\ lst[]);}
+\DoxyCodeLine{00277\ }
+\DoxyCodeLine{00286\ LUALIB\_API\ int\ (luaL\_fileresult)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ stat,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *fname);}
+\DoxyCodeLine{00287\ }
+\DoxyCodeLine{00295\ LUALIB\_API\ int\ (luaL\_execresult)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ stat);}
+\DoxyCodeLine{00296\ }
+\DoxyCodeLine{00297\ }
+\DoxyCodeLine{00298\ \textcolor{comment}{/*\ predefined\ references\ */}}
+\DoxyCodeLine{00299\ \textcolor{preprocessor}{\#define\ LUA\_NOREF\ \ \ \ \ \ \ (-\/2)}}
+\DoxyCodeLine{00300\ \textcolor{preprocessor}{\#define\ LUA\_REFNIL\ \ \ \ \ \ (-\/1)}}
+\DoxyCodeLine{00301\ }
+\DoxyCodeLine{00309\ LUALIB\_API\ int\ (luaL\_ref)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ t);}
+\DoxyCodeLine{00310\ }
+\DoxyCodeLine{00318\ LUALIB\_API\ void\ (luaL\_unref)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ t,\ \textcolor{keywordtype}{int}\ ref);}
+\DoxyCodeLine{00319\ }
+\DoxyCodeLine{00328\ LUALIB\_API\ int\ (luaL\_loadfilex)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *filename,}
+\DoxyCodeLine{00329\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *mode);}
+\DoxyCodeLine{00330\ }
+\DoxyCodeLine{00337\ \textcolor{preprocessor}{\#define\ luaL\_loadfile(L,f)\ \ luaL\_loadfilex(L,f,NULL)}}
+\DoxyCodeLine{00338\ }
+\DoxyCodeLine{00349\ LUALIB\_API\ int\ (luaL\_loadbufferx)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *buff,\ \textcolor{keywordtype}{size\_t}\ sz,}
+\DoxyCodeLine{00350\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *name,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *mode);}
+\DoxyCodeLine{00351\ }
+\DoxyCodeLine{00359\ LUALIB\_API\ int\ (luaL\_loadstring)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s);}
+\DoxyCodeLine{00360\ }
+\DoxyCodeLine{00366\ LUALIB\_API\ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *(luaL\_newstate)\ (\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00367\ }
+\DoxyCodeLine{00374\ LUALIB\_API\ \textcolor{keywordtype}{unsigned}\ int\ (luaL\_makeseed)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00375\ }
+\DoxyCodeLine{00383\ LUALIB\_API\ lua\_Integer\ (luaL\_len)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ idx);}
+\DoxyCodeLine{00384\ }
+\DoxyCodeLine{00393\ LUALIB\_API\ void\ (luaL\_addgsub)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *b,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s,}
+\DoxyCodeLine{00394\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *p,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *r);}
+\DoxyCodeLine{00395\ }
+\DoxyCodeLine{00405\ LUALIB\_API\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *(luaL\_gsub)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s,}
+\DoxyCodeLine{00406\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *p,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *r);}
+\DoxyCodeLine{00407\ }
+\DoxyCodeLine{00415\ LUALIB\_API\ void\ (luaL\_setfuncs)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structlua_l___reg}{luaL\_Reg}}\ *l,\ \textcolor{keywordtype}{int}\ nup);}
+\DoxyCodeLine{00416\ }
+\DoxyCodeLine{00425\ LUALIB\_API\ int\ (luaL\_getsubtable)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ idx,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *fname);}
+\DoxyCodeLine{00426\ }
+\DoxyCodeLine{00435\ LUALIB\_API\ void\ (luaL\_traceback)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L1,}
+\DoxyCodeLine{00436\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *msg,\ \textcolor{keywordtype}{int}\ level);}
+\DoxyCodeLine{00437\ }
+\DoxyCodeLine{00446\ LUALIB\_API\ void\ (luaL\_requiref)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *modname,}
+\DoxyCodeLine{00447\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lua\_CFunction\ openf,\ \textcolor{keywordtype}{int}\ glb);}
+\DoxyCodeLine{00448\ }
+\DoxyCodeLine{00449\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00450\ \textcolor{comment}{**\ ====================================================}}
+\DoxyCodeLine{00451\ \textcolor{comment}{**\ some\ useful\ macros}}
+\DoxyCodeLine{00452\ \textcolor{comment}{**\ ====================================================}}
+\DoxyCodeLine{00453\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00454\ }
+\DoxyCodeLine{00461\ \textcolor{preprocessor}{\#define\ luaL\_newlibtable(L,l)\ \ \ \(\backslash\)}}
+\DoxyCodeLine{00462\ \textcolor{preprocessor}{\ \ lua\_createtable(L,\ 0,\ sizeof(l)/sizeof((l)[0])\ -\/\ 1)}}
+\DoxyCodeLine{00463\ }
+\DoxyCodeLine{00470\ \textcolor{preprocessor}{\#define\ luaL\_newlib(L,l)\ \ \(\backslash\)}}
+\DoxyCodeLine{00471\ \textcolor{preprocessor}{\ \ (luaL\_checkversion(L),\ luaL\_newlibtable(L,l),\ luaL\_setfuncs(L,l,0))}}
+\DoxyCodeLine{00472\ }
+\DoxyCodeLine{00481\ \textcolor{preprocessor}{\#define\ luaL\_argcheck(L,\ cond,arg,extramsg)\ \(\backslash\)}}
+\DoxyCodeLine{00482\ \textcolor{preprocessor}{\ \ \ \ ((void)(luai\_likely(cond)\ ||\ luaL\_argerror(L,\ (arg),\ (extramsg))))}}
+\DoxyCodeLine{00483\ }
+\DoxyCodeLine{00492\ \textcolor{preprocessor}{\#define\ luaL\_argexpected(L,cond,arg,tname)\ \ \(\backslash\)}}
+\DoxyCodeLine{00493\ \textcolor{preprocessor}{\ \ \ \ ((void)(luai\_likely(cond)\ ||\ luaL\_typeerror(L,\ (arg),\ (tname))))}}
+\DoxyCodeLine{00494\ }
+\DoxyCodeLine{00501\ \textcolor{preprocessor}{\#define\ luaL\_checkstring(L,n)\ \ \ (luaL\_checklstring(L,\ (n),\ NULL))}}
+\DoxyCodeLine{00502\ }
+\DoxyCodeLine{00510\ \textcolor{preprocessor}{\#define\ luaL\_optstring(L,n,d)\ \ \ (luaL\_optlstring(L,\ (n),\ (d),\ NULL))}}
+\DoxyCodeLine{00511\ }
+\DoxyCodeLine{00518\ \textcolor{preprocessor}{\#define\ luaL\_typename(L,i)\ \ lua\_typename(L,\ lua\_type(L,(i)))}}
+\DoxyCodeLine{00519\ }
+\DoxyCodeLine{00526\ \textcolor{preprocessor}{\#define\ luaL\_dofile(L,\ fn)\ \(\backslash\)}}
+\DoxyCodeLine{00527\ \textcolor{preprocessor}{\ \ \ \ (luaL\_loadfile(L,\ fn)\ ||\ lua\_pcall(L,\ 0,\ LUA\_MULTRET,\ 0))}}
+\DoxyCodeLine{00528\ }
+\DoxyCodeLine{00535\ \textcolor{preprocessor}{\#define\ luaL\_dostring(L,\ s)\ \(\backslash\)}}
+\DoxyCodeLine{00536\ \textcolor{preprocessor}{\ \ \ \ (luaL\_loadstring(L,\ s)\ ||\ lua\_pcall(L,\ 0,\ LUA\_MULTRET,\ 0))}}
+\DoxyCodeLine{00537\ }
+\DoxyCodeLine{00544\ \textcolor{preprocessor}{\#define\ luaL\_getmetatable(L,n)\ \ (lua\_getfield(L,\ LUA\_REGISTRYINDEX,\ (n)))}}
+\DoxyCodeLine{00545\ }
+\DoxyCodeLine{00554\ \textcolor{preprocessor}{\#define\ luaL\_opt(L,f,n,d)\ \ \ (lua\_isnoneornil(L,(n))\ ?\ (d)\ :\ f(L,(n)))}}
+\DoxyCodeLine{00555\ }
+\DoxyCodeLine{00564\ \textcolor{preprocessor}{\#define\ luaL\_loadbuffer(L,s,sz,n)\ \ \ luaL\_loadbufferx(L,s,sz,n,NULL)}}
+\DoxyCodeLine{00565\ }
+\DoxyCodeLine{00566\ }
+\DoxyCodeLine{00567\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00568\ \textcolor{comment}{**\ Perform\ arithmetic\ operations\ on\ lua\_Integer\ values\ with\ wrap-\/around}}
+\DoxyCodeLine{00569\ \textcolor{comment}{**\ semantics,\ as\ the\ Lua\ core\ does.}}
+\DoxyCodeLine{00570\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00571\ \textcolor{preprocessor}{\#define\ luaL\_intop(op,v1,v2)\ \ \(\backslash\)}}
+\DoxyCodeLine{00572\ \textcolor{preprocessor}{\ \ \ \ ((lua\_Integer)((lua\_Unsigned)(v1)\ op\ (lua\_Unsigned)(v2)))}}
+\DoxyCodeLine{00573\ }
+\DoxyCodeLine{00574\ }
+\DoxyCodeLine{00575\ \textcolor{comment}{/*\ push\ the\ value\ used\ to\ represent\ failure/error\ */}}
+\DoxyCodeLine{00576\ \textcolor{preprocessor}{\#define\ luaL\_pushfail(L)\ \ \ \ lua\_pushnil(L)}}
+\DoxyCodeLine{00577\ }
+\DoxyCodeLine{00578\ }
+\DoxyCodeLine{00579\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00580\ \textcolor{comment}{**\ Internal\ assertions\ for\ in-\/house\ debugging}}
+\DoxyCodeLine{00581\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00582\ \textcolor{preprocessor}{\#if\ !defined(lua\_assert)}}
+\DoxyCodeLine{00583\ }
+\DoxyCodeLine{00584\ \textcolor{preprocessor}{\#if\ defined\ LUAI\_ASSERT}}
+\DoxyCodeLine{00585\ \textcolor{preprocessor}{\ \ \#include\ <assert.h>}}
+\DoxyCodeLine{00586\ \textcolor{preprocessor}{\ \ \#define\ lua\_assert(c)\ \ \ \ \ assert(c)}}
+\DoxyCodeLine{00587\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00588\ \textcolor{preprocessor}{\ \ \#define\ lua\_assert(c)\ \ \ \ \ ((void)0)}}
+\DoxyCodeLine{00589\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00592\ }
+\DoxyCodeLine{00593\ }
+\DoxyCodeLine{00594\ }
+\DoxyCodeLine{00595\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00596\ \textcolor{comment}{**\ \{===========================================}}
+\DoxyCodeLine{00597\ \textcolor{comment}{**\ Generic\ Buffer\ manipulation}}
+\DoxyCodeLine{00598\ \textcolor{comment}{**\ ============================================}}
+\DoxyCodeLine{00599\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00600\ }
+\DoxyCodeLine{00604\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ \{}
+\DoxyCodeLine{00605\ \ \ \textcolor{keywordtype}{char}\ *\doxymbox{\hyperlink{structlua_l___buffer_ad519a6ef1557666cbdef35e5e8a4ef3b}{b}};\ \ }
+\DoxyCodeLine{00606\ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{structlua_l___buffer_a2d0288dac89591516c834328beee71cf}{size}};\ \ }
+\DoxyCodeLine{00607\ \ \ \textcolor{keywordtype}{size\_t}\ \doxymbox{\hyperlink{structlua_l___buffer_a85c23e8716842c83ee8e9d80f1652812}{n}};\ \ }
+\DoxyCodeLine{00608\ \ \ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *\doxymbox{\hyperlink{structlua_l___buffer_a66ae63716768952c74910da4351886fb}{L}};\ }
+\DoxyCodeLine{00609\ \ \ \textcolor{keyword}{union\ }\{}
+\DoxyCodeLine{00610\ \ \ \ \ \doxymbox{\hyperlink{structlua_l___buffer_a27bb352f42e1d97ffe512c947542ad62}{LUAI\_MAXALIGN}};\ \ }
+\DoxyCodeLine{00611\ \ \ \ \ \textcolor{keywordtype}{char}\ \doxymbox{\hyperlink{structlua_l___buffer_ad519a6ef1557666cbdef35e5e8a4ef3b}{b}}[LUAL\_BUFFERSIZE];\ \ }
+\DoxyCodeLine{00612\ \ \ \}\ init;}
+\DoxyCodeLine{00613\ \};}
+\DoxyCodeLine{00614\ }
+\DoxyCodeLine{00615\ }
+\DoxyCodeLine{00616\ \textcolor{preprocessor}{\#define\ luaL\_bufflen(bf)\ \ \ \ ((bf)-\/>n)}}
+\DoxyCodeLine{00617\ \textcolor{preprocessor}{\#define\ luaL\_buffaddr(bf)\ \ \ ((bf)-\/>b)}}
+\DoxyCodeLine{00618\ }
+\DoxyCodeLine{00619\ }
+\DoxyCodeLine{00620\ \textcolor{preprocessor}{\#define\ luaL\_addchar(B,c)\ \(\backslash\)}}
+\DoxyCodeLine{00621\ \textcolor{preprocessor}{\ \ ((void)((B)-\/>n\ <\ (B)-\/>size\ ||\ luaL\_prepbuffsize((B),\ 1)),\ \(\backslash\)}}
+\DoxyCodeLine{00622\ \textcolor{preprocessor}{\ \ \ ((B)-\/>b[(B)-\/>n++]\ =\ (c)))}}
+\DoxyCodeLine{00623\ }
+\DoxyCodeLine{00624\ \textcolor{preprocessor}{\#define\ luaL\_addsize(B,s)\ \ \ ((B)-\/>n\ +=\ (s))}}
+\DoxyCodeLine{00625\ }
+\DoxyCodeLine{00626\ \textcolor{preprocessor}{\#define\ luaL\_buffsub(B,s)\ \ \ ((B)-\/>n\ -\/=\ (s))}}
+\DoxyCodeLine{00627\ }
+\DoxyCodeLine{00634\ LUALIB\_API\ void\ (luaL\_buffinit)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B);}
+\DoxyCodeLine{00635\ }
+\DoxyCodeLine{00643\ LUALIB\_API\ \textcolor{keywordtype}{char}\ *(luaL\_prepbuffsize)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B,\ \textcolor{keywordtype}{size\_t}\ sz);}
+\DoxyCodeLine{00644\ }
+\DoxyCodeLine{00652\ LUALIB\_API\ void\ (luaL\_addlstring)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s,\ \textcolor{keywordtype}{size\_t}\ l);}
+\DoxyCodeLine{00653\ }
+\DoxyCodeLine{00660\ LUALIB\_API\ void\ (luaL\_addstring)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s);}
+\DoxyCodeLine{00661\ }
+\DoxyCodeLine{00667\ LUALIB\_API\ void\ (luaL\_addvalue)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B);}
+\DoxyCodeLine{00668\ }
+\DoxyCodeLine{00674\ LUALIB\_API\ void\ (luaL\_pushresult)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B);}
+\DoxyCodeLine{00675\ }
+\DoxyCodeLine{00682\ LUALIB\_API\ void\ (luaL\_pushresultsize)\ (\doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B,\ \textcolor{keywordtype}{size\_t}\ sz);}
+\DoxyCodeLine{00683\ }
+\DoxyCodeLine{00692\ LUALIB\_API\ \textcolor{keywordtype}{char}\ *(luaL\_buffinitsize)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{structlua_l___buffer}{luaL\_Buffer}}\ *B,\ \textcolor{keywordtype}{size\_t}\ sz);}
+\DoxyCodeLine{00693\ }
+\DoxyCodeLine{00694\ \textcolor{comment}{/*\ compatibility\ with\ old\ module\ system\ */}}
+\DoxyCodeLine{00695\ \textcolor{preprocessor}{\#if\ defined(LUA\_COMPAT\_MODULE)}}
+\DoxyCodeLine{00696\ \textcolor{comment}{//mod\ DifierLine}}
+\DoxyCodeLine{00697\ LUALIB\_API\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *luaL\_findtable\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ idx,}
+\DoxyCodeLine{00698\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *fname,\ \textcolor{keywordtype}{int}\ szhint);}
+\DoxyCodeLine{00699\ LUALIB\_API\ void\ (luaL\_pushmodule)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *modname,}
+\DoxyCodeLine{00700\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ sizehint);}
+\DoxyCodeLine{00701\ LUALIB\_API\ void\ (luaL\_openlib)\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *libname,}
+\DoxyCodeLine{00702\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structlua_l___reg}{luaL\_Reg}}\ *l,\ \textcolor{keywordtype}{int}\ nup);}
+\DoxyCodeLine{00703\ }
+\DoxyCodeLine{00704\ \textcolor{preprocessor}{\#define\ luaL\_register(L,n,l)\ \ \ \ (luaL\_openlib(L,(n),(l),0))}}
+\DoxyCodeLine{00705\ }
+\DoxyCodeLine{00706\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00707\ }
+\DoxyCodeLine{00708\ \textcolor{preprocessor}{\#define\ luaL\_prepbuffer(B)\ \ luaL\_prepbuffsize(B,\ LUAL\_BUFFERSIZE)}}
+\DoxyCodeLine{00709\ }
+\DoxyCodeLine{00710\ \textcolor{comment}{/*\ \}===========================================\ */}}
+\DoxyCodeLine{00711\ }
+\DoxyCodeLine{00712\ }
+\DoxyCodeLine{00713\ }
+\DoxyCodeLine{00714\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00715\ \textcolor{comment}{**\ \{===========================================}}
+\DoxyCodeLine{00716\ \textcolor{comment}{**\ File\ handles\ for\ IO\ library}}
+\DoxyCodeLine{00717\ \textcolor{comment}{**\ ============================================}}
+\DoxyCodeLine{00718\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00719\ }
+\DoxyCodeLine{00720\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00721\ \textcolor{comment}{**\ A\ file\ handle\ is\ a\ userdata\ with\ metatable\ 'LUA\_FILEHANDLE'\ and}}
+\DoxyCodeLine{00722\ \textcolor{comment}{**\ initial\ structure\ 'luaL\_Stream'\ (it\ may\ contain\ other\ fields}}
+\DoxyCodeLine{00723\ \textcolor{comment}{**\ after\ that\ initial\ structure).}}
+\DoxyCodeLine{00724\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00725\ }
+\DoxyCodeLine{00726\ \textcolor{preprocessor}{\#define\ LUA\_FILEHANDLE\ \ \ \ \ \ \ \ \ \ "{}FILE*"{}}}
+\DoxyCodeLine{00727\ }
+\DoxyCodeLine{00728\ }
+\DoxyCodeLine{00732\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structlua_l___stream}{luaL\_Stream}}\ \{}
+\DoxyCodeLine{00733\ \ \ FILE\ *\doxymbox{\hyperlink{structlua_l___stream_a50fc81b2c6481ab7768e41bdd3793bab}{f}};\ \ }
+\DoxyCodeLine{00734\ \ \ lua\_CFunction\ \doxymbox{\hyperlink{structlua_l___stream_a98731a1b0b1e28336d7206798895e62f}{closef}};\ \ }
+\DoxyCodeLine{00735\ \}\ \doxymbox{\hyperlink{structlua_l___stream}{luaL\_Stream}};}
+\DoxyCodeLine{00736\ }
+\DoxyCodeLine{00737\ \textcolor{comment}{/*\ \}===========================================\ */}}
+\DoxyCodeLine{00738\ }
+\DoxyCodeLine{00739\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00740\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00741\ \textcolor{comment}{**\ "{}Abstraction\ Layer"{}\ for\ basic\ report\ of\ messages\ and\ errors}}
+\DoxyCodeLine{00742\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00743\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00744\ }
+\DoxyCodeLine{00745\ \textcolor{comment}{/*\ print\ a\ string\ */}}
+\DoxyCodeLine{00746\ \textcolor{preprocessor}{\#if\ !defined(lua\_writestring)}}
+\DoxyCodeLine{00747\ \textcolor{preprocessor}{\#define\ lua\_writestring(s,l)\ \ \ fwrite((s),\ sizeof(char),\ (l),\ stdout)}}
+\DoxyCodeLine{00748\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00749\ }
+\DoxyCodeLine{00750\ \textcolor{comment}{/*\ print\ a\ newline\ and\ flush\ the\ output\ */}}
+\DoxyCodeLine{00751\ \textcolor{preprocessor}{\#if\ !defined(lua\_writeline)}}
+\DoxyCodeLine{00752\ \textcolor{preprocessor}{\#define\ lua\_writeline()\ \ \ \ \ \ \ \ (lua\_writestring("{}\(\backslash\)n"{},\ 1),\ fflush(stdout))}}
+\DoxyCodeLine{00753\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00754\ }
+\DoxyCodeLine{00755\ \textcolor{comment}{/*\ print\ an\ error\ message\ */}}
+\DoxyCodeLine{00756\ \textcolor{preprocessor}{\#if\ !defined(lua\_writestringerror)}}
+\DoxyCodeLine{00757\ \textcolor{preprocessor}{\#define\ lua\_writestringerror(s,p)\ \(\backslash\)}}
+\DoxyCodeLine{00758\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (fprintf(stderr,\ (s),\ (p)),\ fflush(stderr))}}
+\DoxyCodeLine{00759\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00760\ }
+\DoxyCodeLine{00761\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00762\ }
+\DoxyCodeLine{00763\ }
+\DoxyCodeLine{00764\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00765\ \textcolor{comment}{**\ \{=================================================}}
+\DoxyCodeLine{00766\ \textcolor{comment}{**\ Compatibility\ with\ deprecated\ conversions}}
+\DoxyCodeLine{00767\ \textcolor{comment}{**\ ==================================================}}
+\DoxyCodeLine{00768\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00769\ \textcolor{preprocessor}{\#if\ defined(LUA\_COMPAT\_APIINTCASTS)}}
+\DoxyCodeLine{00770\ }
+\DoxyCodeLine{00771\ \textcolor{preprocessor}{\#define\ luaL\_checkunsigned(L,a)\ ((lua\_Unsigned)luaL\_checkinteger(L,a))}}
+\DoxyCodeLine{00772\ \textcolor{preprocessor}{\#define\ luaL\_optunsigned(L,a,d)\ \(\backslash\)}}
+\DoxyCodeLine{00773\ \textcolor{preprocessor}{\ \ \ \ ((lua\_Unsigned)luaL\_optinteger(L,a,(lua\_Integer)(d)))}}
+\DoxyCodeLine{00774\ }
+\DoxyCodeLine{00775\ \textcolor{preprocessor}{\#define\ luaL\_checkint(L,n)\ \ ((int)luaL\_checkinteger(L,\ (n)))}}
+\DoxyCodeLine{00776\ \textcolor{preprocessor}{\#define\ luaL\_optint(L,n,d)\ \ ((int)luaL\_optinteger(L,\ (n),\ (d)))}}
+\DoxyCodeLine{00777\ }
+\DoxyCodeLine{00778\ \textcolor{preprocessor}{\#define\ luaL\_checklong(L,n)\ ((long)luaL\_checkinteger(L,\ (n)))}}
+\DoxyCodeLine{00779\ \textcolor{preprocessor}{\#define\ luaL\_optlong(L,n,d)\ ((long)luaL\_optinteger(L,\ (n),\ (d)))}}
+\DoxyCodeLine{00780\ }
+\DoxyCodeLine{00781\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00782\ \textcolor{comment}{/*\ \}=================================================\ */}}
+\DoxyCodeLine{00783\ }
+\DoxyCodeLine{00784\ }
+\DoxyCodeLine{00785\ }
+\DoxyCodeLine{00786\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

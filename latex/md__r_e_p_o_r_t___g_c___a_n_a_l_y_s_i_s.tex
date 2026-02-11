@@ -1,0 +1,50 @@
+\chapter{Lua 5.\+5 (官方) vs XCLUA (自定义) GC与内存管理对比报告 }
+\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s}{}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s}\index{Lua 5.5 (官方) vs XCLUA (自定义) GC与内存管理对比报告@{Lua 5.5 (官方) vs XCLUA (自定义) GC与内存管理对比报告}}
+\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md87}%
+\Hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md87}%
+\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md88}{}\doxysection{\texorpdfstring{1. 概述 (Overview)}{1. 概述 (Overview)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md88}
+本报告对比了当前代码库 (XCLUA, 自称 "{}\+Lua 5.\+5 Custom"{}) 与官方 Lua 代码库 (Git\+Hub {\ttfamily master} 分支, 版本号 5.\+5.\+1) 在垃圾回收 (GC) 和内存管理方面的差异。\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md89}{}\doxysection{\texorpdfstring{2. 内存管理 (Memory Management)}{2. 内存管理 (Memory Management)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md89}
+\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md90}{}\doxysubsection{\texorpdfstring{官方 Lua 5.\+5.\+1}{官方 Lua 5.\+5.\+1}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md90}
+
+\begin{DoxyItemize}
+\item {\bfseries{标准分配器}}:\+ 官方实现主要依赖 {\ttfamily \doxylink{lmem_8c_a7dd4e9ddf6987797216fa9cf4bc23954}{lua\+M\+\_\+realloc\+\_\+}}、{\ttfamily \doxylink{lmem_8c_a36b12d49a937e5de982e2a2a135e6824}{lua\+M\+\_\+free\+\_\+}} 等函数，这些函数直接封装了用户提供的内存分配器 (通常是 {\ttfamily realloc})。
+\item {\bfseries{无内置内存池}}:\+ 小对象的分配直接由底层分配器处理，没有内置的小对象优化机制。
+\end{DoxyItemize}\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md91}{}\doxysubsection{\texorpdfstring{XCLUA (本项目)}{XCLUA (本项目)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md91}
+
+\begin{DoxyItemize}
+\item {\bfseries{内置小对象内存池 (Small Object Memory Pool)}}:\+
+\begin{DoxyItemize}
+\item 在 {\ttfamily \doxylink{lmem_8c}{lmem.\+c}} 中实现了 {\ttfamily \doxylink{lmem_8c_afb4cbf701f74de76eb0e9888c2a5700d}{lua\+M\+\_\+poolalloc}}、{\ttfamily \doxylink{lmem_8c_a8b2853c6431505988f2effe820760f51}{lua\+M\+\_\+poolfree}} 等函数。
+\item 在 {\ttfamily \doxylink{structglobal___state}{global\+\_\+\+State}} ({\ttfamily \doxylink{lstate_8h_source}{lstate.\+h}}) 中增加了 {\ttfamily \doxylink{struct_mem_pool_arena}{Mem\+Pool\+Arena}} 和 {\ttfamily \doxylink{struct_mem_pool}{Mem\+Pool}} 结构。
+\item {\bfseries{机制}}:\+ 针对 1024 字节以下的小对象，使用预分配的空闲链表 (Free List) 进行管理，减少了频繁调用系统 {\ttfamily realloc} 的开销。
+\item {\bfseries{集成}}:\+ {\ttfamily \doxylink{lmem_8c_a2b799ad1487e9ddf680e6b6144195cc2}{lua\+M\+\_\+poolgc}} 函数被钩入 GC 循环中，用于在垃圾回收时整理和收缩内存池。
+\end{DoxyItemize}
+\end{DoxyItemize}\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md92}{}\doxysection{\texorpdfstring{3. 垃圾回收 (Garbage Collection)}{3. 垃圾回收 (Garbage Collection)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md92}
+\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md93}{}\doxysubsection{\texorpdfstring{共同点}{共同点}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md93}
+
+\begin{DoxyItemize}
+\item {\bfseries{分代 GC (Generational GC)}}:\+ 两者都实现了分代垃圾回收机制 (在 Lua 5.\+4 中引入)。
+\begin{DoxyItemize}
+\item 使用 {\ttfamily G\+\_\+\+NEW}, {\ttfamily G\+\_\+\+SURVIVAL}, {\ttfamily G\+\_\+\+OLD1}, {\ttfamily G\+\_\+\+OLD} 等标记来管理对象生命周期。
+\item 支持 {\ttfamily KGC\+\_\+\+INC} (增量模式) 和 {\ttfamily KGC\+\_\+\+GEN} (分代模式)。
+\end{DoxyItemize}
+\end{DoxyItemize}\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md94}{}\doxysubsection{\texorpdfstring{差异点 (XCLUA 特有)}{差异点 (XCLUA 特有)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md94}
+
+\begin{DoxyItemize}
+\item {\bfseries{内存池清理钩子}}:\+ XCLUA 在 {\ttfamily \doxylink{lgc_8c}{lgc.\+c}} 的 {\ttfamily singlestep} 函数 ({\ttfamily GCSswpend} 阶段) 和 {\ttfamily \doxylink{lgc_8c_ac48130e5263ad8be09a9c51dae6125b9}{lua\+C\+\_\+fullgc}} 中调用了 {\ttfamily lua\+M\+\_\+poolgc(\+L)}。这意味着每次完整的 GC 循环结束或紧急 GC 时，都会尝试释放内存池中多余的缓存块。
+\end{DoxyItemize}\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md95}{}\doxysection{\texorpdfstring{4. 对象结构与混淆 (Object Structure \& Obfuscation)}{4. 对象结构与混淆 (Object Structure \& Obfuscation)}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md95}
+XCLUA 为了支持代码混淆和虚拟机保护，对核心数据结构进行了扩展：
+
+
+\begin{DoxyItemize}
+\item {\bfseries{\doxylink{struct_proto}{Proto} (函数原型)}}:\+
+\begin{DoxyItemize}
+\item 增加了 {\ttfamily difierline\+\_\+mode} (混淆模式), {\ttfamily difierline\+\_\+magicnum} (魔数), {\ttfamily difierline\+\_\+data} (混淆数据)。
+\item 增加了 {\ttfamily vm\+\_\+code\+\_\+table} 指针，用于指向自定义的 VM 指令表。
+\end{DoxyItemize}
+\item {\bfseries{\doxylink{structglobal___state}{global\+\_\+\+State} (全局状态)}}:\+
+\begin{DoxyItemize}
+\item 增加了 {\ttfamily vm\+\_\+code\+\_\+list} 链表，用于管理加载的混淆代码表。
+\end{DoxyItemize}
+\end{DoxyItemize}\hypertarget{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md96}{}\doxysection{\texorpdfstring{5. 总结}{5. 总结}}\label{md__r_e_p_o_r_t___g_c___a_n_a_l_y_s_i_s_autotoc_md96}
+XCLUA 基于 Lua 5.\+4/\+5.5 的核心架构，但在内存管理上引入了\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}专用的内存池\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}以优化小对象性能，并在 GC 流程中加入了对该内存池的维护。此外，为了支持 VM 保护和代码混淆，核心对象结构 ({\ttfamily \doxylink{struct_proto}{Proto}}) 被显著扩展。 

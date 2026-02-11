@@ -1,0 +1,587 @@
+\doxysection{ldo.\+c File Reference}
+\hypertarget{ldo_8c}{}\label{ldo_8c}\index{ldo.c@{ldo.c}}
+
+
+Stack and Call structure of Lua.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$setjmp.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}lapi.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldebug.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lfunc.\+h"{}}\newline
+{\ttfamily \+\#include "{}lgc.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}lopcodes.\+h"{}}\newline
+{\ttfamily \+\#include "{}lparser.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstring.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltable.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltm.\+h"{}}\newline
+{\ttfamily \+\#include "{}lundump.\+h"{}}\newline
+{\ttfamily \+\#include "{}lvm.\+h"{}}\newline
+{\ttfamily \+\#include "{}lzio.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{structlua__longjmp}{lua\+\_\+longjmp}}
+\item 
+struct \doxymbox{\hyperlink{struct_close_p}{CloseP}}
+\item 
+struct \doxymbox{\hyperlink{struct_s_parser}{SParser}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{ldo_8c_abf47d19189f0d7b1e0f84faf66d435d2}\label{ldo_8c_abf47d19189f0d7b1e0f84faf66d435d2} 
+\+\#define {\bfseries ldo\+\_\+c}
+\item 
+\Hypertarget{ldo_8c_abf0b3947b59218777a8e928a10be205b}\label{ldo_8c_abf0b3947b59218777a8e928a10be205b} 
+\+\#define {\bfseries LUA\+\_\+\+CORE}
+\item 
+\+\#define \doxymbox{\hyperlink{ldo_8c_aacf011339715413692751d7e59960e78}{errorstatus}}(s)
+\item 
+\+\#define \doxymbox{\hyperlink{ldo_8c_a6063bddfdb6aa25b0d11e89227653b6d}{LUAI\+\_\+\+THROW}}(L,  c)
+\item 
+\+\#define \doxymbox{\hyperlink{ldo_8c_ad7040aa6a328fda34b33b749d3f502c8}{LUAI\+\_\+\+TRY}}(L,  c,  a)
+\item 
+\Hypertarget{ldo_8c_a885acd5de75c1203f3aec71cd6dba84f}\label{ldo_8c_a885acd5de75c1203f3aec71cd6dba84f} 
+\+\#define {\bfseries luai\+\_\+jmpbuf}~jmp\+\_\+buf
+\item 
+\Hypertarget{ldo_8c_ab7ba4de3c831b87b49067153431bb166}\label{ldo_8c_ab7ba4de3c831b87b49067153431bb166} 
+\+\#define {\bfseries STACKERRSPACE}~200
+\item 
+\Hypertarget{ldo_8c_a07a9f6defcd7ca2339e43e854ee1a0a5}\label{ldo_8c_a07a9f6defcd7ca2339e43e854ee1a0a5} 
+\+\#define {\bfseries MAXSTACK\+\_\+\+BYSIZET}~((MAX\+\_\+\+SIZET /\+ sizeof(\doxymbox{\hyperlink{union_stack_value}{Stack\+Value}})) -\/ STACKERRSPACE)
+\item 
+\+\#define \doxymbox{\hyperlink{ldo_8c_aacca6649d32984be8e1aa076bf42fe46}{MAXSTACK}}
+\item 
+\Hypertarget{ldo_8c_a13ef7d7c1a1a2c2deafbfc4e6bccaf2e}\label{ldo_8c_a13ef7d7c1a1a2c2deafbfc4e6bccaf2e} 
+\+\#define {\bfseries ERRORSTACKSIZE}~(MAXSTACK + STACKERRSPACE)
+\item 
+\Hypertarget{ldo_8c_abbf6140d25852b4c5e05921f9efad53d}\label{ldo_8c_abbf6140d25852b4c5e05921f9efad53d} 
+\+\#define {\bfseries LUAI\+\_\+\+STRICT\+\_\+\+ADDRESS}~1
+\item 
+\+\#define \doxymbox{\hyperlink{ldo_8c_a6d23415e0632f518f78ab3e4bf2ea7dc}{next\+\_\+ci}}(L)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{ldo_8c_a045288fccc4b95241d8bc09a0396efac}\label{ldo_8c_a045288fccc4b95241d8bc09a0396efac} 
+typedef struct lua\+\_\+longjmp {\bfseries lua\+\_\+longjmp}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \doxymbox{\hyperlink{ldo_8c_a9153a47dea14648c3ab2233c0e1adf72}{lua\+D\+\_\+seterrorobj}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, TStatus errcode, Stk\+Id oldtop)
+\begin{DoxyCompactList}\small\item\em Sets an error object on the stack. \end{DoxyCompactList}\item 
+l\+\_\+noret \doxymbox{\hyperlink{ldo_8c_a717a80f91a6e8dd85101173268d94eca}{lua\+D\+\_\+throw}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, TStatus errcode)
+\begin{DoxyCompactList}\small\item\em Throws a Lua error. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{ldo_8c_ab0872b1738a995ecbf1cdc8a9bc0fdf6}{lua\+D\+\_\+rawrunprotected}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Pfunc f, void \texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Runs a function in protected mode (catching errors). \end{DoxyCompactList}\item 
+\Hypertarget{ldo_8c_a436a0bcb2a1101e2ac4e841749619c34}\label{ldo_8c_a436a0bcb2a1101e2ac4e841749619c34} 
+l\+\_\+noret {\bfseries lua\+D\+\_\+errerr} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\item 
+\Hypertarget{ldo_8c_af451186cebad10333f762b8a7513e943}\label{ldo_8c_af451186cebad10333f762b8a7513e943} 
+int {\bfseries lua\+D\+\_\+checkminstack} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\item 
+int \doxymbox{\hyperlink{ldo_8c_a75b8b0016e9182d4fd9f71c1a7238e8a}{lua\+D\+\_\+reallocstack}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int newsize, int raiseerror)
+\begin{DoxyCompactList}\small\item\em Reallocates the stack to a new size. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{ldo_8c_a728937587ac9d9e316bd410991f11221}{lua\+D\+\_\+growstack}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int n, int raiseerror)
+\begin{DoxyCompactList}\small\item\em Grows the stack by at least {\ttfamily n} elements. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ldo_8c_a219aa86777779dccae2c1bf9008db70a}{lua\+D\+\_\+shrinkstack}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Shrinks the stack if it is too large compared to current use. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ldo_8c_a4dd006aa3210fdc854d0441e2a98c9af}{lua\+D\+\_\+inctop}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Increments the stack top and checks for stack overflow. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ldo_8c_aa74dd2ed1bf68092213c0cd69d3a8aab}{lua\+D\+\_\+hook}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int event, int line, int ftransfer, int ntransfer)
+\begin{DoxyCompactList}\small\item\em Calls a hook for the given event. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ldo_8c_a5f30116d7e47e3db1fd226e22e903d08}{lua\+D\+\_\+hookcall}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}ci)
+\begin{DoxyCompactList}\small\item\em Executes a call hook for Lua functions. \end{DoxyCompactList}\item 
+\Hypertarget{ldo_8c_a047c9db54259b408e416f1846ba00b8c}\label{ldo_8c_a047c9db54259b408e416f1846ba00b8c} 
+l\+\_\+sinline void {\bfseries genmoveresults} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id res, int nres, int wanted)
+\item 
+\Hypertarget{ldo_8c_a7d1fb513780cf87698edd0f71f6b767b}\label{ldo_8c_a7d1fb513780cf87698edd0f71f6b767b} 
+l\+\_\+sinline void {\bfseries moveresults} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id res, int nres, int wanted)
+\item 
+void \doxymbox{\hyperlink{ldo_8c_a93ef0e89dcfdd64224670aa54d7e4f5b}{lua\+D\+\_\+poscall}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}ci, int nres)
+\begin{DoxyCompactList}\small\item\em Finishes a function call. \end{DoxyCompactList}\item 
+\Hypertarget{ldo_8c_adfebe876651cdd29bf0f7528bc26db01}\label{ldo_8c_adfebe876651cdd29bf0f7528bc26db01} 
+l\+\_\+sinline \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*} {\bfseries prep\+Call\+Info} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int nret, int mask, Stk\+Id top)
+\item 
+\Hypertarget{ldo_8c_a5c5efafea776cf81bc7234f5a02990df}\label{ldo_8c_a5c5efafea776cf81bc7234f5a02990df} 
+l\+\_\+sinline int {\bfseries precallC} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int nresults, lua\+\_\+\+CFunction f)
+\item 
+\Hypertarget{ldo_8c_a7b2db45c06ec8fa9f06d90adedf382fc}\label{ldo_8c_a7b2db45c06ec8fa9f06d90adedf382fc} 
+int {\bfseries lua\+D\+\_\+pretailcall} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}ci, Stk\+Id func, int narg1, int delta)
+\item 
+\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ldo_8c_a0a4192014fb6fe7580d97802a2bbaccb}{lua\+D\+\_\+precall}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int nresults)
+\begin{DoxyCompactList}\small\item\em Prepares the call to a function (C or Lua). \end{DoxyCompactList}\item 
+\Hypertarget{ldo_8c_a4f4ebad7879dc4379dd557725278ffef}\label{ldo_8c_a4f4ebad7879dc4379dd557725278ffef} 
+l\+\_\+sinline void {\bfseries ccall} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int n\+Results, l\+\_\+uint32 inc)
+\item 
+void \doxymbox{\hyperlink{ldo_8c_a5483fddd87ca999e7d037bf397ab7997}{lua\+D\+\_\+call}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int n\+Results)
+\begin{DoxyCompactList}\small\item\em External interface for \textquotesingle{}ccall\textquotesingle{}. Calls a function. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ldo_8c_a61c0a0185ef5ae1493dad10027f4db7e}{lua\+D\+\_\+callnoyield}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id func, int n\+Results)
+\begin{DoxyCompactList}\small\item\em Similar to \textquotesingle{}lua\+D\+\_\+call\textquotesingle{}, but does not allow yields during the call. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ldo_8c_ad07756c576e4e989a7ca417c1d691d2a}{lua\+\_\+resume}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}from, int nargs, int \texorpdfstring{$\ast$}{*}nresults)
+\begin{DoxyCompactList}\small\item\em Resumes a coroutine. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ldo_8c_a490ddb801dda485ec5a94236d82477d2}{lua\+\_\+isyieldable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Checks if a coroutine can yield. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ldo_8c_a40d0ec26d9da8d2913c90158a788d019}{lua\+\_\+yieldk}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int nresults, lua\+\_\+\+KContext ctx, lua\+\_\+\+KFunction k)
+\begin{DoxyCompactList}\small\item\em Yields a coroutine. \end{DoxyCompactList}\item 
+\Hypertarget{ldo_8c_ae31623da75dbabe97ca5b144707a0711}\label{ldo_8c_ae31623da75dbabe97ca5b144707a0711} 
+TStatus {\bfseries lua\+D\+\_\+closeprotected} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, ptrdiff\+\_\+t level, TStatus status)
+\item 
+int \doxymbox{\hyperlink{ldo_8c_a1ad7f845cc62b110e3fcc0ae187d7c85}{lua\+D\+\_\+pcall}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Pfunc func, void \texorpdfstring{$\ast$}{*}u, ptrdiff\+\_\+t old\+\_\+top, ptrdiff\+\_\+t ef)
+\begin{DoxyCompactList}\small\item\em Calls a C function in protected mode. \end{DoxyCompactList}\item 
+TStatus \doxymbox{\hyperlink{ldo_8c_a0d18a041994ac3c6eda251e309ba363a}{lua\+D\+\_\+protectedparser}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, ZIO \texorpdfstring{$\ast$}{*}z, const char \texorpdfstring{$\ast$}{*}name, const char \texorpdfstring{$\ast$}{*}mode)
+\begin{DoxyCompactList}\small\item\em Parses a chunk in protected mode. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Stack and Call structure of Lua. 
+
+This file handles the stack management and function calls in Lua. 
+
+\label{doc-define-members}
+\Hypertarget{ldo_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{ldo_8c_aacf011339715413692751d7e59960e78}\index{ldo.c@{ldo.c}!errorstatus@{errorstatus}}
+\index{errorstatus@{errorstatus}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{errorstatus}{errorstatus}}
+{\footnotesize\ttfamily \label{ldo_8c_aacf011339715413692751d7e59960e78} 
+\+\#define errorstatus(\begin{DoxyParamCaption}\item[{}]{s}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((s)\ >\ LUA\_YIELD)}
+
+\end{DoxyCode}
+\Hypertarget{ldo_8c_a6063bddfdb6aa25b0d11e89227653b6d}\index{ldo.c@{ldo.c}!LUAI\_THROW@{LUAI\_THROW}}
+\index{LUAI\_THROW@{LUAI\_THROW}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{LUAI\_THROW}{LUAI\_THROW}}
+{\footnotesize\ttfamily \label{ldo_8c_a6063bddfdb6aa25b0d11e89227653b6d} 
+\+\#define LUAI\+\_\+\+THROW(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{c}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{longjmp((c)-\/>b,\ 1)}
+
+\end{DoxyCode}
+\Hypertarget{ldo_8c_ad7040aa6a328fda34b33b749d3f502c8}\index{ldo.c@{ldo.c}!LUAI\_TRY@{LUAI\_TRY}}
+\index{LUAI\_TRY@{LUAI\_TRY}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{LUAI\_TRY}{LUAI\_TRY}}
+{\footnotesize\ttfamily \label{ldo_8c_ad7040aa6a328fda34b33b749d3f502c8} 
+\+\#define LUAI\+\_\+\+TRY(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{c}{, }\item[{}]{a}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (setjmp((c)-\/>b)\ ==\ 0)\ \{\ a\ \}}
+
+\end{DoxyCode}
+\Hypertarget{ldo_8c_aacca6649d32984be8e1aa076bf42fe46}\index{ldo.c@{ldo.c}!MAXSTACK@{MAXSTACK}}
+\index{MAXSTACK@{MAXSTACK}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{MAXSTACK}{MAXSTACK}}
+{\footnotesize\ttfamily \label{ldo_8c_aacca6649d32984be8e1aa076bf42fe46} 
+\+\#define MAXSTACK}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{cast\_int(LUAI\_MAXSTACK\ <\ MAXSTACK\_BYSIZET\ \ \(\backslash\)}
+\DoxyCodeLine{?\ LUAI\_MAXSTACK\ :\ MAXSTACK\_BYSIZET)}
+
+\end{DoxyCode}
+\Hypertarget{ldo_8c_a6d23415e0632f518f78ab3e4bf2ea7dc}\index{ldo.c@{ldo.c}!next\_ci@{next\_ci}}
+\index{next\_ci@{next\_ci}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{next\_ci}{next\_ci}}
+{\footnotesize\ttfamily \label{ldo_8c_a6d23415e0632f518f78ab3e4bf2ea7dc} 
+\+\#define next\+\_\+ci(\begin{DoxyParamCaption}\item[{}]{L}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(L-\/>ci-\/>next\ ?\ L-\/>ci-\/>next\ :\ \doxymbox{\hyperlink{lstate_8c_abc498fb09da07164ad447e5f1a401689}{luaE\_extendCI}}(L))}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{ldo_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{ldo_8c_a490ddb801dda485ec5a94236d82477d2}\index{ldo.c@{ldo.c}!lua\_isyieldable@{lua\_isyieldable}}
+\index{lua\_isyieldable@{lua\_isyieldable}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{lua\_isyieldable()}{lua\_isyieldable()}}
+{\footnotesize\ttfamily \label{ldo_8c_a490ddb801dda485ec5a94236d82477d2} 
+LUA\+\_\+\+API int lua\+\_\+isyieldable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Checks if a coroutine can yield. 
+
+Returns 1 if the given coroutine can yield, and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The coroutine state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if yieldable, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_ad07756c576e4e989a7ca417c1d691d2a}\index{ldo.c@{ldo.c}!lua\_resume@{lua\_resume}}
+\index{lua\_resume@{lua\_resume}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{lua\_resume()}{lua\_resume()}}
+{\footnotesize\ttfamily \label{ldo_8c_ad07756c576e4e989a7ca417c1d691d2a} 
+LUA\+\_\+\+API int lua\+\_\+resume (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{from}{, }\item[{int}]{nargs}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{nresults}{}\end{DoxyParamCaption})}
+
+
+
+Resumes a coroutine. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The coroutine state. \\
+\hline
+{\em from} & The thread that resumed this coroutine. \\
+\hline
+{\em nargs} & Number of arguments. \\
+\hline
+{\em nresults} & Output for number of results. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Status code (LUA\+\_\+\+OK, LUA\+\_\+\+YIELD, or error). 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a40d0ec26d9da8d2913c90158a788d019}\index{ldo.c@{ldo.c}!lua\_yieldk@{lua\_yieldk}}
+\index{lua\_yieldk@{lua\_yieldk}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{lua\_yieldk()}{lua\_yieldk()}}
+{\footnotesize\ttfamily \label{ldo_8c_a40d0ec26d9da8d2913c90158a788d019} 
+LUA\+\_\+\+API int lua\+\_\+yieldk (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{nresults}{, }\item[{lua\+\_\+\+KContext}]{ctx}{, }\item[{lua\+\_\+\+KFunction}]{k}{}\end{DoxyParamCaption})}
+
+
+
+Yields a coroutine. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The coroutine state. \\
+\hline
+{\em nresults} & Number of results. \\
+\hline
+{\em ctx} & Continuation context. \\
+\hline
+{\em k} & Continuation function. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 on success (actually returns to lua\+D\+\_\+hook, does not return to caller). 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a5483fddd87ca999e7d037bf397ab7997}\index{ldo.c@{ldo.c}!luaD\_call@{luaD\_call}}
+\index{luaD\_call@{luaD\_call}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_call()}{luaD\_call()}}
+{\footnotesize\ttfamily \label{ldo_8c_a5483fddd87ca999e7d037bf397ab7997} 
+void lua\+D\+\_\+call (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Stk\+Id}]{func}{, }\item[{int}]{n\+Results}{}\end{DoxyParamCaption})}
+
+
+
+External interface for \textquotesingle{}ccall\textquotesingle{}. Calls a function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em func} & The function to call. \\
+\hline
+{\em n\+Results} & Number of results expected. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a61c0a0185ef5ae1493dad10027f4db7e}\index{ldo.c@{ldo.c}!luaD\_callnoyield@{luaD\_callnoyield}}
+\index{luaD\_callnoyield@{luaD\_callnoyield}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_callnoyield()}{luaD\_callnoyield()}}
+{\footnotesize\ttfamily \label{ldo_8c_a61c0a0185ef5ae1493dad10027f4db7e} 
+void lua\+D\+\_\+callnoyield (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Stk\+Id}]{func}{, }\item[{int}]{n\+Results}{}\end{DoxyParamCaption})}
+
+
+
+Similar to \textquotesingle{}lua\+D\+\_\+call\textquotesingle{}, but does not allow yields during the call. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em func} & The function to call. \\
+\hline
+{\em n\+Results} & Number of results expected. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a728937587ac9d9e316bd410991f11221}\index{ldo.c@{ldo.c}!luaD\_growstack@{luaD\_growstack}}
+\index{luaD\_growstack@{luaD\_growstack}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_growstack()}{luaD\_growstack()}}
+{\footnotesize\ttfamily \label{ldo_8c_a728937587ac9d9e316bd410991f11221} 
+int lua\+D\+\_\+growstack (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{n}{, }\item[{int}]{raiseerror}{}\end{DoxyParamCaption})}
+
+
+
+Grows the stack by at least {\ttfamily n} elements. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em n} & Number of elements to grow by. \\
+\hline
+{\em raiseerror} & Whether to raise an error on allocation failure or overflow. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_aa74dd2ed1bf68092213c0cd69d3a8aab}\index{ldo.c@{ldo.c}!luaD\_hook@{luaD\_hook}}
+\index{luaD\_hook@{luaD\_hook}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_hook()}{luaD\_hook()}}
+{\footnotesize\ttfamily \label{ldo_8c_aa74dd2ed1bf68092213c0cd69d3a8aab} 
+void lua\+D\+\_\+hook (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{event}{, }\item[{int}]{line}{, }\item[{int}]{ftransfer}{, }\item[{int}]{ntransfer}{}\end{DoxyParamCaption})}
+
+
+
+Calls a hook for the given event. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em event} & The event type (e.\+g., LUA\+\_\+\+HOOKCALL). \\
+\hline
+{\em line} & The current line number. \\
+\hline
+{\em ftransfer} & First index for transfer (for returns). \\
+\hline
+{\em ntransfer} & Number of values transferred (for returns). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a5f30116d7e47e3db1fd226e22e903d08}\index{ldo.c@{ldo.c}!luaD\_hookcall@{luaD\_hookcall}}
+\index{luaD\_hookcall@{luaD\_hookcall}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_hookcall()}{luaD\_hookcall()}}
+{\footnotesize\ttfamily \label{ldo_8c_a5f30116d7e47e3db1fd226e22e903d08} 
+void lua\+D\+\_\+hookcall (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}}]{ci}{}\end{DoxyParamCaption})}
+
+
+
+Executes a call hook for Lua functions. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ci} & The \doxylink{struct_call_info}{Call\+Info} of the function. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a4dd006aa3210fdc854d0441e2a98c9af}\index{ldo.c@{ldo.c}!luaD\_inctop@{luaD\_inctop}}
+\index{luaD\_inctop@{luaD\_inctop}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_inctop()}{luaD\_inctop()}}
+{\footnotesize\ttfamily \label{ldo_8c_a4dd006aa3210fdc854d0441e2a98c9af} 
+void lua\+D\+\_\+inctop (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Increments the stack top and checks for stack overflow. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a1ad7f845cc62b110e3fcc0ae187d7c85}\index{ldo.c@{ldo.c}!luaD\_pcall@{luaD\_pcall}}
+\index{luaD\_pcall@{luaD\_pcall}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_pcall()}{luaD\_pcall()}}
+{\footnotesize\ttfamily \label{ldo_8c_a1ad7f845cc62b110e3fcc0ae187d7c85} 
+int lua\+D\+\_\+pcall (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Pfunc}]{func}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{u}{, }\item[{ptrdiff\+\_\+t}]{old\+\_\+top}{, }\item[{ptrdiff\+\_\+t}]{ef}{}\end{DoxyParamCaption})}
+
+
+
+Calls a C function in protected mode. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em func} & The function to call. \\
+\hline
+{\em u} & User data. \\
+\hline
+{\em old\+\_\+top} & Stack top before the call. \\
+\hline
+{\em ef} & Error function index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The status code. 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a93ef0e89dcfdd64224670aa54d7e4f5b}\index{ldo.c@{ldo.c}!luaD\_poscall@{luaD\_poscall}}
+\index{luaD\_poscall@{luaD\_poscall}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_poscall()}{luaD\_poscall()}}
+{\footnotesize\ttfamily \label{ldo_8c_a93ef0e89dcfdd64224670aa54d7e4f5b} 
+void lua\+D\+\_\+poscall (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}}]{ci}{, }\item[{int}]{nres}{}\end{DoxyParamCaption})}
+
+
+
+Finishes a function call. 
+
+Calls hook if necessary, moves current number of results to proper place, and returns to previous call info.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ci} & The \doxylink{struct_call_info}{Call\+Info} of the finished function. \\
+\hline
+{\em nres} & The number of results returned. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a0a4192014fb6fe7580d97802a2bbaccb}\index{ldo.c@{ldo.c}!luaD\_precall@{luaD\_precall}}
+\index{luaD\_precall@{luaD\_precall}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_precall()}{luaD\_precall()}}
+{\footnotesize\ttfamily \label{ldo_8c_a0a4192014fb6fe7580d97802a2bbaccb} 
+\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*} lua\+D\+\_\+precall (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Stk\+Id}]{func}{, }\item[{int}]{nresults}{}\end{DoxyParamCaption})}
+
+
+
+Prepares the call to a function (C or Lua). 
+
+For C functions, it also does the call.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em func} & The function to call (index in stack). \\
+\hline
+{\em nresults} & Number of results expected. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The \doxylink{struct_call_info}{Call\+Info} to be executed (if Lua function), or NULL (if C function). 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a0d18a041994ac3c6eda251e309ba363a}\index{ldo.c@{ldo.c}!luaD\_protectedparser@{luaD\_protectedparser}}
+\index{luaD\_protectedparser@{luaD\_protectedparser}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_protectedparser()}{luaD\_protectedparser()}}
+{\footnotesize\ttfamily \label{ldo_8c_a0d18a041994ac3c6eda251e309ba363a} 
+TStatus lua\+D\+\_\+protectedparser (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{mode}{}\end{DoxyParamCaption})}
+
+
+
+Parses a chunk in protected mode. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em z} & The input stream. \\
+\hline
+{\em name} & The chunk name. \\
+\hline
+{\em mode} & The loading mode. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The status code. 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_ab0872b1738a995ecbf1cdc8a9bc0fdf6}\index{ldo.c@{ldo.c}!luaD\_rawrunprotected@{luaD\_rawrunprotected}}
+\index{luaD\_rawrunprotected@{luaD\_rawrunprotected}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_rawrunprotected()}{luaD\_rawrunprotected()}}
+{\footnotesize\ttfamily \label{ldo_8c_ab0872b1738a995ecbf1cdc8a9bc0fdf6} 
+int lua\+D\+\_\+rawrunprotected (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Pfunc}]{f}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Runs a function in protected mode (catching errors). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em f} & The function to call. \\
+\hline
+{\em ud} & User data for the function. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The status code (LUA\+\_\+\+OK or error code). 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a75b8b0016e9182d4fd9f71c1a7238e8a}\index{ldo.c@{ldo.c}!luaD\_reallocstack@{luaD\_reallocstack}}
+\index{luaD\_reallocstack@{luaD\_reallocstack}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_reallocstack()}{luaD\_reallocstack()}}
+{\footnotesize\ttfamily \label{ldo_8c_a75b8b0016e9182d4fd9f71c1a7238e8a} 
+int lua\+D\+\_\+reallocstack (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{newsize}{, }\item[{int}]{raiseerror}{}\end{DoxyParamCaption})}
+
+
+
+Reallocates the stack to a new size. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em newsize} & The new size. \\
+\hline
+{\em raiseerror} & Whether to raise an error on allocation failure. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{ldo_8c_a9153a47dea14648c3ab2233c0e1adf72}\index{ldo.c@{ldo.c}!luaD\_seterrorobj@{luaD\_seterrorobj}}
+\index{luaD\_seterrorobj@{luaD\_seterrorobj}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_seterrorobj()}{luaD\_seterrorobj()}}
+{\footnotesize\ttfamily \label{ldo_8c_a9153a47dea14648c3ab2233c0e1adf72} 
+void lua\+D\+\_\+seterrorobj (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{TStatus}]{errcode}{, }\item[{Stk\+Id}]{oldtop}{}\end{DoxyParamCaption})}
+
+
+
+Sets an error object on the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em errcode} & The error code. \\
+\hline
+{\em oldtop} & The stack top before the error occurred. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a219aa86777779dccae2c1bf9008db70a}\index{ldo.c@{ldo.c}!luaD\_shrinkstack@{luaD\_shrinkstack}}
+\index{luaD\_shrinkstack@{luaD\_shrinkstack}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_shrinkstack()}{luaD\_shrinkstack()}}
+{\footnotesize\ttfamily \label{ldo_8c_a219aa86777779dccae2c1bf9008db70a} 
+void lua\+D\+\_\+shrinkstack (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Shrinks the stack if it is too large compared to current use. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ldo_8c_a717a80f91a6e8dd85101173268d94eca}\index{ldo.c@{ldo.c}!luaD\_throw@{luaD\_throw}}
+\index{luaD\_throw@{luaD\_throw}!ldo.c@{ldo.c}}
+\doxysubsubsection{\texorpdfstring{luaD\_throw()}{luaD\_throw()}}
+{\footnotesize\ttfamily \label{ldo_8c_a717a80f91a6e8dd85101173268d94eca} 
+l\+\_\+noret lua\+D\+\_\+throw (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{TStatus}]{errcode}{}\end{DoxyParamCaption})}
+
+
+
+Throws a Lua error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em errcode} & The error code. \\
+\hline
+\end{DoxyParams}

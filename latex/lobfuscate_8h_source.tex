@@ -1,0 +1,347 @@
+\doxysection{lobfuscate.\+h}
+\hypertarget{lobfuscate_8h_source}{}\label{lobfuscate_8h_source}\doxymbox{\hyperlink{lobfuscate_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ }
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#ifndef\ lobfuscate\_h}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ lobfuscate\_h}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#define\ VM\_MAP\_SIZE\ 256}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#include\ "{}lopcodes.h"{}}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#include\ "{}lstate.h"{}}}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00020\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00021\ \textcolor{comment}{**\ 控制流扁平化混淆模块}}
+\DoxyCodeLine{00022\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00023\ \textcolor{comment}{**\ }}
+\DoxyCodeLine{00024\ \textcolor{comment}{**\ 控制流扁平化（Control\ Flow\ Flattening）是一种代码混淆技术，}}
+\DoxyCodeLine{00025\ \textcolor{comment}{**\ 其核心思想是将原始的控制流结构（如顺序执行、条件分支、循环等）}}
+\DoxyCodeLine{00026\ \textcolor{comment}{**\ 转换为一个统一的dispatcher-\/switch结构，使得静态分析变得困难。}}
+\DoxyCodeLine{00027\ \textcolor{comment}{**}}
+\DoxyCodeLine{00028\ \textcolor{comment}{**\ 原理：}}
+\DoxyCodeLine{00029\ \textcolor{comment}{**\ 1.\ 将代码划分为基本块（Basic\ Blocks）}}
+\DoxyCodeLine{00030\ \textcolor{comment}{**\ 2.\ 为每个基本块分配一个唯一的状态ID}}
+\DoxyCodeLine{00031\ \textcolor{comment}{**\ 3.\ 添加一个dispatcher循环，根据状态变量跳转到对应的基本块}}
+\DoxyCodeLine{00032\ \textcolor{comment}{**\ 4.\ 将原始的跳转指令转换为状态变量赋值}}
+\DoxyCodeLine{00033\ \textcolor{comment}{**}}
+\DoxyCodeLine{00034\ \textcolor{comment}{**\ 变换前:}}
+\DoxyCodeLine{00035\ \textcolor{comment}{**\ \ \ block1:}}
+\DoxyCodeLine{00036\ \textcolor{comment}{**\ \ \ \ \ ...}}
+\DoxyCodeLine{00037\ \textcolor{comment}{**\ \ \ \ \ if\ cond\ then\ goto\ block2\ else\ goto\ block3}}
+\DoxyCodeLine{00038\ \textcolor{comment}{**\ \ \ block2:}}
+\DoxyCodeLine{00039\ \textcolor{comment}{**\ \ \ \ \ ...}}
+\DoxyCodeLine{00040\ \textcolor{comment}{**\ \ \ \ \ goto\ block4}}
+\DoxyCodeLine{00041\ \textcolor{comment}{**\ \ \ block3:}}
+\DoxyCodeLine{00042\ \textcolor{comment}{**\ \ \ \ \ ...}}
+\DoxyCodeLine{00043\ \textcolor{comment}{**\ \ \ \ \ goto\ block4}}
+\DoxyCodeLine{00044\ \textcolor{comment}{**\ \ \ block4:}}
+\DoxyCodeLine{00045\ \textcolor{comment}{**\ \ \ \ \ ...}}
+\DoxyCodeLine{00046\ \textcolor{comment}{**}}
+\DoxyCodeLine{00047\ \textcolor{comment}{**\ 变换后:}}
+\DoxyCodeLine{00048\ \textcolor{comment}{**\ \ \ state\ =\ initial\_state}}
+\DoxyCodeLine{00049\ \textcolor{comment}{**\ \ \ while\ true\ do}}
+\DoxyCodeLine{00050\ \textcolor{comment}{**\ \ \ \ \ switch(state)\ \{}}
+\DoxyCodeLine{00051\ \textcolor{comment}{**\ \ \ \ \ \ \ case\ 1:\ ...\ state\ =\ cond\ ?\ 2\ :\ 3;\ break;}}
+\DoxyCodeLine{00052\ \textcolor{comment}{**\ \ \ \ \ \ \ case\ 2:\ ...\ state\ =\ 4;\ break;}}
+\DoxyCodeLine{00053\ \textcolor{comment}{**\ \ \ \ \ \ \ case\ 3:\ ...\ state\ =\ 4;\ break;}}
+\DoxyCodeLine{00054\ \textcolor{comment}{**\ \ \ \ \ \ \ case\ 4:\ ...\ return;\ break;}}
+\DoxyCodeLine{00055\ \textcolor{comment}{**\ \ \ \ \ \}}}
+\DoxyCodeLine{00056\ \textcolor{comment}{**\ \ \ end}}
+\DoxyCodeLine{00057\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ }
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_NONE\ \ \ \ \ \ \ \ \ \ \ \ \ \ 0\ \ \ \ \ \ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00063\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_CFF\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (1<<0)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_BLOCK\_SHUFFLE\ \ \ \ \ (1<<1)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00065\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_BOGUS\_BLOCKS\ \ \ \ \ \ (1<<2)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_STATE\_ENCODE\ \ \ \ \ \ (1<<3)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00067\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_NESTED\_DISPATCHER\ (1<<4)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_OPAQUE\_PREDICATES\ (1<<5)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_FUNC\_INTERLEAVE\ \ \ (1<<6)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_VM\_PROTECT\ \ \ \ \ \ \ \ (1<<7)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_BINARY\_DISPATCHER\ (1<<8)\ \ }\textcolor{preprocessor}{}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#define\ OBFUSCATE\_RANDOM\_NOP\ \ \ \ \ \ \ \ (1<<9)\ \ }\textcolor{preprocessor}{}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00080\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_basic_block}{BasicBlock}}\ \{}
+\DoxyCodeLine{00081\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_a00cd9d49fb4fffa9c2da1e564d6b98d3}{start\_pc}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00082\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_a39dd21c3b382a62c4332057de9fce1c5}{end\_pc}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00083\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_a01af24b06974f3f789c8cad298f3bb42}{state\_id}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00084\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_aa6421e6b3731977663a12d92f53d8d1e}{original\_target}};\ \ \ \ }
+\DoxyCodeLine{00085\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_a17272cf85a3bef527506bdce5f9c6799}{fall\_through}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00086\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_af0d304aa2366e5009c6185e06e9b92ef}{cond\_target}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00087\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_a79ae138d7156ae8b444f7309de291611}{is\_entry}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00088\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_basic_block_abefacbe19ef3af2b4abdecf394eb1092}{is\_exit}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00089\ \}\ \doxymbox{\hyperlink{struct_basic_block}{BasicBlock}};}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ }
+\DoxyCodeLine{00096\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ \{}
+\DoxyCodeLine{00097\ \ \ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *\doxymbox{\hyperlink{struct_c_f_f_context_af61945928c7a85683573daa75575993d}{L}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00098\ \ \ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *\doxymbox{\hyperlink{struct_c_f_f_context_ab30cf0d7b28ee3c830dd6c6a6cdde39a}{f}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00099\ \ \ \doxymbox{\hyperlink{struct_basic_block}{BasicBlock}}\ *\doxymbox{\hyperlink{struct_c_f_f_context_a43807eafe2fd5af6f4004203de751392}{blocks}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00100\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_ac105983fd42faab20d13608fac3ada86}{num\_blocks}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00101\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a853467609994c7b4cd246e902909bf83}{block\_capacity}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00102\ \ \ Instruction\ *\doxymbox{\hyperlink{struct_c_f_f_context_a3e7901f275bf1328976e415a50be49d5}{new\_code}};\ \ \ \ }
+\DoxyCodeLine{00103\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_ad6a990f08fbec2edc40e45503168d886}{new\_code\_size}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00104\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a2adfd4a9c3a34bfab982a0c5118d095a}{new\_code\_capacity}};\ \ \ \ }
+\DoxyCodeLine{00105\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a3e605bf7dfb24d989563055948031dbf}{state\_reg}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00106\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a78b9cf26573af83439472da6f8baf286}{outer\_state\_reg}};\ \ \ \ \ \ }
+\DoxyCodeLine{00107\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_aca7d7df837dd5bd0f93ea8eb86fdf9e4}{opaque\_reg1}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00108\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a6ea0de7982348960d3405648ea20707f}{opaque\_reg2}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00109\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_afac1de6cd0042731a89dd8c8fef8daa6}{func\_id\_reg}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00110\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_ac16424e2adbe62bcaff9dd3186effae5}{dispatcher\_pc}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00111\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a7cd8c829d4797f4e8310cfa4f262c78a}{outer\_dispatcher\_pc}};\ \ }
+\DoxyCodeLine{00112\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_aa3961690b1b431ec209ea579af423a60}{num\_groups}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00113\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_c_f_f_context_a1321fb4394ed508801798d3eef3947d6}{group\_starts}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00114\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a21945d3cc6358bc69f9e0689a2175093}{num\_fake\_funcs}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00115\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a2141da06b617e0c4de02316f12173afb}{seed}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00116\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_a79c72f61db65bf518c77e2dcb53a2056}{obfuscate\_flags}};\ \ \ \ \ \ }
+\DoxyCodeLine{00117\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_context_abe36d42c9c402c42af69e53d5c36477d}{skip\_pc0}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00118\ \}\ \doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}};}
+\DoxyCodeLine{00119\ }
+\DoxyCodeLine{00120\ }
+\DoxyCodeLine{00125\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_c_f_f_metadata}{CFFMetadata}}\ \{}
+\DoxyCodeLine{00126\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_aa8b9345e1ff18705bc3d43d45d8a3872}{enabled}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00127\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_ae7a86a745584e407cec3a43d29e17b97}{num\_blocks}};\ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00128\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_aa5ee5138a043ac85049980695faf915e}{state\_reg}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00129\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_afe937432383d9ca7c1272527a28ad2e7}{dispatcher\_pc}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00130\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_c_f_f_metadata_a374d4f21b79e09da4e92be61f39aff9e}{block\_mapping}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00131\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_a7e892cdaa7c869980d34b45cea6289da}{original\_size}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00132\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_c_f_f_metadata_acf798fea37de2dcf163d5e9e4f1d4f48}{seed}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00133\ \}\ \doxymbox{\hyperlink{struct_c_f_f_metadata}{CFFMetadata}};}
+\DoxyCodeLine{00134\ }
+\DoxyCodeLine{00135\ }
+\DoxyCodeLine{00136\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00137\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00138\ \textcolor{comment}{**\ Public\ API}}
+\DoxyCodeLine{00139\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00140\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00141\ }
+\DoxyCodeLine{00142\ }
+\DoxyCodeLine{00153\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a08382105422a07372cea252f4e9b7b1d}{luaO\_flatten}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f,\ \textcolor{keywordtype}{int}\ flags,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ seed,}
+\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *log\_path);}
+\DoxyCodeLine{00155\ }
+\DoxyCodeLine{00156\ }
+\DoxyCodeLine{00165\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_aadfdcce31b2ed1398b58f391b507b247}{luaO\_unflatten}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f,\ \doxymbox{\hyperlink{struct_c_f_f_metadata}{CFFMetadata}}\ *metadata);}
+\DoxyCodeLine{00166\ }
+\DoxyCodeLine{00167\ }
+\DoxyCodeLine{00177\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a737a42bcf0da54a52f38a3346262c3fc}{luaO\_serializeMetadata}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx,\ }
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ *buffer,\ \textcolor{keywordtype}{size\_t}\ *size);}
+\DoxyCodeLine{00179\ }
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00190\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_af9f3c9a0ded7c2180f7e1ccec82f031d}{luaO\_deserializeMetadata}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *buffer,\ }
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ size,\ \doxymbox{\hyperlink{struct_c_f_f_metadata}{CFFMetadata}}\ *metadata);}
+\DoxyCodeLine{00192\ }
+\DoxyCodeLine{00193\ }
+\DoxyCodeLine{00199\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lobfuscate_8h_afc2a08274c6ac8497277cfe08d0e7473}{luaO\_freeMetadata}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_c_f_f_metadata}{CFFMetadata}}\ *metadata);}
+\DoxyCodeLine{00200\ }
+\DoxyCodeLine{00201\ }
+\DoxyCodeLine{00202\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00203\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00204\ \textcolor{comment}{**\ Internal\ Helper\ Functions}}
+\DoxyCodeLine{00205\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00206\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00207\ }
+\DoxyCodeLine{00208\ }
+\DoxyCodeLine{00214\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_af9480cb85330430997eee5affa96d5c8}{luaO\_identifyBlocks}}\ (\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx);}
+\DoxyCodeLine{00215\ }
+\DoxyCodeLine{00216\ }
+\DoxyCodeLine{00222\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a6ef5018a88ffab9c5f5d288f6a74d9f2}{luaO\_isBlockTerminator}}\ (OpCode\ op);}
+\DoxyCodeLine{00223\ }
+\DoxyCodeLine{00224\ }
+\DoxyCodeLine{00230\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a0d6dabaf9252ea78e2b4a9bc4be129f1}{luaO\_isJumpInstruction}}\ (OpCode\ op);}
+\DoxyCodeLine{00231\ }
+\DoxyCodeLine{00232\ }
+\DoxyCodeLine{00239\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a281f7d60aebebe1c6a9b30ea4340aae3}{luaO\_getJumpTarget}}\ (Instruction\ inst,\ \textcolor{keywordtype}{int}\ pc);}
+\DoxyCodeLine{00240\ }
+\DoxyCodeLine{00241\ }
+\DoxyCodeLine{00247\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_aad2643292effded4bc9e7a8f68f3ee0b}{luaO\_generateDispatcher}}\ (\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx);}
+\DoxyCodeLine{00248\ }
+\DoxyCodeLine{00249\ }
+\DoxyCodeLine{00254\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lobfuscate_8h_ab8bc2edf07a551a9fd6d59225e2eb781}{luaO\_shuffleBlocks}}\ (\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx);}
+\DoxyCodeLine{00255\ }
+\DoxyCodeLine{00256\ }
+\DoxyCodeLine{00263\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a92fbd80b6b20e969c61111b856087ff2}{luaO\_encodeState}}\ (\textcolor{keywordtype}{int}\ state,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ seed);}
+\DoxyCodeLine{00264\ }
+\DoxyCodeLine{00265\ }
+\DoxyCodeLine{00272\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_afefc75bf81b33b6eebc9abe5adb9f685}{luaO\_decodeState}}\ (\textcolor{keywordtype}{int}\ encoded\_state,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ seed);}
+\DoxyCodeLine{00273\ }
+\DoxyCodeLine{00274\ }
+\DoxyCodeLine{00280\ LUAI\_FUNC\ Instruction\ \doxymbox{\hyperlink{lobfuscate_8h_a2d03df7778da6a7d3410d3716f849c8a}{luaO\_createNOP}}\ (\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ seed);}
+\DoxyCodeLine{00281\ }
+\DoxyCodeLine{00282\ }
+\DoxyCodeLine{00288\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_ac82a9fa198a5103105d3aebe7652249c}{luaO\_generateNestedDispatcher}}\ (\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx);}
+\DoxyCodeLine{00289\ }
+\DoxyCodeLine{00290\ }
+\DoxyCodeLine{00292\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00293\ \ \ \doxymbox{\hyperlink{lobfuscate_8h_ab6c60e31d023b1f597254aa5e42a3534a91c0340151042c06ce585f302c1e3f04}{OP\_ALWAYS\_TRUE}},\ \ \ \ \ }
+\DoxyCodeLine{00294\ \ \ \doxymbox{\hyperlink{lobfuscate_8h_ab6c60e31d023b1f597254aa5e42a3534abc907fe0647ce270edc4737c1a93f949}{OP\_ALWAYS\_FALSE}}\ \ \ \ \ }
+\DoxyCodeLine{00295\ \}\ \doxymbox{\hyperlink{lobfuscate_8h_ab6c60e31d023b1f597254aa5e42a3534}{OpaquePredicateType}};}
+\DoxyCodeLine{00296\ }
+\DoxyCodeLine{00297\ }
+\DoxyCodeLine{00305\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a55a1d3b9b62baaddb55706c2a6c4a75b}{luaO\_emitOpaquePredicate}}\ (\doxymbox{\hyperlink{struct_c_f_f_context}{CFFContext}}\ *ctx,\ \doxymbox{\hyperlink{lobfuscate_8h_ab6c60e31d023b1f597254aa5e42a3534}{OpaquePredicateType}}\ type,}
+\DoxyCodeLine{00306\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ *seed);}
+\DoxyCodeLine{00307\ }
+\DoxyCodeLine{00308\ }
+\DoxyCodeLine{00309\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00310\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00311\ \textcolor{comment}{**\ VM\ Protection}}
+\DoxyCodeLine{00312\ \textcolor{comment}{**\ =======================================================}}
+\DoxyCodeLine{00313\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00314\ }
+\DoxyCodeLine{00315\ }
+\DoxyCodeLine{00319\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00320\ \ \ VM\_OP\_NOP\ =\ 0,}
+\DoxyCodeLine{00321\ \ \ VM\_OP\_LOAD,}
+\DoxyCodeLine{00322\ \ \ VM\_OP\_MOVE,}
+\DoxyCodeLine{00323\ \ \ VM\_OP\_STORE,}
+\DoxyCodeLine{00324\ \ \ VM\_OP\_ADD,}
+\DoxyCodeLine{00325\ \ \ VM\_OP\_SUB,}
+\DoxyCodeLine{00326\ \ \ VM\_OP\_MUL,}
+\DoxyCodeLine{00327\ \ \ VM\_OP\_DIV,}
+\DoxyCodeLine{00328\ \ \ VM\_OP\_MOD,}
+\DoxyCodeLine{00329\ \ \ VM\_OP\_POW,}
+\DoxyCodeLine{00330\ \ \ VM\_OP\_UNM,}
+\DoxyCodeLine{00331\ \ \ VM\_OP\_IDIV,}
+\DoxyCodeLine{00332\ \ \ VM\_OP\_BAND,}
+\DoxyCodeLine{00333\ \ \ VM\_OP\_BOR,}
+\DoxyCodeLine{00334\ \ \ VM\_OP\_BXOR,}
+\DoxyCodeLine{00335\ \ \ VM\_OP\_BNOT,}
+\DoxyCodeLine{00336\ \ \ VM\_OP\_SHL,}
+\DoxyCodeLine{00337\ \ \ VM\_OP\_SHR,}
+\DoxyCodeLine{00338\ \ \ VM\_OP\_JMP,}
+\DoxyCodeLine{00339\ \ \ VM\_OP\_JEQ,}
+\DoxyCodeLine{00340\ \ \ VM\_OP\_JNE,}
+\DoxyCodeLine{00341\ \ \ VM\_OP\_JLT,}
+\DoxyCodeLine{00342\ \ \ VM\_OP\_JLE,}
+\DoxyCodeLine{00343\ \ \ VM\_OP\_JGT,}
+\DoxyCodeLine{00344\ \ \ VM\_OP\_JGE,}
+\DoxyCodeLine{00345\ \ \ VM\_OP\_CALL,}
+\DoxyCodeLine{00346\ \ \ VM\_OP\_RET,}
+\DoxyCodeLine{00347\ \ \ VM\_OP\_TAILCALL,}
+\DoxyCodeLine{00348\ \ \ VM\_OP\_NEWTABLE,}
+\DoxyCodeLine{00349\ \ \ VM\_OP\_GETTABLE,}
+\DoxyCodeLine{00350\ \ \ VM\_OP\_SETTABLE,}
+\DoxyCodeLine{00351\ \ \ VM\_OP\_GETFIELD,}
+\DoxyCodeLine{00352\ \ \ VM\_OP\_SETFIELD,}
+\DoxyCodeLine{00353\ \ \ VM\_OP\_GETI,}
+\DoxyCodeLine{00354\ \ \ VM\_OP\_SETI,}
+\DoxyCodeLine{00355\ \ \ VM\_OP\_GETTABUP,}
+\DoxyCodeLine{00356\ \ \ VM\_OP\_SETTABUP,}
+\DoxyCodeLine{00357\ \ \ VM\_OP\_CLOSURE,}
+\DoxyCodeLine{00358\ \ \ VM\_OP\_GETUPVAL,}
+\DoxyCodeLine{00359\ \ \ VM\_OP\_SETUPVAL,}
+\DoxyCodeLine{00360\ \ \ VM\_OP\_CONCAT,}
+\DoxyCodeLine{00361\ \ \ VM\_OP\_LEN,}
+\DoxyCodeLine{00362\ \ \ VM\_OP\_NOT,}
+\DoxyCodeLine{00363\ \ \ VM\_OP\_TEST,}
+\DoxyCodeLine{00364\ \ \ VM\_OP\_TESTSET,}
+\DoxyCodeLine{00365\ \ \ VM\_OP\_FORLOOP,}
+\DoxyCodeLine{00366\ \ \ VM\_OP\_FORPREP,}
+\DoxyCodeLine{00367\ \ \ VM\_OP\_TFORPREP,}
+\DoxyCodeLine{00368\ \ \ VM\_OP\_TFORCALL,}
+\DoxyCodeLine{00369\ \ \ VM\_OP\_TFORLOOP,}
+\DoxyCodeLine{00370\ \ \ VM\_OP\_VARARG,}
+\DoxyCodeLine{00371\ \ \ VM\_OP\_VARARGPREP,}
+\DoxyCodeLine{00372\ \ \ VM\_OP\_SELF,}
+\DoxyCodeLine{00373\ \ \ VM\_OP\_SETLIST,}
+\DoxyCodeLine{00374\ \ \ VM\_OP\_LOADKX,}
+\DoxyCodeLine{00375\ \ \ VM\_OP\_LOADFALSE,}
+\DoxyCodeLine{00376\ \ \ VM\_OP\_LOADTRUE,}
+\DoxyCodeLine{00377\ \ \ VM\_OP\_LOADNIL,}
+\DoxyCodeLine{00378\ \ \ VM\_OP\_MMBIN,}
+\DoxyCodeLine{00379\ \ \ VM\_OP\_MMBINI,}
+\DoxyCodeLine{00380\ \ \ VM\_OP\_MMBINK,}
+\DoxyCodeLine{00381\ \ \ VM\_OP\_EXT1,}
+\DoxyCodeLine{00382\ \ \ VM\_OP\_EXT2,}
+\DoxyCodeLine{00383\ \ \ VM\_OP\_HALT,}
+\DoxyCodeLine{00384\ \ \ VM\_OP\_COUNT}
+\DoxyCodeLine{00385\ \}\ \doxymbox{\hyperlink{lobfuscate_8h_ad2f9a3fb1b403aa84da41b2a0bdf9eb1}{VMOpCode}};}
+\DoxyCodeLine{00386\ }
+\DoxyCodeLine{00387\ }
+\DoxyCodeLine{00389\ \textcolor{keyword}{typedef}\ uint64\_t\ \doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}};}
+\DoxyCodeLine{00390\ }
+\DoxyCodeLine{00393\ \textcolor{preprocessor}{\#define\ VM\_GET\_OP(inst)\ \ \ \ ((int)((inst)\ \&\ 0xFF))}}
+\DoxyCodeLine{00394\ \textcolor{preprocessor}{\#define\ VM\_GET\_A(inst)\ \ \ \ \ ((int)(((inst)\ >>\ 8)\ \&\ 0xFFFF))}}
+\DoxyCodeLine{00395\ \textcolor{preprocessor}{\#define\ VM\_GET\_B(inst)\ \ \ \ \ ((int)(((inst)\ >>\ 24)\ \&\ 0xFFFF))}}
+\DoxyCodeLine{00396\ \textcolor{preprocessor}{\#define\ VM\_GET\_C(inst)\ \ \ \ \ ((int)(((inst)\ >>\ 40)\ \&\ 0xFFFF))}}
+\DoxyCodeLine{00397\ \textcolor{preprocessor}{\#define\ VM\_GET\_Bx(inst)\ \ \ \ ((int64\_t)(((inst)\ >>\ 24)\ \&\ 0xFFFFFFFFFFULL))}}
+\DoxyCodeLine{00398\ \textcolor{preprocessor}{\#define\ VM\_GET\_FLAGS(inst)\ ((int)(((inst)\ >>\ 56)\ \&\ 0xFF))}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00400\ }
+\DoxyCodeLine{00402\ \textcolor{preprocessor}{\#define\ VM\_MAKE\_INST(op,\ a,\ b,\ c,\ flags)\ \(\backslash\)}}
+\DoxyCodeLine{00403\ \textcolor{preprocessor}{\ \ (((uint64\_t)(op)\ \&\ 0xFF)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00404\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(a)\ \&\ 0xFFFF)\ <<\ 8)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00405\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(b)\ \&\ 0xFFFF)\ <<\ 24)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00406\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(c)\ \&\ 0xFFFF)\ <<\ 40)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00407\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(flags)\ \&\ 0xFF)\ <<\ 56))}}
+\DoxyCodeLine{00408\ }
+\DoxyCodeLine{00409\ \textcolor{preprocessor}{\#define\ VM\_MAKE\_INST\_BX(op,\ a,\ bx)\ \(\backslash\)}}
+\DoxyCodeLine{00410\ \textcolor{preprocessor}{\ \ (((uint64\_t)(op)\ \&\ 0xFF)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00411\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(a)\ \&\ 0xFFFF)\ <<\ 8)\ |\ \(\backslash\)}}
+\DoxyCodeLine{00412\ \textcolor{preprocessor}{\ \ \ (((uint64\_t)(bx)\ \&\ 0xFFFFFFFFFFULL)\ <<\ 24))}}
+\DoxyCodeLine{00413\ }
+\DoxyCodeLine{00414\ }
+\DoxyCodeLine{00416\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_v_m_protect_context}{VMProtectContext}}\ \{}
+\DoxyCodeLine{00417\ \ \ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *\doxymbox{\hyperlink{struct_v_m_protect_context_add776dafd2229084c3395732778e2abe}{L}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00418\ \ \ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *\doxymbox{\hyperlink{struct_v_m_protect_context_a4a928c4eb16559be41fecab50b59878c}{f}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00419\ \ \ \doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\ *\doxymbox{\hyperlink{struct_v_m_protect_context_aaab5ad8cd2500fea6812f6ccc2b78a65}{vm\_code}};\ \ \ }
+\DoxyCodeLine{00420\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_protect_context_ab6aca93e176a731f7a7c6d0dfe3000ec}{vm\_code\_size}};\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00421\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_protect_context_adf218b005bbe50abd827f0696d783293}{vm\_code\_capacity}};\ \ \ \ \ }
+\DoxyCodeLine{00422\ \ \ uint64\_t\ \doxymbox{\hyperlink{struct_v_m_protect_context_a55c124a0868a14afb0ed4466463e3d1c}{encrypt\_key}};\ \ \ \ \ }
+\DoxyCodeLine{00423\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_v_m_protect_context_a99f3e785cd811a7e686e69ae7f946948}{opcode\_map}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00424\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_v_m_protect_context_ad999bad4e9c9ac55229381580b6fb121}{reverse\_map}};\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00425\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_protect_context_adc36897ee3d40b7804aa81efa8d0de3b}{seed}};\ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00426\ \}\ \doxymbox{\hyperlink{struct_v_m_protect_context}{VMProtectContext}};}
+\DoxyCodeLine{00427\ }
+\DoxyCodeLine{00428\ }
+\DoxyCodeLine{00430\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_v_m_state}{VMState}}\ \{}
+\DoxyCodeLine{00431\ \ \ \doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\ *\doxymbox{\hyperlink{struct_v_m_state_a94e8a0a52ac9feb7434017e72e9e215f}{code}};\ \ \ \ \ \ }
+\DoxyCodeLine{00432\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_state_ad407eb7763d0ab8f4939937c6e6f6171}{code\_size}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00433\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_state_ac96eaea4836cb92b26da2ccee4d2ad7f}{pc}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00434\ \ \ uint64\_t\ \doxymbox{\hyperlink{struct_v_m_state_a986ca6e8eecdf8abe41931e9bb563429}{decrypt\_key}};\ \ \ \ \ }
+\DoxyCodeLine{00435\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_v_m_state_a76462bf2d42d8566b3a3cd7b010a8206}{opcode\_map}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00436\ \ \ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *\doxymbox{\hyperlink{struct_v_m_state_a2ad4ff83a06ab62d82bc2245a828f6d6}{L}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00437\ \ \ \doxymbox{\hyperlink{struct_call_info}{CallInfo}}\ *\doxymbox{\hyperlink{struct_v_m_state_ae843606907b6dcc2881101d47a611566}{ci}};\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00438\ \}\ \doxymbox{\hyperlink{struct_v_m_state}{VMState}};}
+\DoxyCodeLine{00439\ }
+\DoxyCodeLine{00440\ }
+\DoxyCodeLine{00442\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_v_m_code_table}{VMCodeTable}}\ \{}
+\DoxyCodeLine{00443\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_proto}{Proto}}\ *\doxymbox{\hyperlink{struct_v_m_code_table_ad1f4c9f46f35a6d8c4c0b01f13e0164e}{proto}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00444\ \ \ \doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\ *\doxymbox{\hyperlink{struct_v_m_code_table_a6a99ddf110a418b31a18b7f7e4153017}{code}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00445\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a0d2c891ca0e783eb70bbb8adb3cfb4b8}{size}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00446\ \ \ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a57eddd61fef8b24a826e58713c697595}{capacity}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00447\ \ \ uint64\_t\ \doxymbox{\hyperlink{struct_v_m_code_table_a3a9e0321124ff43298ff7b8224b9fc69}{encrypt\_key}};\ \ \ \ \ \ }
+\DoxyCodeLine{00448\ \ \ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_v_m_code_table_a7030b2e6f466ebfedabc15f0c1b121f7}{reverse\_map}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00449\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a33e6ef94fab17f5fbf2e968907ea6d97}{seed}};\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00450\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_v_m_code_table}{VMCodeTable}}\ *\doxymbox{\hyperlink{struct_v_m_code_table_acd6277ac6d2b2de1732b986b12c21f92}{next}};\ \ }
+\DoxyCodeLine{00451\ \}\ \doxymbox{\hyperlink{struct_v_m_code_table}{VMCodeTable}};}
+\DoxyCodeLine{00452\ }
+\DoxyCodeLine{00453\ }
+\DoxyCodeLine{00456\ }
+\DoxyCodeLine{00460\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_v_m_code_table}{VMCodeTable}}\ *\doxymbox{\hyperlink{lobfuscate_8h_a69413829b3d34e00cf2f909a2f154085}{luaO\_registerVMCode}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{struct}\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *p,}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\ *\doxymbox{\hyperlink{struct_v_m_code_table_a6a99ddf110a418b31a18b7f7e4153017}{code}},\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a0d2c891ca0e783eb70bbb8adb3cfb4b8}{size}},}
+\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint64\_t\ key,\ \textcolor{keywordtype}{int}\ *\doxymbox{\hyperlink{struct_v_m_code_table_a7030b2e6f466ebfedabc15f0c1b121f7}{reverse\_map}},}
+\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a33e6ef94fab17f5fbf2e968907ea6d97}{seed}});}
+\DoxyCodeLine{00464\ }
+\DoxyCodeLine{00468\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_v_m_code_table}{VMCodeTable}}\ *\doxymbox{\hyperlink{lobfuscate_8h_aeaafa8bb445d30e0c602e859c7bbfc7d}{luaO\_findVMCode}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{struct}\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *p);}
+\DoxyCodeLine{00469\ }
+\DoxyCodeLine{00473\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lobfuscate_8h_a53036c494910ecedbb1200b69e9c7ecb}{luaO\_freeAllVMCode}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00474\ }
+\DoxyCodeLine{00478\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_v_m_protect_context}{VMProtectContext}}\ *\doxymbox{\hyperlink{lobfuscate_8h_a54ca82991a476df8bfdce3f7b513a1b1}{luaO\_initVMContext}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f,\ }
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a33e6ef94fab17f5fbf2e968907ea6d97}{seed}});}
+\DoxyCodeLine{00480\ }
+\DoxyCodeLine{00484\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lobfuscate_8h_a4e7e3b84d53b9c785c062352db0f24f4}{luaO\_freeVMContext}}\ (\doxymbox{\hyperlink{struct_v_m_protect_context}{VMProtectContext}}\ *ctx);}
+\DoxyCodeLine{00485\ }
+\DoxyCodeLine{00489\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a29066d2265d9afbf56044d8c93cd8f13}{luaO\_convertToVM}}\ (\doxymbox{\hyperlink{struct_v_m_protect_context}{VMProtectContext}}\ *ctx);}
+\DoxyCodeLine{00490\ }
+\DoxyCodeLine{00494\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a0b1ec7fe37c061f6d390667e13fd0027}{luaO\_executeVM}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f);}
+\DoxyCodeLine{00495\ }
+\DoxyCodeLine{00499\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lobfuscate_8h_a051666cef492789cc99f848006e60f57}{luaO\_vmProtect}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{struct_v_m_code_table_a33e6ef94fab17f5fbf2e968907ea6d97}{seed}});}
+\DoxyCodeLine{00500\ }
+\DoxyCodeLine{00502\ }
+\DoxyCodeLine{00503\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{/*\ lobfuscate\_h\ */}\textcolor{preprocessor}{}}
+
+\end{DoxyCode}

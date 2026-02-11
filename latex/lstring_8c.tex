@@ -1,0 +1,307 @@
+\doxysection{lstring.\+c File Reference}
+\hypertarget{lstring_8c}{}\label{lstring_8c}\index{lstring.c@{lstring.c}}
+
+
+String table (keeps all strings handled by Lua) implementation.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$stddef.\+h$>$}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldebug.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstring.\+h"{}}\newline
+{\ttfamily \+\#include "{}lthread.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{struct_new_ext}{New\+Ext}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lstring_8c_a8d6ed28dd5a5754c79aff7a4d92fd4ae}\label{lstring_8c_a8d6ed28dd5a5754c79aff7a4d92fd4ae} 
+\+\#define {\bfseries lstring\+\_\+c}
+\item 
+\Hypertarget{lstring_8c_abf0b3947b59218777a8e928a10be205b}\label{lstring_8c_abf0b3947b59218777a8e928a10be205b} 
+\+\#define {\bfseries LUA\+\_\+\+CORE}
+\item 
+\Hypertarget{lstring_8c_aaf71787d460136689a789343d00f8acb}\label{lstring_8c_aaf71787d460136689a789343d00f8acb} 
+\+\#define {\bfseries MAXSTRTB}~cast\+\_\+int(lua\+M\+\_\+limitN(INT\+\_\+\+MAX, \doxymbox{\hyperlink{struct_t_string}{TString}}\texorpdfstring{$\ast$}{*}))
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \doxymbox{\hyperlink{lstring_8c_a99b8eea92097f11885050ff629ff0f83}{lua\+S\+\_\+eqlngstr}} (\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}a, \doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}b)
+\begin{DoxyCompactList}\small\item\em Checks if two long strings are equal. \end{DoxyCompactList}\item 
+unsigned \doxymbox{\hyperlink{lstring_8c_a9e77842c15be869c9cec4582016e4478}{lua\+S\+\_\+hashlongstr}} (\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}ts)
+\begin{DoxyCompactList}\small\item\em Computes the hash of a long string. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lstring_8c_ad47f5961683a728dd3f6d80040d1dd92}{lua\+S\+\_\+resize}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int nsize)
+\begin{DoxyCompactList}\small\item\em Resizes the string table. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lstring_8c_a10917db68b530e7756e2e1fc6ed4d172}{lua\+S\+\_\+clearcache}} (\doxymbox{\hyperlink{structglobal___state}{global\+\_\+\+State}} \texorpdfstring{$\ast$}{*}g)
+\begin{DoxyCompactList}\small\item\em Clears the string cache. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lstring_8c_abd0b9071d1e81b7bf749f4a2723bc403}{lua\+S\+\_\+init}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Initializes the string table and the string cache. \end{DoxyCompactList}\item 
+\Hypertarget{lstring_8c_aa96b54dba55266d8ec69ff8980e14749}\label{lstring_8c_aa96b54dba55266d8ec69ff8980e14749} 
+size\+\_\+t {\bfseries lua\+S\+\_\+sizelngstr} (size\+\_\+t len, int kind)
+\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_afe48506ed76e04857cca7e0851f92737}{lua\+S\+\_\+createlngstrobj}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, size\+\_\+t l)
+\begin{DoxyCompactList}\small\item\em Creates a long string object. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lstring_8c_a7cac97a1c8f2564c7f0669119dd776fe}{lua\+S\+\_\+remove}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}ts)
+\begin{DoxyCompactList}\small\item\em Removes a string from the string table. \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_af922b364943afbe71e4da82a0c50188c}{lua\+S\+\_\+newlstr}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}str, size\+\_\+t l)
+\begin{DoxyCompactList}\small\item\em Creates a new string (or reuses an existing one). \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_ac9397504696e5cbc6c4cec7649c497ec}{lua\+S\+\_\+new}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}str)
+\begin{DoxyCompactList}\small\item\em Creates a new zero-\/terminated string (or reuses an existing one). \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_udata}{Udata}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_a8211dbbff64e757d2fb96586e17063ac}{lua\+S\+\_\+newudata}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, size\+\_\+t s, unsigned short nuvalue)
+\begin{DoxyCompactList}\small\item\em Creates a new userdata. \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_a19076f7c0ad6a3dab477ed89d323e95a}{lua\+S\+\_\+newextlstr}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}s, size\+\_\+t len, lua\+\_\+\+Alloc falloc, void \texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Creates a new external string. \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lstring_8c_a40fd3122f7e40f78b247b8366adc1906}{lua\+S\+\_\+normstr}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}ts)
+\begin{DoxyCompactList}\small\item\em Normalizes an external string:\+ if it is short, internalize it. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+String table (keeps all strings handled by Lua) implementation. 
+
+This file handles the management of Lua strings, including interning of short strings, hashing, and the string cache. 
+
+\label{doc-func-members}
+\Hypertarget{lstring_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{lstring_8c_a10917db68b530e7756e2e1fc6ed4d172}\index{lstring.c@{lstring.c}!luaS\_clearcache@{luaS\_clearcache}}
+\index{luaS\_clearcache@{luaS\_clearcache}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_clearcache()}{luaS\_clearcache()}}
+{\footnotesize\ttfamily \label{lstring_8c_a10917db68b530e7756e2e1fc6ed4d172} 
+void lua\+S\+\_\+clearcache (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structglobal___state}{global\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{g}{}\end{DoxyParamCaption})}
+
+
+
+Clears the string cache. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em g} & The global state. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lstring_8c_afe48506ed76e04857cca7e0851f92737}\index{lstring.c@{lstring.c}!luaS\_createlngstrobj@{luaS\_createlngstrobj}}
+\index{luaS\_createlngstrobj@{luaS\_createlngstrobj}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_createlngstrobj()}{luaS\_createlngstrobj()}}
+{\footnotesize\ttfamily \label{lstring_8c_afe48506ed76e04857cca7e0851f92737} 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+createlngstrobj (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{size\+\_\+t}]{l}{}\end{DoxyParamCaption})}
+
+
+
+Creates a long string object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em l} & The length of the string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The new string. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a99b8eea92097f11885050ff629ff0f83}\index{lstring.c@{lstring.c}!luaS\_eqlngstr@{luaS\_eqlngstr}}
+\index{luaS\_eqlngstr@{luaS\_eqlngstr}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_eqlngstr()}{luaS\_eqlngstr()}}
+{\footnotesize\ttfamily \label{lstring_8c_a99b8eea92097f11885050ff629ff0f83} 
+int lua\+S\+\_\+eqlngstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{a}{, }\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{b}{}\end{DoxyParamCaption})}
+
+
+
+Checks if two long strings are equal. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & First string. \\
+\hline
+{\em b} & Second string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if equal, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a9e77842c15be869c9cec4582016e4478}\index{lstring.c@{lstring.c}!luaS\_hashlongstr@{luaS\_hashlongstr}}
+\index{luaS\_hashlongstr@{luaS\_hashlongstr}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_hashlongstr()}{luaS\_hashlongstr()}}
+{\footnotesize\ttfamily \label{lstring_8c_a9e77842c15be869c9cec4582016e4478} 
+unsigned lua\+S\+\_\+hashlongstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{ts}{}\end{DoxyParamCaption})}
+
+
+
+Computes the hash of a long string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ts} & The long string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The hash value. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_abd0b9071d1e81b7bf749f4a2723bc403}\index{lstring.c@{lstring.c}!luaS\_init@{luaS\_init}}
+\index{luaS\_init@{luaS\_init}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_init()}{luaS\_init()}}
+{\footnotesize\ttfamily \label{lstring_8c_abd0b9071d1e81b7bf749f4a2723bc403} 
+void lua\+S\+\_\+init (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Initializes the string table and the string cache. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lstring_8c_ac9397504696e5cbc6c4cec7649c497ec}\index{lstring.c@{lstring.c}!luaS\_new@{luaS\_new}}
+\index{luaS\_new@{luaS\_new}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_new()}{luaS\_new()}}
+{\footnotesize\ttfamily \label{lstring_8c_ac9397504696e5cbc6c4cec7649c497ec} 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+new (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{str}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new zero-\/terminated string (or reuses an existing one). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em str} & The string content. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The Lua string object. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a19076f7c0ad6a3dab477ed89d323e95a}\index{lstring.c@{lstring.c}!luaS\_newextlstr@{luaS\_newextlstr}}
+\index{luaS\_newextlstr@{luaS\_newextlstr}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_newextlstr()}{luaS\_newextlstr()}}
+{\footnotesize\ttfamily \label{lstring_8c_a19076f7c0ad6a3dab477ed89d323e95a} 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+newextlstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{, }\item[{size\+\_\+t}]{len}{, }\item[{lua\+\_\+\+Alloc}]{falloc}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new external string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & The string content. \\
+\hline
+{\em len} & The length of the string. \\
+\hline
+{\em falloc} & The deallocation function. \\
+\hline
+{\em ud} & User data for the deallocation function. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The new string object. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_af922b364943afbe71e4da82a0c50188c}\index{lstring.c@{lstring.c}!luaS\_newlstr@{luaS\_newlstr}}
+\index{luaS\_newlstr@{luaS\_newlstr}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_newlstr()}{luaS\_newlstr()}}
+{\footnotesize\ttfamily \label{lstring_8c_af922b364943afbe71e4da82a0c50188c} 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+newlstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{str}{, }\item[{size\+\_\+t}]{l}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new string (or reuses an existing one). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em str} & The string content. \\
+\hline
+{\em l} & The length of the string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The Lua string object. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a8211dbbff64e757d2fb96586e17063ac}\index{lstring.c@{lstring.c}!luaS\_newudata@{luaS\_newudata}}
+\index{luaS\_newudata@{luaS\_newudata}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_newudata()}{luaS\_newudata()}}
+{\footnotesize\ttfamily \label{lstring_8c_a8211dbbff64e757d2fb96586e17063ac} 
+\doxymbox{\hyperlink{struct_udata}{Udata}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+newudata (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{size\+\_\+t}]{s}{, }\item[{unsigned short}]{nuvalue}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new userdata. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & The size of the userdata. \\
+\hline
+{\em nuvalue} & Number of user values. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The new userdata object. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a40fd3122f7e40f78b247b8366adc1906}\index{lstring.c@{lstring.c}!luaS\_normstr@{luaS\_normstr}}
+\index{luaS\_normstr@{luaS\_normstr}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_normstr()}{luaS\_normstr()}}
+{\footnotesize\ttfamily \label{lstring_8c_a40fd3122f7e40f78b247b8366adc1906} 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} lua\+S\+\_\+normstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{ts}{}\end{DoxyParamCaption})}
+
+
+
+Normalizes an external string:\+ if it is short, internalize it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ts} & The string to normalize. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The normalized string. 
+\end{DoxyReturn}
+\Hypertarget{lstring_8c_a7cac97a1c8f2564c7f0669119dd776fe}\index{lstring.c@{lstring.c}!luaS\_remove@{luaS\_remove}}
+\index{luaS\_remove@{luaS\_remove}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_remove()}{luaS\_remove()}}
+{\footnotesize\ttfamily \label{lstring_8c_a7cac97a1c8f2564c7f0669119dd776fe} 
+void lua\+S\+\_\+remove (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{ts}{}\end{DoxyParamCaption})}
+
+
+
+Removes a string from the string table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ts} & The string to remove. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lstring_8c_ad47f5961683a728dd3f6d80040d1dd92}\index{lstring.c@{lstring.c}!luaS\_resize@{luaS\_resize}}
+\index{luaS\_resize@{luaS\_resize}!lstring.c@{lstring.c}}
+\doxysubsubsection{\texorpdfstring{luaS\_resize()}{luaS\_resize()}}
+{\footnotesize\ttfamily \label{lstring_8c_ad47f5961683a728dd3f6d80040d1dd92} 
+void lua\+S\+\_\+resize (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{nsize}{}\end{DoxyParamCaption})}
+
+
+
+Resizes the string table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em nsize} & The new size. \\
+\hline
+\end{DoxyParams}

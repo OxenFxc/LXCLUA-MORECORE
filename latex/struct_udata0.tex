@@ -1,0 +1,69 @@
+\doxysection{Udata0 Struct Reference}
+\hypertarget{struct_udata0}{}\label{struct_udata0}\index{Udata0@{Udata0}}
+
+
+\doxylink{struct_header}{Header} for userdata with no user values.  
+
+
+
+
+{\ttfamily \+\#include $<$lobject.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{struct_udata0_ac6c257c24240939a6026e1c2bb755502}\label{struct_udata0_ac6c257c24240939a6026e1c2bb755502} 
+{\bfseries Common\+Header}
+\item 
+unsigned short \doxymbox{\hyperlink{struct_udata0_a46a84ae455cc55d4c8379ff4480b9e4f}{nuvalue}}
+\item 
+size\+\_\+t \doxymbox{\hyperlink{struct_udata0_af08d0105d68e5babd31e76745c5aa1e9}{len}}
+\item 
+struct \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_udata0_af7639961b49bdd3c3f3e695c2f035b24}{metatable}}
+\item 
+\begin{tabbing}
+xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=\kill
+union \{\\
+\>{\bfseries LUAI\_MAXALIGN}\\
+\} \doxymbox{\hyperlink{struct_udata0_a1a561b22c16bc76f669e976afee7d386}{bindata}}\\
+
+\end{tabbing}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\doxylink{struct_header}{Header} for userdata with no user values. 
+
+These userdata do not need to be gray during GC, and therefore do not need a \textquotesingle{}gclist\textquotesingle{} field. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_udata0_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_udata0_a1a561b22c16bc76f669e976afee7d386}\index{Udata0@{Udata0}!bindata@{bindata}}
+\index{bindata@{bindata}!Udata0@{Udata0}}
+\doxysubsubsection{\texorpdfstring{[union]}{[union]}}
+{\footnotesize\ttfamily \label{struct_udata0_a1a561b22c16bc76f669e976afee7d386} 
+union  \{ ... \}  Udata0::\+bindata}
+
+data \Hypertarget{struct_udata0_af08d0105d68e5babd31e76745c5aa1e9}\index{Udata0@{Udata0}!len@{len}}
+\index{len@{len}!Udata0@{Udata0}}
+\doxysubsubsection{\texorpdfstring{len}{len}}
+{\footnotesize\ttfamily \label{struct_udata0_af08d0105d68e5babd31e76745c5aa1e9} 
+size\+\_\+t Udata0::\+len}
+
+number of bytes \Hypertarget{struct_udata0_af7639961b49bdd3c3f3e695c2f035b24}\index{Udata0@{Udata0}!metatable@{metatable}}
+\index{metatable@{metatable}!Udata0@{Udata0}}
+\doxysubsubsection{\texorpdfstring{metatable}{metatable}}
+{\footnotesize\ttfamily \label{struct_udata0_af7639961b49bdd3c3f3e695c2f035b24} 
+struct \doxymbox{\hyperlink{struct_table}{Table}}\texorpdfstring{$\ast$}{*} Udata0::\+metatable}
+
+metatable \Hypertarget{struct_udata0_a46a84ae455cc55d4c8379ff4480b9e4f}\index{Udata0@{Udata0}!nuvalue@{nuvalue}}
+\index{nuvalue@{nuvalue}!Udata0@{Udata0}}
+\doxysubsubsection{\texorpdfstring{nuvalue}{nuvalue}}
+{\footnotesize\ttfamily \label{struct_udata0_a46a84ae455cc55d4c8379ff4480b9e4f} 
+unsigned short Udata0::\+nuvalue}
+
+number of user values 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lobject.\+h\end{DoxyCompactItemize}

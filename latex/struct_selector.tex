@@ -1,0 +1,47 @@
+\doxysection{Selector Struct Reference}
+\hypertarget{struct_selector}{}\label{struct_selector}\index{Selector@{Selector}}
+
+
+\doxylink{struct_selector}{Selector} structure for \textquotesingle{}pick\textquotesingle{} operations.  
+
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{structl__mutex__t}{l\+\_\+mutex\+\_\+t}} \doxymbox{\hyperlink{struct_selector_af95a9eac157e177ed5ecdf3bb41768ab}{lock}}
+\item 
+\doxymbox{\hyperlink{structl__cond__t}{l\+\_\+cond\+\_\+t}} \doxymbox{\hyperlink{struct_selector_afb189ac9e68249d523873dfcf307d8c5}{cond}}
+\item 
+int \doxymbox{\hyperlink{struct_selector_a5e30925c22bea736cba2b9dba84685b0}{signaled}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\doxylink{struct_selector}{Selector} structure for \textquotesingle{}pick\textquotesingle{} operations. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_selector_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_selector_afb189ac9e68249d523873dfcf307d8c5}\index{Selector@{Selector}!cond@{cond}}
+\index{cond@{cond}!Selector@{Selector}}
+\doxysubsubsection{\texorpdfstring{cond}{cond}}
+{\footnotesize\ttfamily \label{struct_selector_afb189ac9e68249d523873dfcf307d8c5} 
+\doxymbox{\hyperlink{structl__cond__t}{l\+\_\+cond\+\_\+t}} Selector::\+cond}
+
+Condition variable for signaling \Hypertarget{struct_selector_af95a9eac157e177ed5ecdf3bb41768ab}\index{Selector@{Selector}!lock@{lock}}
+\index{lock@{lock}!Selector@{Selector}}
+\doxysubsubsection{\texorpdfstring{lock}{lock}}
+{\footnotesize\ttfamily \label{struct_selector_af95a9eac157e177ed5ecdf3bb41768ab} 
+\doxymbox{\hyperlink{structl__mutex__t}{l\+\_\+mutex\+\_\+t}} Selector::\+lock}
+
+Mutex for condition variable \Hypertarget{struct_selector_a5e30925c22bea736cba2b9dba84685b0}\index{Selector@{Selector}!signaled@{signaled}}
+\index{signaled@{signaled}!Selector@{Selector}}
+\doxysubsubsection{\texorpdfstring{signaled}{signaled}}
+{\footnotesize\ttfamily \label{struct_selector_a5e30925c22bea736cba2b9dba84685b0} 
+int Selector::\+signaled}
+
+Flag indicating if the selector has been signaled 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lthreadlib.\+c\end{DoxyCompactItemize}

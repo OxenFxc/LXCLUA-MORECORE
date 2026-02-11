@@ -1,0 +1,61 @@
+\doxysection{json\+\_\+parser.\+c File Reference}
+\hypertarget{json__parser_8c}{}\label{json__parser_8c}\index{json\_parser.c@{json\_parser.c}}
+
+
+Simple JSON parser for Lua.  
+
+
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}lauxlib.\+h"{}}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdio.\+h$>$}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{json__parser_8c_a5db49eeef5c9bb774f02996f684df238}\label{json__parser_8c_a5db49eeef5c9bb774f02996f684df238} 
+\+\#define {\bfseries MAX\+\_\+\+DEPTH}~512
+\item 
+\+\#define \doxymbox{\hyperlink{json__parser_8c_ad7f45edd4d37a88bec1e290b601633ec}{SAFE\+\_\+\+CHECK}}(n)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \doxymbox{\hyperlink{json__parser_8c_abb105fda9365b21b3cb11722018d060c}{json\+\_\+to\+\_\+lua}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}json, size\+\_\+t len, char \texorpdfstring{$\ast$}{*}out, size\+\_\+t outlen)
+\begin{DoxyCompactList}\small\item\em Converts JSON to a Lua table. Supports strings, numbers, booleans, nested objects, and arrays. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Simple JSON parser for Lua. 
+
+
+
+\label{doc-define-members}
+\Hypertarget{json__parser_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{json__parser_8c_ad7f45edd4d37a88bec1e290b601633ec}\index{json\_parser.c@{json\_parser.c}!SAFE\_CHECK@{SAFE\_CHECK}}
+\index{SAFE\_CHECK@{SAFE\_CHECK}!json\_parser.c@{json\_parser.c}}
+\doxysubsubsection{\texorpdfstring{SAFE\_CHECK}{SAFE\_CHECK}}
+{\footnotesize\ttfamily \label{json__parser_8c_ad7f45edd4d37a88bec1e290b601633ec} 
+\+\#define SAFE\+\_\+\+CHECK(\begin{DoxyParamCaption}\item[{}]{n}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ ((q\ +\ (n)\ +\ 2)\ >\ (out\ +\ outlen))\ \textcolor{keywordflow}{return}\ 0}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{json__parser_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{json__parser_8c_abb105fda9365b21b3cb11722018d060c}\index{json\_parser.c@{json\_parser.c}!json\_to\_lua@{json\_to\_lua}}
+\index{json\_to\_lua@{json\_to\_lua}!json\_parser.c@{json\_parser.c}}
+\doxysubsubsection{\texorpdfstring{json\_to\_lua()}{json\_to\_lua()}}
+{\footnotesize\ttfamily \label{json__parser_8c_abb105fda9365b21b3cb11722018d060c} 
+int json\+\_\+to\+\_\+lua (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{json}{, }\item[{size\+\_\+t}]{len}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{out}{, }\item[{size\+\_\+t}]{outlen}{}\end{DoxyParamCaption})}
+
+
+
+Converts JSON to a Lua table. Supports strings, numbers, booleans, nested objects, and arrays. 
+
+Converts JSON to a Lua table. 

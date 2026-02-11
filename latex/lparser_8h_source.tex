@@ -1,0 +1,239 @@
+\doxysection{lparser.\+h}
+\hypertarget{lparser_8h_source}{}\label{lparser_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lparser.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Lua\ Parser}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ lparser\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ lparser\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}llimits.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}lzio.h"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00016\ \textcolor{comment}{**\ Expression\ and\ variable\ descriptor.}}
+\DoxyCodeLine{00017\ \textcolor{comment}{**\ Code\ generation\ for\ variables\ and\ expressions\ can\ be\ delayed\ to\ allow}}
+\DoxyCodeLine{00018\ \textcolor{comment}{**\ optimizations;\ An\ 'expdesc'\ structure\ describes\ a\ potentially-\/delayed}}
+\DoxyCodeLine{00019\ \textcolor{comment}{**\ variable/expression.\ It\ has\ a\ description\ of\ its\ "{}main"{}\ value\ plus\ a}}
+\DoxyCodeLine{00020\ \textcolor{comment}{**\ list\ of\ conditional\ jumps\ that\ can\ also\ produce\ its\ value\ (generated}}
+\DoxyCodeLine{00021\ \textcolor{comment}{**\ by\ short-\/circuit\ operators\ 'and'/'or').}}
+\DoxyCodeLine{00022\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{comment}{/*\ kinds\ of\ variables/expressions\ */}}
+\DoxyCodeLine{00025\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00026\ \ \ VVOID,\ \ \textcolor{comment}{/*\ when\ 'expdesc'\ describes\ the\ last\ expression\ of\ a\ list,}}
+\DoxyCodeLine{00027\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ this\ kind\ means\ an\ empty\ list\ (so,\ no\ expression)\ */}}
+\DoxyCodeLine{00028\ \ \ VNIL,\ \ \textcolor{comment}{/*\ constant\ nil\ */}}
+\DoxyCodeLine{00029\ \ \ VTRUE,\ \ \textcolor{comment}{/*\ constant\ true\ */}}
+\DoxyCodeLine{00030\ \ \ VFALSE,\ \ \textcolor{comment}{/*\ constant\ false\ */}}
+\DoxyCodeLine{00031\ \ \ VK,\ \ \textcolor{comment}{/*\ constant\ in\ 'k';\ info\ =\ index\ of\ constant\ in\ 'k'\ */}}
+\DoxyCodeLine{00032\ \ \ VKFLT,\ \ \textcolor{comment}{/*\ floating\ constant;\ nval\ =\ numerical\ float\ value\ */}}
+\DoxyCodeLine{00033\ \ \ VKINT,\ \ \textcolor{comment}{/*\ integer\ constant;\ ival\ =\ numerical\ integer\ value\ */}}
+\DoxyCodeLine{00034\ \ \ VKSTR,\ \ \textcolor{comment}{/*\ string\ constant;\ strval\ =\ TString\ address;}}
+\DoxyCodeLine{00035\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ (string\ is\ fixed\ by\ the\ scanner)\ */}}
+\DoxyCodeLine{00036\ \ \ VNONRELOC,\ \ \textcolor{comment}{/*\ expression\ has\ its\ value\ in\ a\ fixed\ register;}}
+\DoxyCodeLine{00037\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ info\ =\ result\ register\ */}}
+\DoxyCodeLine{00038\ \ \ VLOCAL,\ \ \textcolor{comment}{/*\ local\ variable;\ var.ridx\ =\ register\ index;}}
+\DoxyCodeLine{00039\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ var.vidx\ =\ relative\ index\ in\ 'actvar.arr'\ \ */}}
+\DoxyCodeLine{00040\ \ \ VUPVAL,\ \ \textcolor{comment}{/*\ upvalue\ variable;\ info\ =\ index\ of\ upvalue\ in\ 'upvalues'\ */}}
+\DoxyCodeLine{00041\ \ \ VCONST,\ \ \textcolor{comment}{/*\ compile-\/time\ <const>\ variable;}}
+\DoxyCodeLine{00042\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ info\ =\ absolute\ index\ in\ 'actvar.arr'\ \ */}}
+\DoxyCodeLine{00043\ \ \ VINDEXED,\ \ \textcolor{comment}{/*\ indexed\ variable;}}
+\DoxyCodeLine{00044\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.t\ =\ table\ register;}}
+\DoxyCodeLine{00045\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.idx\ =\ key's\ R\ index\ */}}
+\DoxyCodeLine{00046\ \ \ VINDEXUP,\ \ \textcolor{comment}{/*\ indexed\ upvalue;}}
+\DoxyCodeLine{00047\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.t\ =\ table\ upvalue;}}
+\DoxyCodeLine{00048\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.idx\ =\ key's\ K\ index\ */}}
+\DoxyCodeLine{00049\ \ \ VINDEXI,\ \textcolor{comment}{/*\ indexed\ variable\ with\ constant\ integer;}}
+\DoxyCodeLine{00050\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.t\ =\ table\ register;}}
+\DoxyCodeLine{00051\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.idx\ =\ key's\ value\ */}}
+\DoxyCodeLine{00052\ \ \ VINDEXSTR,\ \textcolor{comment}{/*\ indexed\ variable\ with\ literal\ string;}}
+\DoxyCodeLine{00053\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.t\ =\ table\ register;}}
+\DoxyCodeLine{00054\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ind.idx\ =\ key's\ K\ index\ */}}
+\DoxyCodeLine{00055\ \ \ VJMP,\ \ \textcolor{comment}{/*\ expression\ is\ a\ test/comparison;}}
+\DoxyCodeLine{00056\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ info\ =\ pc\ of\ corresponding\ jump\ instruction\ */}}
+\DoxyCodeLine{00057\ \ \ VRELOC,\ \ \textcolor{comment}{/*\ expression\ can\ put\ result\ in\ any\ register;}}
+\DoxyCodeLine{00058\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ info\ =\ instruction\ pc\ */}}
+\DoxyCodeLine{00059\ \ \ VCALL,\ \ \textcolor{comment}{/*\ expression\ is\ a\ function\ call;\ info\ =\ instruction\ pc\ */}}
+\DoxyCodeLine{00060\ \ \ VVARARG,\ \ \textcolor{comment}{/*\ vararg\ expression;\ info\ =\ instruction\ pc\ */}}
+\DoxyCodeLine{00061\ \ \ VINTERP\ \ \textcolor{comment}{/*\ 字符串插值表达式;\ strval\ =\ 原始字符串\ */}}
+\DoxyCodeLine{00062\ \}\ expkind;}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00065\ \textcolor{preprocessor}{\#define\ vkisvar(k)\ \ (VLOCAL\ <=\ (k)\ \&\&\ (k)\ <=\ VINDEXSTR)\ }}
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#define\ vkisindexed(k)\ \ (VINDEXED\ <=\ (k)\ \&\&\ (k)\ <=\ VINDEXSTR)}}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structexpdesc}{expdesc}}\ \{}
+\DoxyCodeLine{00070\ \ \ expkind\ k;}
+\DoxyCodeLine{00071\ \ \ \textcolor{keyword}{union\ }\{}
+\DoxyCodeLine{00072\ \ \ \ \ lua\_Integer\ ival;\ \ \ \ \textcolor{comment}{/*\ for\ VKINT\ */}}
+\DoxyCodeLine{00073\ \ \ \ \ lua\_Number\ nval;\ \ \textcolor{comment}{/*\ for\ VKFLT\ */}}
+\DoxyCodeLine{00074\ \ \ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *strval;\ \ \textcolor{comment}{/*\ for\ VKSTR\ */}}
+\DoxyCodeLine{00075\ \ \ \ \ \textcolor{keywordtype}{int}\ info;\ \ \textcolor{comment}{/*\ for\ generic\ use\ */}}
+\DoxyCodeLine{00076\ \ \ \ \ \textcolor{keyword}{struct\ }\{\ \ \textcolor{comment}{/*\ for\ indexed\ variables\ */}}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \textcolor{keywordtype}{short}\ idx;\ \ \textcolor{comment}{/*\ index\ (R\ or\ "{}long"{}\ K)\ */}}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ lu\_byte\ t;\ \ \textcolor{comment}{/*\ table\ (register\ or\ upvalue)\ */}}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ lu\_byte\ ro;\ \ \textcolor{comment}{/*\ true\ if\ variable\ is\ read-\/only\ */}}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ keystr;\ \ \textcolor{comment}{/*\ index\ in\ 'k'\ of\ string\ key,\ or\ -\/1\ if\ not\ a\ string\ */}}
+\DoxyCodeLine{00081\ \ \ \ \ \}\ ind;}
+\DoxyCodeLine{00082\ \ \ \ \ \textcolor{keyword}{struct\ }\{\ \ \textcolor{comment}{/*\ for\ local\ variables\ */}}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ lu\_byte\ ridx;\ \ \textcolor{comment}{/*\ register\ holding\ the\ variable\ */}}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{short}\ vidx;\ \ \textcolor{comment}{/*\ compiler\ index\ (in\ 'actvar.arr')\ \ */}}
+\DoxyCodeLine{00085\ \ \ \ \ \}\ var;}
+\DoxyCodeLine{00086\ \ \ \}\ u;}
+\DoxyCodeLine{00087\ \ \ \textcolor{keywordtype}{int}\ t;\ \ \textcolor{comment}{/*\ patch\ list\ of\ 'exit\ when\ true'\ */}}
+\DoxyCodeLine{00088\ \ \ \textcolor{keywordtype}{int}\ f;\ \ \textcolor{comment}{/*\ patch\ list\ of\ 'exit\ when\ false'\ */}}
+\DoxyCodeLine{00089\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ nodiscard:1;\ \textcolor{comment}{/*\ Result\ is\ from\ a\ nodiscard\ function\ */}}
+\DoxyCodeLine{00090\ \}\ \doxymbox{\hyperlink{structexpdesc}{expdesc}};}
+\DoxyCodeLine{00091\ }
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00093\ \textcolor{comment}{/*\ kinds\ of\ variables\ */}}
+\DoxyCodeLine{00094\ \textcolor{preprocessor}{\#define\ VDKREG\ \ \ \ \ \ 0\ \ \ }\textcolor{comment}{/*\ regular\ local\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00095\ \textcolor{preprocessor}{\#define\ RDKCONST\ \ \ \ 1\ \ \ }\textcolor{comment}{/*\ local\ constant\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00096\ \textcolor{preprocessor}{\#define\ RDKTOCLOSE\ \ 2\ \ \ }\textcolor{comment}{/*\ to-\/be-\/closed\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00097\ \textcolor{preprocessor}{\#define\ RDKCTC\ \ \ \ \ \ 3\ \ \ }\textcolor{comment}{/*\ local\ compile-\/time\ constant\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00098\ \textcolor{preprocessor}{\#define\ GDKREG\ \ \ \ \ \ 4\ \ \ }\textcolor{comment}{/*\ regular\ global\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00099\ \textcolor{preprocessor}{\#define\ GDKCONST\ \ \ \ 5\ \ \ }\textcolor{comment}{/*\ global\ constant\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ \textcolor{comment}{/*\ variables\ that\ live\ in\ registers\ */}}
+\DoxyCodeLine{00102\ \textcolor{preprocessor}{\#define\ varinreg(v)\ ((v)-\/>vd.kind\ <=\ RDKTOCLOSE)}}
+\DoxyCodeLine{00103\ }
+\DoxyCodeLine{00104\ \textcolor{comment}{/*\ test\ for\ global\ variables\ */}}
+\DoxyCodeLine{00105\ \textcolor{preprocessor}{\#define\ varglobal(v)\ \ \ \ ((v)-\/>vd.kind\ >=\ GDKREG)}}
+\DoxyCodeLine{00106\ }
+\DoxyCodeLine{00107\ \textcolor{comment}{/*\ types\ of\ values,\ for\ type\ hinting\ and\ propagation\ */}}
+\DoxyCodeLine{00108\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00109\ \ \ LVT\_NONE\ =\ 0,}
+\DoxyCodeLine{00110\ \ \ LVT\_ANY,}
+\DoxyCodeLine{00111\ \ \ LVT\_NULL,\ \ \textcolor{comment}{/*\ used\ to\ represent\ an\ implicit\ nil\ (when\ the\ assignment\ has\ too\ few\ values)\ */}}
+\DoxyCodeLine{00112\ \ \ LVT\_NIL,}
+\DoxyCodeLine{00113\ \ \ LVT\_NUMBER,}
+\DoxyCodeLine{00114\ \ \ LVT\_INT,}
+\DoxyCodeLine{00115\ \ \ LVT\_FLT,}
+\DoxyCodeLine{00116\ \ \ LVT\_BOOL,}
+\DoxyCodeLine{00117\ \ \ LVT\_STR,}
+\DoxyCodeLine{00118\ \ \ LVT\_TABLE,}
+\DoxyCodeLine{00119\ \ \ LVT\_FUNC,}
+\DoxyCodeLine{00120\ \ \ LVT\_USERDATA,}
+\DoxyCodeLine{00121\ \ \ LVT\_NAME,}
+\DoxyCodeLine{00122\ \}\ ValType;}
+\DoxyCodeLine{00123\ }
+\DoxyCodeLine{00124\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}};}
+\DoxyCodeLine{00125\ }
+\DoxyCodeLine{00126\ \textcolor{preprocessor}{\#define\ MAX\_TYPED\_RETURNS\ 3}}
+\DoxyCodeLine{00127\ \textcolor{preprocessor}{\#define\ MAX\_TYPED\_PARAMS\ 7}}
+\DoxyCodeLine{00128\ \textcolor{preprocessor}{\#define\ MAX\_TYPED\_FIELDS\ 5}}
+\DoxyCodeLine{00129\ }
+\DoxyCodeLine{00130\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_desc}{TypeDesc}}\ \{}
+\DoxyCodeLine{00131\ \ \ ValType\ type;}
+\DoxyCodeLine{00132\ \ \ \textcolor{comment}{/*\ function\ info\ */}}
+\DoxyCodeLine{00133\ \ \ int8\_t\ nparam;}
+\DoxyCodeLine{00134\ \ \ int8\_t\ nret;}
+\DoxyCodeLine{00135\ \ \ \doxymbox{\hyperlink{struct_proto}{Proto}}*\ proto;}
+\DoxyCodeLine{00136\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}*\ returns[MAX\_TYPED\_RETURNS];}
+\DoxyCodeLine{00137\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}*\ params[MAX\_TYPED\_PARAMS];}
+\DoxyCodeLine{00138\ }
+\DoxyCodeLine{00139\ \ \ \textcolor{comment}{/*\ table\ info\ */}}
+\DoxyCodeLine{00140\ \ \ int8\_t\ nfields;}
+\DoxyCodeLine{00141\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}*\ names[MAX\_TYPED\_FIELDS];}
+\DoxyCodeLine{00142\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}*\ hints[MAX\_TYPED\_FIELDS];}
+\DoxyCodeLine{00143\ }
+\DoxyCodeLine{00144\ \ \ \textcolor{comment}{/*\ named\ type\ */}}
+\DoxyCodeLine{00145\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}*\ \textcolor{keyword}{typename};}
+\DoxyCodeLine{00146\ \}\ \doxymbox{\hyperlink{struct_type_desc}{TypeDesc}};}
+\DoxyCodeLine{00147\ }
+\DoxyCodeLine{00148\ \textcolor{preprocessor}{\#define\ MAX\_TYPE\_DESCS\ 3}}
+\DoxyCodeLine{00149\ }
+\DoxyCodeLine{00150\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}\ \{}
+\DoxyCodeLine{00151\ \ \ \doxymbox{\hyperlink{struct_type_desc}{TypeDesc}}\ descs[MAX\_TYPE\_DESCS];}
+\DoxyCodeLine{00152\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}\ *next;\ \textcolor{comment}{/*\ For\ memory\ management\ */}}
+\DoxyCodeLine{00153\ \}\ \doxymbox{\hyperlink{struct_type_hint}{TypeHint}};}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \textcolor{comment}{/*\ description\ of\ an\ active\ local\ variable\ */}}
+\DoxyCodeLine{00156\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{union\ }\doxymbox{\hyperlink{union_vardesc}{Vardesc}}\ \{}
+\DoxyCodeLine{00157\ \ \ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00158\ \ \ \ \ TValuefields;\ \ \textcolor{comment}{/*\ constant\ value\ (if\ it\ is\ a\ compile-\/time\ constant)\ */}}
+\DoxyCodeLine{00159\ \ \ \ \ lu\_byte\ kind;}
+\DoxyCodeLine{00160\ \ \ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}\ *hint;\ \textcolor{comment}{/*\ type\ hint\ */}}
+\DoxyCodeLine{00161\ \ \ \ \ lu\_byte\ ridx;\ \ \textcolor{comment}{/*\ register\ holding\ the\ variable\ */}}
+\DoxyCodeLine{00162\ \ \ \ \ \textcolor{keywordtype}{short}\ pidx;\ \ \textcolor{comment}{/*\ index\ of\ the\ variable\ in\ the\ Proto's\ 'locvars'\ array\ */}}
+\DoxyCodeLine{00163\ \ \ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *name;\ \ \textcolor{comment}{/*\ variable\ name\ */}}
+\DoxyCodeLine{00164\ \ \ \ \ lu\_byte\ used;}
+\DoxyCodeLine{00165\ \ \ \ \ lu\_byte\ nodiscard;\ \textcolor{comment}{/*\ Variable\ (function)\ is\ nodiscard\ */}}
+\DoxyCodeLine{00166\ \ \ \}\ vd;}
+\DoxyCodeLine{00167\ \ \ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ k;\ \ \textcolor{comment}{/*\ constant\ value\ (if\ any)\ */}}
+\DoxyCodeLine{00168\ \}\ \doxymbox{\hyperlink{union_vardesc}{Vardesc}};}
+\DoxyCodeLine{00169\ }
+\DoxyCodeLine{00170\ }
+\DoxyCodeLine{00171\ }
+\DoxyCodeLine{00172\ \textcolor{comment}{/*\ description\ of\ pending\ goto\ statements\ and\ label\ statements\ */}}
+\DoxyCodeLine{00173\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_labeldesc}{Labeldesc}}\ \{}
+\DoxyCodeLine{00174\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *name;\ \ \textcolor{comment}{/*\ label\ identifier\ */}}
+\DoxyCodeLine{00175\ \ \ \textcolor{keywordtype}{int}\ pc;\ \ \textcolor{comment}{/*\ position\ in\ code\ */}}
+\DoxyCodeLine{00176\ \ \ \textcolor{keywordtype}{int}\ line;\ \ \textcolor{comment}{/*\ line\ where\ it\ appeared\ */}}
+\DoxyCodeLine{00177\ \ \ lu\_byte\ nactvar;\ \ \textcolor{comment}{/*\ number\ of\ active\ variables\ in\ that\ position\ */}}
+\DoxyCodeLine{00178\ \ \ lu\_byte\ close;\ \ \textcolor{comment}{/*\ goto\ that\ escapes\ upvalues\ */}}
+\DoxyCodeLine{00179\ \}\ \doxymbox{\hyperlink{struct_labeldesc}{Labeldesc}};}
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00181\ }
+\DoxyCodeLine{00182\ \textcolor{comment}{/*\ list\ of\ labels\ or\ gotos\ */}}
+\DoxyCodeLine{00183\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_labellist}{Labellist}}\ \{}
+\DoxyCodeLine{00184\ \ \ \doxymbox{\hyperlink{struct_labeldesc}{Labeldesc}}\ *arr;\ \ \textcolor{comment}{/*\ array\ */}}
+\DoxyCodeLine{00185\ \ \ \textcolor{keywordtype}{int}\ n;\ \ \textcolor{comment}{/*\ number\ of\ entries\ in\ use\ */}}
+\DoxyCodeLine{00186\ \ \ \textcolor{keywordtype}{int}\ size;\ \ \textcolor{comment}{/*\ array\ size\ */}}
+\DoxyCodeLine{00187\ \}\ \doxymbox{\hyperlink{struct_labellist}{Labellist}};}
+\DoxyCodeLine{00188\ }
+\DoxyCodeLine{00189\ }
+\DoxyCodeLine{00190\ \textcolor{comment}{/*\ dynamic\ structures\ used\ by\ the\ parser\ */}}
+\DoxyCodeLine{00191\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_dyndata}{Dyndata}}\ \{}
+\DoxyCodeLine{00192\ \ \ \textcolor{keyword}{struct\ }\{\ \ \textcolor{comment}{/*\ list\ of\ all\ active\ local\ variables\ */}}
+\DoxyCodeLine{00193\ \ \ \ \ \doxymbox{\hyperlink{union_vardesc}{Vardesc}}\ *arr;}
+\DoxyCodeLine{00194\ \ \ \ \ \textcolor{keywordtype}{int}\ n;}
+\DoxyCodeLine{00195\ \ \ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00196\ \ \ \}\ actvar;}
+\DoxyCodeLine{00197\ \ \ \doxymbox{\hyperlink{struct_labellist}{Labellist}}\ gt;\ \ \textcolor{comment}{/*\ list\ of\ pending\ gotos\ */}}
+\DoxyCodeLine{00198\ \ \ \doxymbox{\hyperlink{struct_labellist}{Labellist}}\ label;\ \ \ \textcolor{comment}{/*\ list\ of\ active\ labels\ */}}
+\DoxyCodeLine{00199\ \}\ \doxymbox{\hyperlink{struct_dyndata}{Dyndata}};}
+\DoxyCodeLine{00200\ }
+\DoxyCodeLine{00201\ }
+\DoxyCodeLine{00202\ \textcolor{comment}{/*\ control\ of\ blocks\ */}}
+\DoxyCodeLine{00203\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_block_cnt}{BlockCnt}};\ \ \textcolor{comment}{/*\ defined\ in\ lparser.c\ */}}
+\DoxyCodeLine{00204\ }
+\DoxyCodeLine{00205\ }
+\DoxyCodeLine{00206\ \textcolor{comment}{/*\ state\ needed\ to\ generate\ code\ for\ a\ given\ function\ */}}
+\DoxyCodeLine{00207\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_func_state}{FuncState}}\ \{}
+\DoxyCodeLine{00208\ \ \ \doxymbox{\hyperlink{struct_proto}{Proto}}\ *f;\ \ \textcolor{comment}{/*\ current\ function\ header\ */}}
+\DoxyCodeLine{00209\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_func_state}{FuncState}}\ *prev;\ \ \textcolor{comment}{/*\ enclosing\ function\ */}}
+\DoxyCodeLine{00210\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls;\ \ \textcolor{comment}{/*\ lexical\ state\ */}}
+\DoxyCodeLine{00211\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_block_cnt}{BlockCnt}}\ *bl;\ \ \textcolor{comment}{/*\ chain\ of\ current\ blocks\ */}}
+\DoxyCodeLine{00212\ \ \ \textcolor{keywordtype}{int}\ pc;\ \ \textcolor{comment}{/*\ next\ position\ to\ code\ (equivalent\ to\ 'ncode')\ */}}
+\DoxyCodeLine{00213\ \ \ \textcolor{keywordtype}{int}\ lasttarget;\ \ \ \textcolor{comment}{/*\ 'label'\ of\ last\ 'jump\ label'\ */}}
+\DoxyCodeLine{00214\ \ \ \textcolor{keywordtype}{int}\ previousline;\ \ \textcolor{comment}{/*\ last\ line\ that\ was\ saved\ in\ 'lineinfo'\ */}}
+\DoxyCodeLine{00215\ \ \ \textcolor{keywordtype}{int}\ nk;\ \ \textcolor{comment}{/*\ number\ of\ elements\ in\ 'k'\ */}}
+\DoxyCodeLine{00216\ \ \ \textcolor{keywordtype}{int}\ np;\ \ \textcolor{comment}{/*\ number\ of\ elements\ in\ 'p'\ */}}
+\DoxyCodeLine{00217\ \ \ \textcolor{keywordtype}{int}\ nabslineinfo;\ \ \textcolor{comment}{/*\ number\ of\ elements\ in\ 'abslineinfo'\ */}}
+\DoxyCodeLine{00218\ \ \ \textcolor{keywordtype}{int}\ firstlocal;\ \ \textcolor{comment}{/*\ index\ of\ first\ local\ var\ (in\ Dyndata\ array)\ */}}
+\DoxyCodeLine{00219\ \ \ \textcolor{keywordtype}{int}\ firstlabel;\ \ \textcolor{comment}{/*\ index\ of\ first\ label\ (in\ 'dyd-\/>label-\/>arr')\ */}}
+\DoxyCodeLine{00220\ \ \ \textcolor{keywordtype}{short}\ ndebugvars;\ \ \textcolor{comment}{/*\ number\ of\ elements\ in\ 'f-\/>locvars'\ */}}
+\DoxyCodeLine{00221\ \ \ lu\_byte\ nactvar;\ \ \textcolor{comment}{/*\ number\ of\ active\ local\ variables\ */}}
+\DoxyCodeLine{00222\ \ \ lu\_byte\ nups;\ \ \textcolor{comment}{/*\ number\ of\ upvalues\ */}}
+\DoxyCodeLine{00223\ \ \ lu\_byte\ freereg;\ \ \textcolor{comment}{/*\ first\ free\ register\ */}}
+\DoxyCodeLine{00224\ \ \ lu\_byte\ iwthabs;\ \ \textcolor{comment}{/*\ instructions\ issued\ since\ last\ absolute\ line\ info\ */}}
+\DoxyCodeLine{00225\ \ \ lu\_byte\ needclose;\ \ \textcolor{comment}{/*\ function\ needs\ to\ close\ upvalues\ when\ returning\ */}}
+\DoxyCodeLine{00226\ \}\ \doxymbox{\hyperlink{struct_func_state}{FuncState}};}
+\DoxyCodeLine{00227\ }
+\DoxyCodeLine{00228\ }
+\DoxyCodeLine{00229\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaY\_nvarstack\ (\doxymbox{\hyperlink{struct_func_state}{FuncState}}\ *fs);}
+\DoxyCodeLine{00230\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_l_closure}{LClosure}}\ *luaY\_parser\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ ZIO\ *z,\ \doxymbox{\hyperlink{struct_mbuffer}{Mbuffer}}\ *buff,}
+\DoxyCodeLine{00231\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_dyndata}{Dyndata}}\ *dyd,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *name,\ \textcolor{keywordtype}{int}\ firstchar);}
+\DoxyCodeLine{00232\ }
+\DoxyCodeLine{00233\ }
+\DoxyCodeLine{00234\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

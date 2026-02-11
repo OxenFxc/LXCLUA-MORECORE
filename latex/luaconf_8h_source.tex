@@ -1,0 +1,837 @@
+\doxysection{luaconf.\+h}
+\hypertarget{luaconf_8h_source}{}\label{luaconf_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ luaconf.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Configuration\ file\ for\ Lua}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#ifndef\ luaconf\_h}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#define\ luaconf\_h}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ <limits.h>}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00016\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00017\ \textcolor{comment}{**\ General\ Configuration\ File\ for\ Lua}}
+\DoxyCodeLine{00018\ \textcolor{comment}{**}}
+\DoxyCodeLine{00019\ \textcolor{comment}{**\ Some\ definitions\ here\ can\ be\ changed\ externally,\ through\ the\ compiler}}
+\DoxyCodeLine{00020\ \textcolor{comment}{**\ (e.g.,\ with\ '-\/D'\ options):\ They\ are\ commented\ out\ or\ protected}}
+\DoxyCodeLine{00021\ \textcolor{comment}{**\ by\ '\#if\ !defined'\ guards.\ However,\ several\ other\ definitions}}
+\DoxyCodeLine{00022\ \textcolor{comment}{**\ should\ be\ changed\ directly\ here,\ either\ because\ they\ affect\ the}}
+\DoxyCodeLine{00023\ \textcolor{comment}{**\ Lua\ ABI\ (by\ making\ the\ changes\ here,\ you\ ensure\ that\ all\ software}}
+\DoxyCodeLine{00024\ \textcolor{comment}{**\ connected\ to\ Lua,\ such\ as\ C\ libraries,\ will\ be\ compiled\ with\ the\ same}}
+\DoxyCodeLine{00025\ \textcolor{comment}{**\ configuration);\ or\ because\ they\ are\ seldom\ changed.}}
+\DoxyCodeLine{00026\ \textcolor{comment}{**}}
+\DoxyCodeLine{00027\ \textcolor{comment}{**\ Search\ for\ "{}@@"{}\ to\ find\ all\ configurable\ definitions.}}
+\DoxyCodeLine{00028\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00029\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00033\ \textcolor{comment}{**\ \{=========================================================}}
+\DoxyCodeLine{00034\ \textcolor{comment}{**\ System\ Configuration:\ macros\ to\ adapt\ (if\ needed)\ Lua\ to\ some}}
+\DoxyCodeLine{00035\ \textcolor{comment}{**\ particular\ platform,\ for\ instance\ restricting\ it\ to\ C89.}}
+\DoxyCodeLine{00036\ \textcolor{comment}{**\ ==========================================================}}
+\DoxyCodeLine{00037\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00040\ \textcolor{comment}{@@\ LUA\_USE\_C89\ controls\ the\ use\ of\ non-\/ISO-\/C89\ features.}}
+\DoxyCodeLine{00041\ \textcolor{comment}{**\ Define\ it\ if\ you\ want\ Lua\ to\ avoid\ the\ use\ of\ a\ few\ C99\ features}}
+\DoxyCodeLine{00042\ \textcolor{comment}{**\ or\ Windows-\/specific\ features\ on\ Windows.}}
+\DoxyCodeLine{00043\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00044\ \textcolor{comment}{/*\ \#define\ LUA\_USE\_C89\ */}}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00048\ \textcolor{comment}{**\ By\ default,\ Lua\ on\ Windows\ use\ (some)\ specific\ Windows\ features}}
+\DoxyCodeLine{00049\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\#if\ !defined(LUA\_USE\_C89)\ \&\&\ defined(\_WIN32)\ \&\&\ !defined(\_WIN32\_WCE)}}
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\#define\ LUA\_USE\_WINDOWS\ \ }\textcolor{comment}{/*\ enable\ goodies\ for\ regular\ Windows\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_WINDOWS)}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#define\ LUA\_DL\_DLL\ \ }\textcolor{comment}{/*\ enable\ support\ for\ DLL\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#define\ LUA\_USE\_C89\ }\textcolor{comment}{/*\ broadly,\ Windows\ is\ C89\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00058\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00059\ }
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00062\ \textcolor{comment}{**\ When\ POSIX\ DLL\ ('LUA\_USE\_DLOPEN')\ is\ enabled,\ the\ Lua\ stand-\/alone}}
+\DoxyCodeLine{00063\ \textcolor{comment}{**\ application\ will\ try\ to\ dynamically\ link\ a\ 'readline'\ facility}}
+\DoxyCodeLine{00064\ \textcolor{comment}{**\ for\ its\ REPL.\ \ In\ that\ case,\ LUA\_READLINELIB\ is\ the\ name\ of\ the}}
+\DoxyCodeLine{00065\ \textcolor{comment}{**\ library\ it\ will\ look\ for\ those\ facilities.\ \ If\ lua.c\ cannot\ open}}
+\DoxyCodeLine{00066\ \textcolor{comment}{**\ the\ specified\ library,\ it\ will\ generate\ a\ warning\ and\ then\ run}}
+\DoxyCodeLine{00067\ \textcolor{comment}{**\ without\ 'readline'.\ \ If\ that\ macro\ is\ not\ defined,\ lua.c\ will\ not}}
+\DoxyCodeLine{00068\ \textcolor{comment}{**\ use\ 'readline'.}}
+\DoxyCodeLine{00069\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_LINUX)}}
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#define\ LUA\_USE\_POSIX}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#define\ LUA\_USE\_DLOPEN\ \ \ \ \ \ }\textcolor{comment}{/*\ needs\ an\ extra\ library:\ -\/ldl\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#define\ LUA\_READLINELIB\ \ \ \ \ "{}libreadline.so"{}}}
+\DoxyCodeLine{00074\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_MACOSX)}}
+\DoxyCodeLine{00078\ \textcolor{preprocessor}{\#define\ LUA\_USE\_POSIX}}
+\DoxyCodeLine{00079\ \textcolor{preprocessor}{\#define\ LUA\_USE\_DLOPEN\ \ \ \ \ \ }\textcolor{comment}{/*\ macOS\ does\ not\ need\ -\/ldl\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00080\ \textcolor{preprocessor}{\#define\ LUA\_READLINELIB\ \ \ \ \ "{}libedit.dylib"{}}}
+\DoxyCodeLine{00081\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_IOS)}}
+\DoxyCodeLine{00085\ \textcolor{preprocessor}{\#define\ LUA\_USE\_POSIX}}
+\DoxyCodeLine{00086\ \textcolor{preprocessor}{\#define\ LUA\_USE\_DLOPEN}}
+\DoxyCodeLine{00087\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00090\ \textcolor{comment}{//mod\ DifierLine}}
+\DoxyCodeLine{00091\ \textcolor{preprocessor}{\#ifdef\ \_\_ANDROID\_\_}}
+\DoxyCodeLine{00092\ \textcolor{preprocessor}{\#define\ LUA\_USE\_POSIX}}
+\DoxyCodeLine{00093\ \textcolor{preprocessor}{\#define\ LUA\_USE\_DLOPEN\ \ \ \ \ \ }\textcolor{comment}{/*\ needs\ an\ extra\ library:\ -\/ldl\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00094\ \textcolor{comment}{//\#define\ LUA\_USE\_READLINE\ \ /*\ needs\ some\ extra\ libraries\ */}}
+\DoxyCodeLine{00095\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00098\ \textcolor{comment}{@@\ LUAI\_IS32INT\ is\ true\ iff\ 'int'\ has\ (at\ least)\ 32\ bits.}}
+\DoxyCodeLine{00099\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00100\ \textcolor{preprocessor}{\#define\ LUAI\_IS32INT\ \ \ \ ((UINT\_MAX\ >>\ 30)\ >=\ 3)}}
+\DoxyCodeLine{00101\ }
+\DoxyCodeLine{00102\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00103\ }
+\DoxyCodeLine{00104\ }
+\DoxyCodeLine{00105\ }
+\DoxyCodeLine{00106\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00107\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00108\ \textcolor{comment}{**\ Configuration\ for\ Number\ types.\ These\ options\ should\ not\ be}}
+\DoxyCodeLine{00109\ \textcolor{comment}{**\ set\ externally,\ because\ any\ other\ code\ connected\ to\ Lua\ must}}
+\DoxyCodeLine{00110\ \textcolor{comment}{**\ use\ the\ same\ configuration.}}
+\DoxyCodeLine{00111\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00112\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00113\ }
+\DoxyCodeLine{00114\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00115\ \textcolor{comment}{@@\ LUA\_INT\_TYPE\ defines\ the\ type\ for\ Lua\ integers.}}
+\DoxyCodeLine{00116\ \textcolor{comment}{@@\ LUA\_FLOAT\_TYPE\ defines\ the\ type\ for\ Lua\ floats.}}
+\DoxyCodeLine{00117\ \textcolor{comment}{**\ Lua\ should\ work\ fine\ with\ any\ mix\ of\ these\ options\ supported}}
+\DoxyCodeLine{00118\ \textcolor{comment}{**\ by\ your\ C\ compiler.\ The\ usual\ configurations\ are\ 64-\/bit\ integers}}
+\DoxyCodeLine{00119\ \textcolor{comment}{**\ and\ 'double'\ (the\ default),\ 32-\/bit\ integers\ and\ 'float'\ (for}}
+\DoxyCodeLine{00120\ \textcolor{comment}{**\ restricted\ platforms),\ and\ 'long'/'double'\ (for\ C\ compilers\ not}}
+\DoxyCodeLine{00121\ \textcolor{comment}{**\ compliant\ with\ C99,\ which\ may\ not\ have\ support\ for\ 'long\ long').}}
+\DoxyCodeLine{00122\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00123\ }
+\DoxyCodeLine{00124\ \textcolor{comment}{/*\ predefined\ options\ for\ LUA\_INT\_TYPE\ */}}
+\DoxyCodeLine{00125\ \textcolor{preprocessor}{\#define\ LUA\_INT\_INT\ \ \ \ \ 1}}
+\DoxyCodeLine{00126\ \textcolor{preprocessor}{\#define\ LUA\_INT\_LONG\ \ \ \ \ \ \ \ 2}}
+\DoxyCodeLine{00127\ \textcolor{preprocessor}{\#define\ LUA\_INT\_LONGLONG\ \ \ \ 3}}
+\DoxyCodeLine{00128\ }
+\DoxyCodeLine{00129\ \textcolor{comment}{/*\ predefined\ options\ for\ LUA\_FLOAT\_TYPE\ */}}
+\DoxyCodeLine{00130\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_FLOAT\ \ \ \ \ 1}}
+\DoxyCodeLine{00131\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_DOUBLE\ \ \ \ 2}}
+\DoxyCodeLine{00132\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_LONGDOUBLE\ \ \ \ 3}}
+\DoxyCodeLine{00133\ }
+\DoxyCodeLine{00134\ }
+\DoxyCodeLine{00135\ \textcolor{comment}{/*\ Default\ configuration\ ('long\ long'\ and\ 'double',\ for\ 64-\/bit\ Lua)\ */}}
+\DoxyCodeLine{00136\ \textcolor{preprocessor}{\#define\ LUA\_INT\_DEFAULT\ \ \ \ \ LUA\_INT\_LONGLONG}}
+\DoxyCodeLine{00137\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_DEFAULT\ \ \ LUA\_FLOAT\_DOUBLE}}
+\DoxyCodeLine{00138\ }
+\DoxyCodeLine{00139\ }
+\DoxyCodeLine{00140\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00141\ \textcolor{comment}{@@\ LUA\_32BITS\ enables\ Lua\ with\ 32-\/bit\ integers\ and\ 32-\/bit\ floats.}}
+\DoxyCodeLine{00142\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00143\ \textcolor{comment}{/*\ \#define\ LUA\_32BITS\ */}}
+\DoxyCodeLine{00144\ }
+\DoxyCodeLine{00145\ }
+\DoxyCodeLine{00146\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00147\ \textcolor{comment}{@@\ LUA\_C89\_NUMBERS\ ensures\ that\ Lua\ uses\ the\ largest\ types\ available\ for}}
+\DoxyCodeLine{00148\ \textcolor{comment}{**\ C89\ ('long'\ and\ 'double');\ Windows\ always\ has\ '\_\_int64',\ so\ it\ does}}
+\DoxyCodeLine{00149\ \textcolor{comment}{**\ not\ need\ to\ use\ this\ case.}}
+\DoxyCodeLine{00150\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00151\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_C89)\ \&\&\ !defined(LUA\_USE\_WINDOWS)}}
+\DoxyCodeLine{00152\ \textcolor{preprocessor}{\#define\ LUA\_C89\_NUMBERS\ \ \ \ \ 1}}
+\DoxyCodeLine{00153\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00154\ \textcolor{preprocessor}{\#define\ LUA\_C89\_NUMBERS\ \ \ \ \ 0}}
+\DoxyCodeLine{00155\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00156\ }
+\DoxyCodeLine{00157\ }
+\DoxyCodeLine{00158\ \textcolor{preprocessor}{\#if\ defined(LUA\_32BITS)\ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00159\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00160\ \textcolor{comment}{**\ 32-\/bit\ integers\ and\ 'float'}}
+\DoxyCodeLine{00161\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00162\ \textcolor{preprocessor}{\#if\ LUAI\_IS32INT\ \ }\textcolor{comment}{/*\ use\ 'int'\ if\ big\ enough\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00163\ \textcolor{preprocessor}{\#define\ LUA\_INT\_TYPE\ \ \ \ LUA\_INT\_INT}}
+\DoxyCodeLine{00164\ \textcolor{preprocessor}{\#else\ \ }\textcolor{comment}{/*\ otherwise\ use\ 'long'\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00165\ \textcolor{preprocessor}{\#define\ LUA\_INT\_TYPE\ \ \ \ LUA\_INT\_LONG}}
+\DoxyCodeLine{00166\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00167\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_TYPE\ \ LUA\_FLOAT\_FLOAT}}
+\DoxyCodeLine{00168\ }
+\DoxyCodeLine{00169\ \textcolor{preprocessor}{\#elif\ LUA\_C89\_NUMBERS\ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00170\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00171\ \textcolor{comment}{**\ largest\ types\ available\ for\ C89\ ('long'\ and\ 'double')}}
+\DoxyCodeLine{00172\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00173\ \textcolor{preprocessor}{\#define\ LUA\_INT\_TYPE\ \ \ \ LUA\_INT\_LONG}}
+\DoxyCodeLine{00174\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_TYPE\ \ LUA\_FLOAT\_DOUBLE}}
+\DoxyCodeLine{00175\ }
+\DoxyCodeLine{00176\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00177\ \textcolor{comment}{/*\ use\ defaults\ */}}
+\DoxyCodeLine{00178\ }
+\DoxyCodeLine{00179\ \textcolor{preprocessor}{\#define\ LUA\_INT\_TYPE\ \ \ \ LUA\_INT\_DEFAULT}}
+\DoxyCodeLine{00180\ \textcolor{preprocessor}{\#define\ LUA\_FLOAT\_TYPE\ \ LUA\_FLOAT\_DEFAULT}}
+\DoxyCodeLine{00181\ }
+\DoxyCodeLine{00182\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00183\ }
+\DoxyCodeLine{00184\ }
+\DoxyCodeLine{00185\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00186\ }
+\DoxyCodeLine{00187\ }
+\DoxyCodeLine{00188\ }
+\DoxyCodeLine{00189\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00190\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00191\ \textcolor{comment}{**\ Configuration\ for\ Paths.}}
+\DoxyCodeLine{00192\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00193\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00194\ }
+\DoxyCodeLine{00195\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00196\ \textcolor{comment}{**\ LUA\_PATH\_SEP\ is\ the\ character\ that\ separates\ templates\ in\ a\ path.}}
+\DoxyCodeLine{00197\ \textcolor{comment}{**\ LUA\_PATH\_MARK\ is\ the\ string\ that\ marks\ the\ substitution\ points\ in\ a}}
+\DoxyCodeLine{00198\ \textcolor{comment}{**\ template.}}
+\DoxyCodeLine{00199\ \textcolor{comment}{**\ LUA\_EXEC\_DIR\ in\ a\ Windows\ path\ is\ replaced\ by\ the\ executable's}}
+\DoxyCodeLine{00200\ \textcolor{comment}{**\ directory.}}
+\DoxyCodeLine{00201\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00202\ \textcolor{preprocessor}{\#define\ LUA\_PATH\_SEP\ \ \ \ \ \ \ \ \ \ \ \ "{};"{}}}
+\DoxyCodeLine{00203\ \textcolor{preprocessor}{\#define\ LUA\_PATH\_MARK\ \ \ \ \ \ \ \ \ \ \ "{}?"{}}}
+\DoxyCodeLine{00204\ \textcolor{preprocessor}{\#define\ LUA\_EXEC\_DIR\ \ \ \ \ \ \ \ \ \ \ \ "{}!"{}}}
+\DoxyCodeLine{00205\ }
+\DoxyCodeLine{00206\ }
+\DoxyCodeLine{00207\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00208\ \textcolor{comment}{@@\ LUA\_PATH\_DEFAULT\ is\ the\ default\ path\ that\ Lua\ uses\ to\ look\ for}}
+\DoxyCodeLine{00209\ \textcolor{comment}{**\ Lua\ libraries.}}
+\DoxyCodeLine{00210\ \textcolor{comment}{@@\ LUA\_CPATH\_DEFAULT\ is\ the\ default\ path\ that\ Lua\ uses\ to\ look\ for}}
+\DoxyCodeLine{00211\ \textcolor{comment}{**\ C\ libraries.}}
+\DoxyCodeLine{00212\ \textcolor{comment}{**\ CHANGE\ them\ if\ your\ machine\ has\ a\ non-\/conventional\ directory}}
+\DoxyCodeLine{00213\ \textcolor{comment}{**\ hierarchy\ or\ if\ you\ want\ to\ install\ your\ libraries\ in}}
+\DoxyCodeLine{00214\ \textcolor{comment}{**\ non-\/conventional\ directories.}}
+\DoxyCodeLine{00215\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00216\ }
+\DoxyCodeLine{00217\ \textcolor{preprocessor}{\#define\ LUA\_VDIR\ \ \ \ LUA\_VERSION\_MAJOR\ "{}."{}\ LUA\_VERSION\_MINOR}}
+\DoxyCodeLine{00218\ \textcolor{preprocessor}{\#if\ defined(\_WIN32)\ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00219\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00220\ \textcolor{comment}{**\ In\ Windows,\ any\ exclamation\ mark\ ('!')\ in\ the\ path\ is\ replaced\ by\ the}}
+\DoxyCodeLine{00221\ \textcolor{comment}{**\ path\ of\ the\ directory\ of\ the\ executable\ file\ of\ the\ current\ process.}}
+\DoxyCodeLine{00222\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00223\ \textcolor{preprocessor}{\#define\ LUA\_LDIR\ \ \ \ "{}!\(\backslash\)\(\backslash\)lua\(\backslash\)\(\backslash\)"{}}}
+\DoxyCodeLine{00224\ \textcolor{preprocessor}{\#define\ LUA\_CDIR\ \ \ \ "{}!\(\backslash\)\(\backslash\)"{}}}
+\DoxyCodeLine{00225\ \textcolor{preprocessor}{\#define\ LUA\_SHRDIR\ \ "{}!\(\backslash\)\(\backslash\)..\(\backslash\)\(\backslash\)share\(\backslash\)\(\backslash\)lua\(\backslash\)\(\backslash\)"{}\ LUA\_VDIR\ "{}\(\backslash\)\(\backslash\)"{}}}
+\DoxyCodeLine{00226\ }
+\DoxyCodeLine{00227\ \textcolor{preprocessor}{\#if\ !defined(LUA\_PATH\_DEFAULT)}}
+\DoxyCodeLine{00228\ \textcolor{preprocessor}{\#define\ LUA\_PATH\_DEFAULT\ \ \(\backslash\)}}
+\DoxyCodeLine{00229\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_LDIR"{}?.lua;"{}\ \ LUA\_LDIR"{}?\(\backslash\)\(\backslash\)init.lua;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00230\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}?.lua;"{}\ \ LUA\_CDIR"{}?\(\backslash\)\(\backslash\)init.lua;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00231\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_SHRDIR"{}?.lua;"{}\ LUA\_SHRDIR"{}?\(\backslash\)\(\backslash\)init.lua;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00232\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ "{}.\(\backslash\)\(\backslash\)?.lua;"{}\ "{}.\(\backslash\)\(\backslash\)?\(\backslash\)\(\backslash\)init.lua"{}}}
+\DoxyCodeLine{00233\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00234\ }
+\DoxyCodeLine{00235\ \textcolor{preprocessor}{\#if\ !defined(LUA\_CPATH\_DEFAULT)}}
+\DoxyCodeLine{00236\ \textcolor{preprocessor}{\#define\ LUA\_CPATH\_DEFAULT\ \(\backslash\)}}
+\DoxyCodeLine{00237\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}?.dll;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00238\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}..\(\backslash\)\(\backslash\)lib\(\backslash\)\(\backslash\)lua\(\backslash\)\(\backslash\)"{}\ LUA\_VDIR\ "{}\(\backslash\)\(\backslash\)?.dll;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00239\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}loadall.dll;"{}\ "{}.\(\backslash\)\(\backslash\)?.dll"{}}}
+\DoxyCodeLine{00240\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00241\ }
+\DoxyCodeLine{00242\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00243\ }
+\DoxyCodeLine{00244\ \textcolor{preprocessor}{\#define\ LUA\_ROOT\ \ \ \ "{}/usr/local/"{}}}
+\DoxyCodeLine{00245\ \textcolor{preprocessor}{\#define\ LUA\_LDIR\ \ \ \ LUA\_ROOT\ "{}share/lua/"{}\ LUA\_VDIR\ "{}/"{}}}
+\DoxyCodeLine{00246\ \textcolor{preprocessor}{\#define\ LUA\_CDIR\ \ \ \ LUA\_ROOT\ "{}lib/lua/"{}\ LUA\_VDIR\ "{}/"{}}}
+\DoxyCodeLine{00247\ }
+\DoxyCodeLine{00248\ \textcolor{preprocessor}{\#if\ !defined(LUA\_PATH\_DEFAULT)}}
+\DoxyCodeLine{00249\ \textcolor{preprocessor}{\#define\ LUA\_PATH\_DEFAULT\ \ \(\backslash\)}}
+\DoxyCodeLine{00250\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_LDIR"{}?.lua;"{}\ \ LUA\_LDIR"{}?/init.lua;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00251\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}?.lua;"{}\ \ LUA\_CDIR"{}?/init.lua;"{}\ \(\backslash\)}}
+\DoxyCodeLine{00252\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ "{}./?.lua;"{}\ "{}./?/init.lua"{}}}
+\DoxyCodeLine{00253\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00254\ }
+\DoxyCodeLine{00255\ \textcolor{preprocessor}{\#if\ !defined(LUA\_CPATH\_DEFAULT)}}
+\DoxyCodeLine{00256\ \textcolor{preprocessor}{\#define\ LUA\_CPATH\_DEFAULT\ \(\backslash\)}}
+\DoxyCodeLine{00257\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ LUA\_CDIR"{}?.so;"{}\ LUA\_CDIR"{}loadall.so;"{}\ "{}./?.so"{}}}
+\DoxyCodeLine{00258\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00259\ }
+\DoxyCodeLine{00260\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00261\ }
+\DoxyCodeLine{00262\ }
+\DoxyCodeLine{00263\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00264\ \textcolor{comment}{@@\ LUA\_DIRSEP\ is\ the\ directory\ separator\ (for\ submodules).}}
+\DoxyCodeLine{00265\ \textcolor{comment}{**\ CHANGE\ it\ if\ your\ machine\ does\ not\ use\ "{}/"{}\ as\ the\ directory\ separator}}
+\DoxyCodeLine{00266\ \textcolor{comment}{**\ and\ is\ not\ Windows.\ (On\ Windows\ Lua\ automatically\ uses\ "{}\(\backslash\)"{}.)}}
+\DoxyCodeLine{00267\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00268\ \textcolor{preprocessor}{\#if\ !defined(LUA\_DIRSEP)}}
+\DoxyCodeLine{00269\ }
+\DoxyCodeLine{00270\ \textcolor{preprocessor}{\#if\ defined(\_WIN32)}}
+\DoxyCodeLine{00271\ \textcolor{preprocessor}{\#define\ LUA\_DIRSEP\ \ "{}\(\backslash\)\(\backslash\)"{}}}
+\DoxyCodeLine{00272\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00273\ \textcolor{preprocessor}{\#define\ LUA\_DIRSEP\ \ "{}/"{}}}
+\DoxyCodeLine{00274\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00275\ }
+\DoxyCodeLine{00276\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00277\ }
+\DoxyCodeLine{00278\ }
+\DoxyCodeLine{00279\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00280\ \textcolor{comment}{**\ LUA\_IGMARK\ is\ a\ mark\ to\ ignore\ all\ after\ it\ when\ building\ the}}
+\DoxyCodeLine{00281\ \textcolor{comment}{**\ module\ name\ (e.g.,\ used\ to\ build\ the\ luaopen\_\ function\ name).}}
+\DoxyCodeLine{00282\ \textcolor{comment}{**\ Typically,\ the\ suffix\ after\ the\ mark\ is\ the\ module\ version,}}
+\DoxyCodeLine{00283\ \textcolor{comment}{**\ as\ in\ "{}mod-\/v1.2.so"{}.}}
+\DoxyCodeLine{00284\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00285\ \textcolor{preprocessor}{\#define\ LUA\_IGMARK\ \ \ \ \ \ "{}-\/"{}}}
+\DoxyCodeLine{00286\ }
+\DoxyCodeLine{00287\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00288\ }
+\DoxyCodeLine{00289\ }
+\DoxyCodeLine{00290\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00291\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00292\ \textcolor{comment}{**\ Marks\ for\ exported\ symbols\ in\ the\ C\ code}}
+\DoxyCodeLine{00293\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00294\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00295\ }
+\DoxyCodeLine{00296\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00297\ \textcolor{comment}{@@\ LUA\_API\ is\ a\ mark\ for\ all\ core\ API\ functions.}}
+\DoxyCodeLine{00298\ \textcolor{comment}{@@\ LUALIB\_API\ is\ a\ mark\ for\ all\ auxiliary\ library\ functions.}}
+\DoxyCodeLine{00299\ \textcolor{comment}{@@\ LUAMOD\_API\ is\ a\ mark\ for\ all\ standard\ library\ opening\ functions.}}
+\DoxyCodeLine{00300\ \textcolor{comment}{**\ CHANGE\ them\ if\ you\ need\ to\ define\ those\ functions\ in\ some\ special\ way.}}
+\DoxyCodeLine{00301\ \textcolor{comment}{**\ For\ instance,\ if\ you\ want\ to\ create\ one\ Windows\ DLL\ with\ the\ core\ and}}
+\DoxyCodeLine{00302\ \textcolor{comment}{**\ the\ libraries,\ you\ may\ want\ to\ use\ the\ following\ definition\ (define}}
+\DoxyCodeLine{00303\ \textcolor{comment}{**\ LUA\_BUILD\_AS\_DLL\ to\ get\ it).}}
+\DoxyCodeLine{00304\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00305\ \textcolor{preprocessor}{\#if\ defined(LUA\_BUILD\_AS\_DLL)\ \ \ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00306\ }
+\DoxyCodeLine{00307\ \textcolor{preprocessor}{\#if\ defined(LUA\_CORE)\ ||\ defined(LUA\_LIB)\ \ \ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00308\ \textcolor{preprocessor}{\#define\ LUA\_API\ \_\_declspec(dllexport)}}
+\DoxyCodeLine{00309\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00310\ \textcolor{preprocessor}{\#define\ LUA\_API\ \_\_declspec(dllimport)}}
+\DoxyCodeLine{00311\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00312\ }
+\DoxyCodeLine{00313\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00314\ }
+\DoxyCodeLine{00315\ \textcolor{preprocessor}{\#define\ LUA\_API\ \ \ \ \ extern}}
+\DoxyCodeLine{00316\ }
+\DoxyCodeLine{00317\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00318\ }
+\DoxyCodeLine{00319\ }
+\DoxyCodeLine{00320\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00321\ \textcolor{comment}{**\ More\ often\ than\ not\ the\ libs\ go\ together\ with\ the\ core.}}
+\DoxyCodeLine{00322\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00323\ \textcolor{preprocessor}{\#define\ LUALIB\_API\ \ LUA\_API}}
+\DoxyCodeLine{00324\ \textcolor{preprocessor}{\#define\ LUAMOD\_API\ \ LUA\_API}}
+\DoxyCodeLine{00325\ }
+\DoxyCodeLine{00326\ }
+\DoxyCodeLine{00327\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00328\ \textcolor{comment}{@@\ LUAI\_FUNC\ is\ a\ mark\ for\ all\ extern\ functions\ that\ are\ not\ to\ be}}
+\DoxyCodeLine{00329\ \textcolor{comment}{**\ exported\ to\ outside\ modules.}}
+\DoxyCodeLine{00330\ \textcolor{comment}{@@\ LUAI\_DDEF\ and\ LUAI\_DDEC\ are\ marks\ for\ all\ extern\ (const)\ variables,}}
+\DoxyCodeLine{00331\ \textcolor{comment}{**\ none\ of\ which\ to\ be\ exported\ to\ outside\ modules\ (LUAI\_DDEF\ for}}
+\DoxyCodeLine{00332\ \textcolor{comment}{**\ definitions\ and\ LUAI\_DDEC\ for\ declarations).}}
+\DoxyCodeLine{00333\ \textcolor{comment}{**\ CHANGE\ them\ if\ you\ need\ to\ mark\ them\ in\ some\ special\ way.\ Elf/gcc}}
+\DoxyCodeLine{00334\ \textcolor{comment}{**\ (versions\ 3.2\ and\ later)\ mark\ them\ as\ "{}hidden"{}\ to\ optimize\ access}}
+\DoxyCodeLine{00335\ \textcolor{comment}{**\ when\ Lua\ is\ compiled\ as\ a\ shared\ library.\ Not\ all\ elf\ targets\ support}}
+\DoxyCodeLine{00336\ \textcolor{comment}{**\ this\ attribute.\ Unfortunately,\ gcc\ does\ not\ offer\ a\ way\ to\ check}}
+\DoxyCodeLine{00337\ \textcolor{comment}{**\ whether\ the\ target\ offers\ that\ support,\ and\ those\ without\ support}}
+\DoxyCodeLine{00338\ \textcolor{comment}{**\ give\ a\ warning\ about\ it.\ To\ avoid\ these\ warnings,\ change\ to\ the}}
+\DoxyCodeLine{00339\ \textcolor{comment}{**\ default\ definition.}}
+\DoxyCodeLine{00340\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00341\ \textcolor{preprocessor}{\#if\ defined(\_\_GNUC\_\_)\ \&\&\ ((\_\_GNUC\_\_*100\ +\ \_\_GNUC\_MINOR\_\_)\ >=\ 302)\ \&\&\ \(\backslash\)}}
+\DoxyCodeLine{00342\ \textcolor{preprocessor}{\ \ \ \ defined(\_\_ELF\_\_)\ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00343\ \textcolor{preprocessor}{\#define\ LUAI\_FUNC\ \ \ \_\_attribute\_\_((visibility("{}internal"{})))\ extern}}
+\DoxyCodeLine{00344\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00345\ \textcolor{preprocessor}{\#define\ LUAI\_FUNC\ \ \ extern}}
+\DoxyCodeLine{00346\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00347\ }
+\DoxyCodeLine{00348\ \textcolor{preprocessor}{\#define\ LUAI\_DDEC(dec)\ \ LUAI\_FUNC\ dec}}
+\DoxyCodeLine{00349\ \textcolor{preprocessor}{\#define\ LUAI\_DDEF\ \ \ }\textcolor{comment}{/*\ empty\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00350\ }
+\DoxyCodeLine{00351\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00352\ }
+\DoxyCodeLine{00353\ }
+\DoxyCodeLine{00354\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00355\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00356\ \textcolor{comment}{**\ Compatibility\ with\ previous\ versions}}
+\DoxyCodeLine{00357\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00358\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00359\ }
+\DoxyCodeLine{00360\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00361\ \textcolor{comment}{}}
+\DoxyCodeLine{00362\ \textcolor{comment}{@@\ LUA\_COMPAT\_UNPACK\ controls\ the\ presence\ of\ global\ 'unpack'.}}
+\DoxyCodeLine{00363\ \textcolor{comment}{**\ You\ can\ replace\ it\ with\ 'table.unpack'.}}
+\DoxyCodeLine{00364\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00365\ \textcolor{preprocessor}{\#define\ LUA\_COMPAT\_UNPACK}}
+\DoxyCodeLine{00366\ }
+\DoxyCodeLine{00367\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00368\ \textcolor{comment}{@@\ LUA\_COMPAT\_5\_3\ controls\ other\ macros\ for\ compatibility\ with\ Lua\ 5.3.}}
+\DoxyCodeLine{00369\ \textcolor{comment}{**\ You\ can\ define\ it\ to\ get\ all\ options,\ or\ change\ specific\ options}}
+\DoxyCodeLine{00370\ \textcolor{comment}{**\ to\ fit\ your\ specific\ needs.}}
+\DoxyCodeLine{00371\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00372\ \textcolor{preprocessor}{\#define\ LUA\_COMPAT\_5\_3}}
+\DoxyCodeLine{00373\ }
+\DoxyCodeLine{00374\ \textcolor{preprocessor}{\#if\ defined(LUA\_COMPAT\_5\_3)\ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00375\ }
+\DoxyCodeLine{00376\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00377\ \textcolor{comment}{@@\ LUA\_COMPAT\_MATHLIB\ controls\ the\ presence\ of\ several\ deprecated}}
+\DoxyCodeLine{00378\ \textcolor{comment}{**\ functions\ in\ the\ mathematical\ library.}}
+\DoxyCodeLine{00379\ \textcolor{comment}{**\ (These\ functions\ were\ already\ officially\ removed\ in\ 5.3;}}
+\DoxyCodeLine{00380\ \textcolor{comment}{**\ nevertheless\ they\ are\ still\ available\ here.)}}
+\DoxyCodeLine{00381\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00382\ \textcolor{preprocessor}{\#ifndef\ LUA\_COMPAT\_MATHLIB}}
+\DoxyCodeLine{00383\ \textcolor{preprocessor}{\#define\ LUA\_COMPAT\_MATHLIB}}
+\DoxyCodeLine{00384\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00385\ }
+\DoxyCodeLine{00386\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00387\ \textcolor{comment}{@@\ LUA\_COMPAT\_APIINTCASTS\ controls\ the\ presence\ of\ macros\ for}}
+\DoxyCodeLine{00388\ \textcolor{comment}{**\ manipulating\ other\ integer\ types\ (lua\_pushunsigned,\ lua\_tounsigned,}}
+\DoxyCodeLine{00389\ \textcolor{comment}{**\ luaL\_checkint,\ luaL\_checklong,\ etc.)}}
+\DoxyCodeLine{00390\ \textcolor{comment}{**\ (These\ macros\ were\ also\ officially\ removed\ in\ 5.3,\ but\ they\ are\ still}}
+\DoxyCodeLine{00391\ \textcolor{comment}{**\ available\ here.)}}
+\DoxyCodeLine{00392\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00393\ \textcolor{preprocessor}{\#define\ LUA\_COMPAT\_APIINTCASTS}}
+\DoxyCodeLine{00394\ }
+\DoxyCodeLine{00395\ }
+\DoxyCodeLine{00396\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00397\ \textcolor{comment}{@@\ LUA\_COMPAT\_LT\_LE\ controls\ the\ emulation\ of\ the\ '\_\_le'\ metamethod}}
+\DoxyCodeLine{00398\ \textcolor{comment}{**\ using\ '\_\_lt'.}}
+\DoxyCodeLine{00399\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00400\ \textcolor{preprocessor}{\#define\ LUA\_COMPAT\_LT\_LE}}
+\DoxyCodeLine{00401\ }
+\DoxyCodeLine{00402\ }
+\DoxyCodeLine{00403\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00404\ \textcolor{comment}{@@\ The\ following\ macros\ supply\ trivial\ compatibility\ for\ some}}
+\DoxyCodeLine{00405\ \textcolor{comment}{**\ changes\ in\ the\ API.\ The\ macros\ themselves\ document\ how\ to}}
+\DoxyCodeLine{00406\ \textcolor{comment}{**\ change\ your\ code\ to\ avoid\ using\ them.}}
+\DoxyCodeLine{00407\ \textcolor{comment}{**\ (Once\ more,\ these\ macros\ were\ officially\ removed\ in\ 5.3,\ but\ they\ are}}
+\DoxyCodeLine{00408\ \textcolor{comment}{**\ still\ available\ here.)}}
+\DoxyCodeLine{00409\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00410\ \textcolor{preprocessor}{\#define\ lua\_strlen(L,i)\ \ \ \ \ lua\_rawlen(L,\ (i))}}
+\DoxyCodeLine{00411\ }
+\DoxyCodeLine{00412\ \textcolor{preprocessor}{\#define\ lua\_objlen(L,i)\ \ \ \ \ lua\_rawlen(L,\ (i))}}
+\DoxyCodeLine{00413\ }
+\DoxyCodeLine{00414\ \textcolor{preprocessor}{\#define\ lua\_equal(L,idx1,idx2)\ \ \ \ \ \ lua\_compare(L,(idx1),(idx2),LUA\_OPEQ)}}
+\DoxyCodeLine{00415\ \textcolor{preprocessor}{\#define\ lua\_lessthan(L,idx1,idx2)\ \ \ lua\_compare(L,(idx1),(idx2),LUA\_OPLT)}}
+\DoxyCodeLine{00416\ }
+\DoxyCodeLine{00417\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00418\ }
+\DoxyCodeLine{00419\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00420\ }
+\DoxyCodeLine{00421\ }
+\DoxyCodeLine{00422\ }
+\DoxyCodeLine{00423\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00424\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00425\ \textcolor{comment}{**\ Configuration\ for\ Numbers\ (low-\/level\ part).}}
+\DoxyCodeLine{00426\ \textcolor{comment}{**\ Change\ these\ definitions\ if\ no\ predefined\ LUA\_FLOAT\_*\ /\ LUA\_INT\_*}}
+\DoxyCodeLine{00427\ \textcolor{comment}{**\ satisfy\ your\ needs.}}
+\DoxyCodeLine{00428\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00429\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00430\ }
+\DoxyCodeLine{00431\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00432\ \textcolor{comment}{@@\ LUAI\_UACNUMBER\ is\ the\ result\ of\ a\ 'default\ argument\ promotion'}}
+\DoxyCodeLine{00433\ \textcolor{comment}{@@\ over\ a\ floating\ number.}}
+\DoxyCodeLine{00434\ \textcolor{comment}{@@\ l\_floatatt(x)\ corrects\ float\ attribute\ 'x'\ to\ the\ proper\ float\ type}}
+\DoxyCodeLine{00435\ \textcolor{comment}{**\ by\ prefixing\ it\ with\ one\ of\ FLT/DBL/LDBL.}}
+\DoxyCodeLine{00436\ \textcolor{comment}{@@\ LUA\_NUMBER\_FRMLEN\ is\ the\ length\ modifier\ for\ writing\ floats.}}
+\DoxyCodeLine{00437\ \textcolor{comment}{@@\ LUA\_NUMBER\_FMT\ is\ the\ format\ for\ writing\ floats.}}
+\DoxyCodeLine{00438\ \textcolor{comment}{@@\ lua\_number2str\ converts\ a\ float\ to\ a\ string.}}
+\DoxyCodeLine{00439\ \textcolor{comment}{@@\ l\_mathop\ allows\ the\ addition\ of\ an\ 'l'\ or\ 'f'\ to\ all\ math\ operations.}}
+\DoxyCodeLine{00440\ \textcolor{comment}{@@\ l\_floor\ takes\ the\ floor\ of\ a\ float.}}
+\DoxyCodeLine{00441\ \textcolor{comment}{@@\ lua\_str2number\ converts\ a\ decimal\ numeral\ to\ a\ number.}}
+\DoxyCodeLine{00442\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00443\ }
+\DoxyCodeLine{00444\ }
+\DoxyCodeLine{00445\ \textcolor{comment}{/*\ The\ following\ definitions\ are\ good\ for\ most\ cases\ here\ */}}
+\DoxyCodeLine{00446\ }
+\DoxyCodeLine{00447\ \textcolor{preprocessor}{\#define\ l\_floor(x)\ \ \ \ \ \ (l\_mathop(floor)(x))}}
+\DoxyCodeLine{00448\ }
+\DoxyCodeLine{00449\ \textcolor{preprocessor}{\#define\ lua\_number2str(s,sz,n)\ \ \(\backslash\)}}
+\DoxyCodeLine{00450\ \textcolor{preprocessor}{\ \ \ \ l\_sprintf((s),\ sz,\ LUA\_NUMBER\_FMT,\ (LUAI\_UACNUMBER)(n))}}
+\DoxyCodeLine{00451\ }
+\DoxyCodeLine{00452\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00453\ \textcolor{comment}{@@\ lua\_numbertointeger\ converts\ a\ float\ number\ with\ an\ integral\ value}}
+\DoxyCodeLine{00454\ \textcolor{comment}{**\ to\ an\ integer,\ or\ returns\ 0\ if\ float\ is\ not\ within\ the\ range\ of}}
+\DoxyCodeLine{00455\ \textcolor{comment}{**\ a\ lua\_Integer.\ \ (The\ range\ comparisons\ are\ tricky\ because\ of}}
+\DoxyCodeLine{00456\ \textcolor{comment}{**\ rounding.\ The\ tests\ here\ assume\ a\ two-\/complement\ representation,}}
+\DoxyCodeLine{00457\ \textcolor{comment}{**\ where\ MININTEGER\ always\ has\ an\ exact\ representation\ as\ a\ float;}}
+\DoxyCodeLine{00458\ \textcolor{comment}{**\ MAXINTEGER\ may\ not\ have\ one,\ and\ therefore\ its\ conversion\ to\ float}}
+\DoxyCodeLine{00459\ \textcolor{comment}{**\ may\ have\ an\ ill-\/defined\ value.)}}
+\DoxyCodeLine{00460\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00461\ \textcolor{preprocessor}{\#define\ lua\_numbertointeger(n,p)\ \(\backslash\)}}
+\DoxyCodeLine{00462\ \textcolor{preprocessor}{\ \ ((n)\ >=\ (LUA\_NUMBER)(LUA\_MININTEGER)\ \&\&\ \(\backslash\)}}
+\DoxyCodeLine{00463\ \textcolor{preprocessor}{\ \ \ (n)\ <\ -\/(LUA\_NUMBER)(LUA\_MININTEGER)\ \&\&\ \(\backslash\)}}
+\DoxyCodeLine{00464\ \textcolor{preprocessor}{\ \ \ \ \ \ (*(p)\ =\ (LUA\_INTEGER)(n),\ 1))}}
+\DoxyCodeLine{00465\ }
+\DoxyCodeLine{00466\ }
+\DoxyCodeLine{00467\ \textcolor{comment}{/*\ now\ the\ variable\ definitions\ */}}
+\DoxyCodeLine{00468\ }
+\DoxyCodeLine{00469\ \textcolor{preprocessor}{\#if\ LUA\_FLOAT\_TYPE\ ==\ LUA\_FLOAT\_FLOAT\ \ \ \ \ \ \ }\textcolor{comment}{/*\ \{\ single\ float\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00470\ }
+\DoxyCodeLine{00471\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\ \ float}}
+\DoxyCodeLine{00472\ }
+\DoxyCodeLine{00473\ \textcolor{preprocessor}{\#define\ l\_floatatt(n)\ \ \ \ \ \ \ (FLT\_\#\#n)}}
+\DoxyCodeLine{00474\ }
+\DoxyCodeLine{00475\ \textcolor{preprocessor}{\#define\ LUAI\_UACNUMBER\ \ double}}
+\DoxyCodeLine{00476\ }
+\DoxyCodeLine{00477\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FRMLEN\ \ \ "{}"{}}}
+\DoxyCodeLine{00478\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FMT\ \ \ \ \ \ "{}\%.7g"{}}}
+\DoxyCodeLine{00479\ }
+\DoxyCodeLine{00480\ \textcolor{preprocessor}{\#define\ l\_mathop(op)\ \ \ \ \ \ \ \ op\#\#f}}
+\DoxyCodeLine{00481\ }
+\DoxyCodeLine{00482\ \textcolor{preprocessor}{\#define\ lua\_str2number(s,p)\ strtof((s),\ (p))}}
+\DoxyCodeLine{00483\ }
+\DoxyCodeLine{00484\ }
+\DoxyCodeLine{00485\ \textcolor{preprocessor}{\#elif\ LUA\_FLOAT\_TYPE\ ==\ LUA\_FLOAT\_LONGDOUBLE\ \ \ \ }\textcolor{comment}{/*\ \}\{\ long\ double\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00486\ }
+\DoxyCodeLine{00487\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\ \ long\ double}}
+\DoxyCodeLine{00488\ }
+\DoxyCodeLine{00489\ \textcolor{preprocessor}{\#define\ l\_floatatt(n)\ \ \ \ \ \ \ (LDBL\_\#\#n)}}
+\DoxyCodeLine{00490\ }
+\DoxyCodeLine{00491\ \textcolor{preprocessor}{\#define\ LUAI\_UACNUMBER\ \ long\ double}}
+\DoxyCodeLine{00492\ }
+\DoxyCodeLine{00493\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FRMLEN\ \ \ "{}L"{}}}
+\DoxyCodeLine{00494\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FMT\ \ \ \ \ \ "{}\%.19Lg"{}}}
+\DoxyCodeLine{00495\ }
+\DoxyCodeLine{00496\ \textcolor{preprocessor}{\#define\ l\_mathop(op)\ \ \ \ \ \ \ \ op\#\#l}}
+\DoxyCodeLine{00497\ }
+\DoxyCodeLine{00498\ \textcolor{preprocessor}{\#define\ lua\_str2number(s,p)\ strtold((s),\ (p))}}
+\DoxyCodeLine{00499\ }
+\DoxyCodeLine{00500\ \textcolor{preprocessor}{\#elif\ LUA\_FLOAT\_TYPE\ ==\ LUA\_FLOAT\_DOUBLE\ \ \ \ }\textcolor{comment}{/*\ \}\{\ double\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00501\ }
+\DoxyCodeLine{00502\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\ \ double}}
+\DoxyCodeLine{00503\ }
+\DoxyCodeLine{00504\ \textcolor{preprocessor}{\#define\ l\_floatatt(n)\ \ \ \ \ \ \ (DBL\_\#\#n)}}
+\DoxyCodeLine{00505\ }
+\DoxyCodeLine{00506\ \textcolor{preprocessor}{\#define\ LUAI\_UACNUMBER\ \ double}}
+\DoxyCodeLine{00507\ }
+\DoxyCodeLine{00508\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FRMLEN\ \ \ "{}"{}}}
+\DoxyCodeLine{00509\ \textcolor{preprocessor}{\#define\ LUA\_NUMBER\_FMT\ \ \ \ \ \ "{}\%.14g"{}}}
+\DoxyCodeLine{00510\ }
+\DoxyCodeLine{00511\ \textcolor{preprocessor}{\#define\ l\_mathop(op)\ \ \ \ \ \ \ \ op}}
+\DoxyCodeLine{00512\ }
+\DoxyCodeLine{00513\ \textcolor{preprocessor}{\#define\ lua\_str2number(s,p)\ strtod((s),\ (p))}}
+\DoxyCodeLine{00514\ }
+\DoxyCodeLine{00515\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00516\ }
+\DoxyCodeLine{00517\ \textcolor{preprocessor}{\#error\ "{}numeric\ float\ type\ not\ defined"{}}}
+\DoxyCodeLine{00518\ }
+\DoxyCodeLine{00519\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00520\ }
+\DoxyCodeLine{00521\ }
+\DoxyCodeLine{00522\ }
+\DoxyCodeLine{00523\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00524\ \textcolor{comment}{@@\ LUA\_UNSIGNED\ is\ the\ unsigned\ version\ of\ LUA\_INTEGER.}}
+\DoxyCodeLine{00525\ \textcolor{comment}{@@\ LUAI\_UACINT\ is\ the\ result\ of\ a\ 'default\ argument\ promotion'}}
+\DoxyCodeLine{00526\ \textcolor{comment}{@@\ over\ a\ LUA\_INTEGER.}}
+\DoxyCodeLine{00527\ \textcolor{comment}{@@\ LUA\_INTEGER\_FRMLEN\ is\ the\ length\ modifier\ for\ reading/writing\ integers.}}
+\DoxyCodeLine{00528\ \textcolor{comment}{@@\ LUA\_INTEGER\_FMT\ is\ the\ format\ for\ writing\ integers.}}
+\DoxyCodeLine{00529\ \textcolor{comment}{@@\ LUA\_MAXINTEGER\ is\ the\ maximum\ value\ for\ a\ LUA\_INTEGER.}}
+\DoxyCodeLine{00530\ \textcolor{comment}{@@\ LUA\_MININTEGER\ is\ the\ minimum\ value\ for\ a\ LUA\_INTEGER.}}
+\DoxyCodeLine{00531\ \textcolor{comment}{@@\ LUA\_MAXUNSIGNED\ is\ the\ maximum\ value\ for\ a\ LUA\_UNSIGNED.}}
+\DoxyCodeLine{00532\ \textcolor{comment}{@@\ lua\_integer2str\ converts\ an\ integer\ to\ a\ string.}}
+\DoxyCodeLine{00533\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00534\ }
+\DoxyCodeLine{00535\ }
+\DoxyCodeLine{00536\ \textcolor{comment}{/*\ The\ following\ definitions\ are\ good\ for\ most\ cases\ here\ */}}
+\DoxyCodeLine{00537\ }
+\DoxyCodeLine{00538\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\_FMT\ \ \ \ \ "{}\%"{}\ LUA\_INTEGER\_FRMLEN\ "{}d"{}}}
+\DoxyCodeLine{00539\ }
+\DoxyCodeLine{00540\ \textcolor{preprocessor}{\#define\ LUAI\_UACINT\ \ \ \ \ LUA\_INTEGER}}
+\DoxyCodeLine{00541\ }
+\DoxyCodeLine{00542\ \textcolor{preprocessor}{\#define\ lua\_integer2str(s,sz,n)\ \ \(\backslash\)}}
+\DoxyCodeLine{00543\ \textcolor{preprocessor}{\ \ \ \ l\_sprintf((s),\ sz,\ LUA\_INTEGER\_FMT,\ (LUAI\_UACINT)(n))}}
+\DoxyCodeLine{00544\ }
+\DoxyCodeLine{00545\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00546\ \textcolor{comment}{**\ use\ LUAI\_UACINT\ here\ to\ avoid\ problems\ with\ promotions\ (which}}
+\DoxyCodeLine{00547\ \textcolor{comment}{**\ can\ turn\ a\ comparison\ between\ unsigneds\ into\ a\ signed\ comparison)}}
+\DoxyCodeLine{00548\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00549\ \textcolor{preprocessor}{\#define\ LUA\_UNSIGNED\ \ \ \ \ \ \ \ unsigned\ LUAI\_UACINT}}
+\DoxyCodeLine{00550\ }
+\DoxyCodeLine{00551\ }
+\DoxyCodeLine{00552\ \textcolor{comment}{/*\ now\ the\ variable\ definitions\ */}}
+\DoxyCodeLine{00553\ }
+\DoxyCodeLine{00554\ \textcolor{preprocessor}{\#if\ LUA\_INT\_TYPE\ ==\ LUA\_INT\_INT\ \ \ \ \ }\textcolor{comment}{/*\ \{\ int\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00555\ }
+\DoxyCodeLine{00556\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\ \ \ \ \ int}}
+\DoxyCodeLine{00557\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\_FRMLEN\ \ "{}"{}}}
+\DoxyCodeLine{00558\ }
+\DoxyCodeLine{00559\ \textcolor{preprocessor}{\#define\ LUA\_MAXINTEGER\ \ \ \ \ \ INT\_MAX}}
+\DoxyCodeLine{00560\ \textcolor{preprocessor}{\#define\ LUA\_MININTEGER\ \ \ \ \ \ INT\_MIN}}
+\DoxyCodeLine{00561\ }
+\DoxyCodeLine{00562\ \textcolor{preprocessor}{\#define\ LUA\_MAXUNSIGNED\ \ \ \ \ UINT\_MAX}}
+\DoxyCodeLine{00563\ }
+\DoxyCodeLine{00564\ \textcolor{preprocessor}{\#elif\ LUA\_INT\_TYPE\ ==\ LUA\_INT\_LONG\ \ }\textcolor{comment}{/*\ \}\{\ long\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00565\ }
+\DoxyCodeLine{00566\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\ \ \ \ \ long}}
+\DoxyCodeLine{00567\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\_FRMLEN\ \ "{}l"{}}}
+\DoxyCodeLine{00568\ }
+\DoxyCodeLine{00569\ \textcolor{preprocessor}{\#define\ LUA\_MAXINTEGER\ \ \ \ \ \ LONG\_MAX}}
+\DoxyCodeLine{00570\ \textcolor{preprocessor}{\#define\ LUA\_MININTEGER\ \ \ \ \ \ LONG\_MIN}}
+\DoxyCodeLine{00571\ }
+\DoxyCodeLine{00572\ \textcolor{preprocessor}{\#define\ LUA\_MAXUNSIGNED\ \ \ \ \ ULONG\_MAX}}
+\DoxyCodeLine{00573\ }
+\DoxyCodeLine{00574\ \textcolor{preprocessor}{\#elif\ LUA\_INT\_TYPE\ ==\ LUA\_INT\_LONGLONG\ \ }\textcolor{comment}{/*\ \}\{\ long\ long\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00575\ }
+\DoxyCodeLine{00576\ \textcolor{comment}{/*\ use\ presence\ of\ macro\ LLONG\_MAX\ as\ proxy\ for\ C99\ compliance\ */}}
+\DoxyCodeLine{00577\ \textcolor{preprocessor}{\#if\ defined(LLONG\_MAX)\ \ \ \ \ \ }\textcolor{comment}{/*\ \{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00578\ \textcolor{comment}{/*\ use\ ISO\ C99\ stuff\ */}}
+\DoxyCodeLine{00579\ }
+\DoxyCodeLine{00580\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\ \ \ \ \ long\ long}}
+\DoxyCodeLine{00581\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\_FRMLEN\ \ "{}ll"{}}}
+\DoxyCodeLine{00582\ }
+\DoxyCodeLine{00583\ \textcolor{preprocessor}{\#define\ LUA\_MAXINTEGER\ \ \ \ \ \ LLONG\_MAX}}
+\DoxyCodeLine{00584\ \textcolor{preprocessor}{\#define\ LUA\_MININTEGER\ \ \ \ \ \ LLONG\_MIN}}
+\DoxyCodeLine{00585\ }
+\DoxyCodeLine{00586\ \textcolor{preprocessor}{\#define\ LUA\_MAXUNSIGNED\ \ \ \ \ ULLONG\_MAX}}
+\DoxyCodeLine{00587\ }
+\DoxyCodeLine{00588\ \textcolor{preprocessor}{\#elif\ defined(LUA\_USE\_WINDOWS)\ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00589\ \textcolor{comment}{/*\ in\ Windows,\ can\ use\ specific\ Windows\ types\ */}}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\ \ \ \ \ \_\_int64}}
+\DoxyCodeLine{00592\ \textcolor{preprocessor}{\#define\ LUA\_INTEGER\_FRMLEN\ \ "{}I64"{}}}
+\DoxyCodeLine{00593\ }
+\DoxyCodeLine{00594\ \textcolor{preprocessor}{\#define\ LUA\_MAXINTEGER\ \ \ \ \ \ \_I64\_MAX}}
+\DoxyCodeLine{00595\ \textcolor{preprocessor}{\#define\ LUA\_MININTEGER\ \ \ \ \ \ \_I64\_MIN}}
+\DoxyCodeLine{00596\ }
+\DoxyCodeLine{00597\ \textcolor{preprocessor}{\#define\ LUA\_MAXUNSIGNED\ \ \ \ \ \_UI64\_MAX}}
+\DoxyCodeLine{00598\ }
+\DoxyCodeLine{00599\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00600\ }
+\DoxyCodeLine{00601\ \textcolor{preprocessor}{\#error\ "{}Compiler\ does\ not\ support\ 'long\ long'.\ Use\ option\ '-\/DLUA\_32BITS'\ \(\backslash\)}}
+\DoxyCodeLine{00602\ \textcolor{preprocessor}{\ \ or\ '-\/DLUA\_C89\_NUMBERS'\ (see\ file\ 'luaconf.h'\ for\ details)"{}}}
+\DoxyCodeLine{00603\ }
+\DoxyCodeLine{00604\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00605\ }
+\DoxyCodeLine{00606\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\{\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00607\ }
+\DoxyCodeLine{00608\ \textcolor{preprocessor}{\#error\ "{}numeric\ integer\ type\ not\ defined"{}}}
+\DoxyCodeLine{00609\ }
+\DoxyCodeLine{00610\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ \ \ }\textcolor{comment}{/*\ \}\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00611\ }
+\DoxyCodeLine{00612\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00613\ }
+\DoxyCodeLine{00614\ }
+\DoxyCodeLine{00615\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00616\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00617\ \textcolor{comment}{**\ Dependencies\ with\ C99\ and\ other\ C\ details}}
+\DoxyCodeLine{00618\ \textcolor{comment}{**\ ========================================================}}
+\DoxyCodeLine{00619\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00620\ }
+\DoxyCodeLine{00621\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00622\ \textcolor{comment}{@@\ l\_sprintf\ is\ equivalent\ to\ 'snprintf'\ or\ 'sprintf'\ in\ C89.}}
+\DoxyCodeLine{00623\ \textcolor{comment}{**\ (All\ uses\ in\ Lua\ have\ only\ one\ format\ item.)}}
+\DoxyCodeLine{00624\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00625\ \textcolor{preprocessor}{\#if\ !defined(LUA\_USE\_C89)}}
+\DoxyCodeLine{00626\ \textcolor{preprocessor}{\#define\ l\_sprintf(s,sz,f,i)\ snprintf(s,sz,f,i)}}
+\DoxyCodeLine{00627\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00628\ \textcolor{preprocessor}{\#define\ l\_sprintf(s,sz,f,i)\ ((void)(sz),\ sprintf(s,f,i))}}
+\DoxyCodeLine{00629\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00630\ }
+\DoxyCodeLine{00631\ }
+\DoxyCodeLine{00632\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00633\ \textcolor{comment}{@@\ lua\_strx2number\ converts\ a\ hexadecimal\ numeral\ to\ a\ number.}}
+\DoxyCodeLine{00634\ \textcolor{comment}{**\ In\ C99,\ 'strtod'\ does\ that\ conversion.\ Otherwise,\ you\ can}}
+\DoxyCodeLine{00635\ \textcolor{comment}{**\ leave\ 'lua\_strx2number'\ undefined\ and\ Lua\ will\ provide\ its\ own}}
+\DoxyCodeLine{00636\ \textcolor{comment}{**\ implementation.}}
+\DoxyCodeLine{00637\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00638\ \textcolor{preprocessor}{\#if\ !defined(LUA\_USE\_C89)}}
+\DoxyCodeLine{00639\ \textcolor{preprocessor}{\#define\ lua\_strx2number(s,p)\ \ \ \ \ \ \ \ lua\_str2number(s,p)}}
+\DoxyCodeLine{00640\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00641\ }
+\DoxyCodeLine{00642\ }
+\DoxyCodeLine{00643\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00644\ \textcolor{comment}{@@\ lua\_pointer2str\ converts\ a\ pointer\ to\ a\ readable\ string\ in\ a}}
+\DoxyCodeLine{00645\ \textcolor{comment}{**\ non-\/specified\ way.}}
+\DoxyCodeLine{00646\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00647\ \textcolor{preprocessor}{\#define\ lua\_pointer2str(buff,sz,p)\ \ l\_sprintf(buff,sz,"{}\%p"{},p)}}
+\DoxyCodeLine{00648\ }
+\DoxyCodeLine{00649\ }
+\DoxyCodeLine{00650\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00651\ \textcolor{comment}{@@\ lua\_number2strx\ converts\ a\ float\ to\ a\ hexadecimal\ numeral.}}
+\DoxyCodeLine{00652\ \textcolor{comment}{**\ In\ C99,\ 'sprintf'\ (with\ format\ specifiers\ '\%a'/'\%A')\ does\ that.}}
+\DoxyCodeLine{00653\ \textcolor{comment}{**\ Otherwise,\ you\ can\ leave\ 'lua\_number2strx'\ undefined\ and\ Lua\ will}}
+\DoxyCodeLine{00654\ \textcolor{comment}{**\ provide\ its\ own\ implementation.}}
+\DoxyCodeLine{00655\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00656\ \textcolor{preprocessor}{\#if\ !defined(LUA\_USE\_C89)}}
+\DoxyCodeLine{00657\ \textcolor{preprocessor}{\#define\ lua\_number2strx(L,b,sz,f,n)\ \ \(\backslash\)}}
+\DoxyCodeLine{00658\ \textcolor{preprocessor}{\ \ \ \ ((void)L,\ l\_sprintf(b,sz,f,(LUAI\_UACNUMBER)(n)))}}
+\DoxyCodeLine{00659\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00660\ }
+\DoxyCodeLine{00661\ }
+\DoxyCodeLine{00662\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00663\ \textcolor{comment}{**\ 'strtof'\ and\ 'opf'\ variants\ for\ math\ functions\ are\ not\ valid\ in}}
+\DoxyCodeLine{00664\ \textcolor{comment}{**\ C89.\ Otherwise,\ the\ macro\ 'HUGE\_VALF'\ is\ a\ good\ proxy\ for\ testing\ the}}
+\DoxyCodeLine{00665\ \textcolor{comment}{**\ availability\ of\ these\ variants.\ ('math.h'\ is\ already\ included\ in}}
+\DoxyCodeLine{00666\ \textcolor{comment}{**\ all\ files\ that\ use\ these\ macros.)}}
+\DoxyCodeLine{00667\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00668\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_C89)\ ||\ (defined(HUGE\_VAL)\ \&\&\ !defined(HUGE\_VALF))}}
+\DoxyCodeLine{00669\ \textcolor{preprocessor}{\#undef\ l\_mathop\ \ }\textcolor{comment}{/*\ variants\ not\ available\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00670\ \textcolor{preprocessor}{\#undef\ lua\_str2number}}
+\DoxyCodeLine{00671\ \textcolor{preprocessor}{\#define\ l\_mathop(op)\ \ \ \ \ \ \ \ (lua\_Number)op\ \ }\textcolor{comment}{/*\ no\ variant\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00672\ \textcolor{preprocessor}{\#define\ lua\_str2number(s,p)\ ((lua\_Number)strtod((s),\ (p)))}}
+\DoxyCodeLine{00673\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00674\ }
+\DoxyCodeLine{00675\ }
+\DoxyCodeLine{00676\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00677\ \textcolor{comment}{@@\ LUA\_KCONTEXT\ is\ the\ type\ of\ the\ context\ ('ctx')\ for\ continuation}}
+\DoxyCodeLine{00678\ \textcolor{comment}{**\ functions.\ \ It\ must\ be\ a\ numerical\ type;\ Lua\ will\ use\ 'intptr\_t'\ if}}
+\DoxyCodeLine{00679\ \textcolor{comment}{**\ available,\ otherwise\ it\ will\ use\ 'ptrdiff\_t'\ (the\ nearest\ thing\ to}}
+\DoxyCodeLine{00680\ \textcolor{comment}{**\ 'intptr\_t'\ in\ C89)}}
+\DoxyCodeLine{00681\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00682\ \textcolor{preprocessor}{\#define\ LUA\_KCONTEXT\ \ \ \ ptrdiff\_t}}
+\DoxyCodeLine{00683\ }
+\DoxyCodeLine{00684\ \textcolor{preprocessor}{\#if\ !defined(LUA\_USE\_C89)\ \&\&\ defined(\_\_STDC\_VERSION\_\_)\ \&\&\ \(\backslash\)}}
+\DoxyCodeLine{00685\ \textcolor{preprocessor}{\ \ \ \ \_\_STDC\_VERSION\_\_\ >=\ 199901L}}
+\DoxyCodeLine{00686\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{00687\ \textcolor{preprocessor}{\#if\ defined(INTPTR\_MAX)\ \ }\textcolor{comment}{/*\ even\ in\ C99\ this\ type\ is\ optional\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00688\ \textcolor{preprocessor}{\#undef\ LUA\_KCONTEXT}}
+\DoxyCodeLine{00689\ \textcolor{preprocessor}{\#define\ LUA\_KCONTEXT\ \ \ \ intptr\_t}}
+\DoxyCodeLine{00690\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00691\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00692\ }
+\DoxyCodeLine{00693\ }
+\DoxyCodeLine{00694\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00695\ \textcolor{comment}{@@\ lua\_getlocaledecpoint\ gets\ the\ locale\ "{}radix\ character"{}\ (decimal\ point).}}
+\DoxyCodeLine{00696\ \textcolor{comment}{**\ Change\ that\ if\ you\ do\ not\ want\ to\ use\ C\ locales.\ (Code\ using\ this}}
+\DoxyCodeLine{00697\ \textcolor{comment}{**\ macro\ must\ include\ the\ header\ 'locale.h'.)}}
+\DoxyCodeLine{00698\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00699\ \textcolor{preprocessor}{\#if\ !defined(lua\_getlocaledecpoint)}}
+\DoxyCodeLine{00700\ \textcolor{preprocessor}{\#define\ lua\_getlocaledecpoint()\ ('.')}}
+\DoxyCodeLine{00701\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00702\ }
+\DoxyCodeLine{00703\ }
+\DoxyCodeLine{00704\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00705\ \textcolor{comment}{**\ macros\ to\ improve\ jump\ prediction,\ used\ mostly\ for\ error\ handling}}
+\DoxyCodeLine{00706\ \textcolor{comment}{**\ and\ debug\ facilities.\ (Some\ macros\ in\ the\ Lua\ API\ use\ these\ macros.}}
+\DoxyCodeLine{00707\ \textcolor{comment}{**\ Define\ LUA\_NOBUILTIN\ if\ you\ do\ not\ want\ '\_\_builtin\_expect'\ in\ your}}
+\DoxyCodeLine{00708\ \textcolor{comment}{**\ code.)}}
+\DoxyCodeLine{00709\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00710\ \textcolor{preprocessor}{\#if\ !defined(luai\_likely)}}
+\DoxyCodeLine{00711\ }
+\DoxyCodeLine{00712\ \textcolor{preprocessor}{\#if\ defined(\_\_GNUC\_\_)\ \&\&\ !defined(LUA\_NOBUILTIN)}}
+\DoxyCodeLine{00713\ \textcolor{preprocessor}{\#define\ luai\_likely(x)\ \ \ \ \ \ (\_\_builtin\_expect(((x)\ !=\ 0),\ 1))}}
+\DoxyCodeLine{00714\ \textcolor{preprocessor}{\#define\ luai\_unlikely(x)\ \ \ \ (\_\_builtin\_expect(((x)\ !=\ 0),\ 0))}}
+\DoxyCodeLine{00715\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00716\ \textcolor{preprocessor}{\#define\ luai\_likely(x)\ \ \ \ \ \ (x)}}
+\DoxyCodeLine{00717\ \textcolor{preprocessor}{\#define\ luai\_unlikely(x)\ \ \ \ (x)}}
+\DoxyCodeLine{00718\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00719\ }
+\DoxyCodeLine{00720\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00721\ }
+\DoxyCodeLine{00722\ }
+\DoxyCodeLine{00723\ \textcolor{preprocessor}{\#if\ defined(LUA\_CORE)\ ||\ defined(LUA\_LIB)}}
+\DoxyCodeLine{00724\ \textcolor{comment}{/*\ shorter\ names\ for\ Lua's\ own\ use\ */}}
+\DoxyCodeLine{00725\ \textcolor{preprocessor}{\#define\ l\_likely(x)\ luai\_likely(x)}}
+\DoxyCodeLine{00726\ \textcolor{preprocessor}{\#define\ l\_unlikely(x)\ \ \ luai\_unlikely(x)}}
+\DoxyCodeLine{00727\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00728\ }
+\DoxyCodeLine{00729\ }
+\DoxyCodeLine{00730\ }
+\DoxyCodeLine{00731\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00732\ }
+\DoxyCodeLine{00733\ }
+\DoxyCodeLine{00734\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00735\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00736\ \textcolor{comment}{**\ Language\ Variations}}
+\DoxyCodeLine{00737\ \textcolor{comment}{**\ ==========================================================}}
+\DoxyCodeLine{00738\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00739\ }
+\DoxyCodeLine{00740\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00741\ \textcolor{comment}{@@\ LUA\_NOCVTN2S/LUA\_NOCVTS2N\ control\ how\ Lua\ performs\ some}}
+\DoxyCodeLine{00742\ \textcolor{comment}{**\ coercions.\ Define\ LUA\_NOCVTN2S\ to\ turn\ off\ automatic\ coercion\ from}}
+\DoxyCodeLine{00743\ \textcolor{comment}{**\ numbers\ to\ strings.\ Define\ LUA\_NOCVTS2N\ to\ turn\ off\ automatic}}
+\DoxyCodeLine{00744\ \textcolor{comment}{**\ coercion\ from\ strings\ to\ numbers.}}
+\DoxyCodeLine{00745\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00746\ \textcolor{comment}{/*\ \#define\ LUA\_NOCVTN2S\ */}}
+\DoxyCodeLine{00747\ \textcolor{comment}{/*\ \#define\ LUA\_NOCVTS2N\ */}}
+\DoxyCodeLine{00748\ }
+\DoxyCodeLine{00749\ }
+\DoxyCodeLine{00750\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00751\ \textcolor{comment}{@@\ LUA\_USE\_APICHECK\ turns\ on\ several\ consistency\ checks\ on\ the\ C\ API.}}
+\DoxyCodeLine{00752\ \textcolor{comment}{**\ Define\ it\ as\ a\ help\ when\ debugging\ C\ code.}}
+\DoxyCodeLine{00753\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00754\ \textcolor{preprocessor}{\#if\ defined(LUA\_USE\_APICHECK)}}
+\DoxyCodeLine{00755\ \textcolor{preprocessor}{\#include\ <assert.h>}}
+\DoxyCodeLine{00756\ \textcolor{preprocessor}{\#define\ luai\_apicheck(l,e)\ \ assert(e)}}
+\DoxyCodeLine{00757\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00758\ }
+\DoxyCodeLine{00759\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00760\ }
+\DoxyCodeLine{00761\ }
+\DoxyCodeLine{00762\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00763\ \textcolor{comment}{**\ \{=======================================================}}
+\DoxyCodeLine{00764\ \textcolor{comment}{**\ Macros\ that\ affect\ the\ API\ and\ must\ be\ stable\ (that\ is,\ must\ be\ the}}
+\DoxyCodeLine{00765\ \textcolor{comment}{**\ same\ when\ you\ compile\ Lua\ and\ when\ you\ compile\ code\ that\ links\ to}}
+\DoxyCodeLine{00766\ \textcolor{comment}{**\ Lua).}}
+\DoxyCodeLine{00767\ \textcolor{comment}{**\ ==========================================================}}
+\DoxyCodeLine{00768\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00769\ }
+\DoxyCodeLine{00770\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00771\ \textcolor{comment}{@@\ LUAI\_MAXSTACK\ limits\ the\ size\ of\ the\ Lua\ stack.}}
+\DoxyCodeLine{00772\ \textcolor{comment}{**\ CHANGE\ it\ if\ you\ need\ a\ different\ limit.\ This\ limit\ is\ arbitrary;}}
+\DoxyCodeLine{00773\ \textcolor{comment}{**\ its\ only\ purpose\ is\ to\ stop\ Lua\ from\ consuming\ unlimited\ stack}}
+\DoxyCodeLine{00774\ \textcolor{comment}{**\ space\ (and\ to\ reserve\ some\ numbers\ for\ pseudo-\/indices).}}
+\DoxyCodeLine{00775\ \textcolor{comment}{**\ (It\ must\ fit\ into\ max(size\_t)/32\ and\ max(int)/2.)}}
+\DoxyCodeLine{00776\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00777\ \textcolor{preprocessor}{\#if\ LUAI\_IS32INT}}
+\DoxyCodeLine{00778\ \textcolor{preprocessor}{\#define\ LUAI\_MAXSTACK\ \ \ \ \ \ \ 1000000}}
+\DoxyCodeLine{00779\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00780\ \textcolor{preprocessor}{\#define\ LUAI\_MAXSTACK\ \ \ \ \ \ \ 15000}}
+\DoxyCodeLine{00781\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00782\ }
+\DoxyCodeLine{00783\ }
+\DoxyCodeLine{00784\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00785\ \textcolor{comment}{@@\ LUA\_EXTRASPACE\ defines\ the\ size\ of\ a\ raw\ memory\ area\ associated\ with}}
+\DoxyCodeLine{00786\ \textcolor{comment}{**\ a\ Lua\ state\ with\ very\ fast\ access.}}
+\DoxyCodeLine{00787\ \textcolor{comment}{**\ CHANGE\ it\ if\ you\ need\ a\ different\ size.}}
+\DoxyCodeLine{00788\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00789\ \textcolor{preprocessor}{\#define\ LUA\_EXTRASPACE\ \ \ \ \ \ (sizeof(void\ *))}}
+\DoxyCodeLine{00790\ }
+\DoxyCodeLine{00791\ }
+\DoxyCodeLine{00792\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00793\ \textcolor{comment}{@@\ LUA\_IDSIZE\ gives\ the\ maximum\ size\ for\ the\ description\ of\ the\ source}}
+\DoxyCodeLine{00794\ \textcolor{comment}{**\ of\ a\ function\ in\ debug\ information.}}
+\DoxyCodeLine{00795\ \textcolor{comment}{**\ CHANGE\ it\ if\ you\ want\ a\ different\ size.}}
+\DoxyCodeLine{00796\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00797\ \textcolor{preprocessor}{\#define\ LUA\_IDSIZE\ \ 60}}
+\DoxyCodeLine{00798\ }
+\DoxyCodeLine{00799\ }
+\DoxyCodeLine{00800\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00801\ \textcolor{comment}{@@\ LUAL\_BUFFERSIZE\ is\ the\ initial\ buffer\ size\ used\ by\ the\ lauxlib}}
+\DoxyCodeLine{00802\ \textcolor{comment}{**\ buffer\ system.}}
+\DoxyCodeLine{00803\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00804\ \textcolor{preprocessor}{\#define\ LUAL\_BUFFERSIZE\ \ \ ((int)(16\ *\ sizeof(void*)\ *\ sizeof(lua\_Number)))}}
+\DoxyCodeLine{00805\ }
+\DoxyCodeLine{00806\ }
+\DoxyCodeLine{00807\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00808\ \textcolor{comment}{@@\ LUAI\_MAXALIGN\ defines\ fields\ that,\ when\ used\ in\ a\ union,\ ensure}}
+\DoxyCodeLine{00809\ \textcolor{comment}{**\ maximum\ alignment\ for\ the\ other\ items\ in\ that\ union.}}
+\DoxyCodeLine{00810\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00811\ \textcolor{preprocessor}{\#define\ LUAI\_MAXALIGN\ \ lua\_Number\ n;\ double\ u;\ void\ *s;\ lua\_Integer\ i;\ long\ l}}
+\DoxyCodeLine{00812\ }
+\DoxyCodeLine{00813\ \textcolor{comment}{/*\ \}=======================================================\ */}}
+\DoxyCodeLine{00814\ }
+\DoxyCodeLine{00815\ }
+\DoxyCodeLine{00816\ }
+\DoxyCodeLine{00817\ }
+\DoxyCodeLine{00818\ }
+\DoxyCodeLine{00819\ \textcolor{comment}{/*\ ========================================================\ */}}
+\DoxyCodeLine{00820\ }
+\DoxyCodeLine{00821\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00822\ \textcolor{comment}{**\ Local\ configuration.\ You\ can\ use\ this\ space\ to\ add\ your\ redefinitions\ \ }}
+\DoxyCodeLine{00823\ \textcolor{comment}{**\ without\ modifying\ the\ main\ part\ of\ the\ file.}}
+\DoxyCodeLine{00824\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00825\ }
+\DoxyCodeLine{00826\ \textcolor{comment}{/*\ Android\ NDK\ compatibility:\ use\ standard\ fseek/ftell\ instead\ of\ fseeko/ftello\ */}}
+\DoxyCodeLine{00827\ \textcolor{preprocessor}{\#define\ l\_fseek(f,o,w)\ \ fseek(f,o,w)}}
+\DoxyCodeLine{00828\ \textcolor{preprocessor}{\#define\ l\_ftell(f)\ \ ftell(f)}}
+\DoxyCodeLine{00829\ \textcolor{preprocessor}{\#define\ l\_seeknum\ \ \ long}}
+\DoxyCodeLine{00830\ }
+\DoxyCodeLine{00831\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00832\ }
+
+\end{DoxyCode}

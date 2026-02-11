@@ -1,0 +1,161 @@
+\doxysection{sha256.\+c File Reference}
+\hypertarget{sha256_8c}{}\label{sha256_8c}\index{sha256.c@{sha256.c}}
+
+
+SHA-\/256 implementation.  
+
+
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdio.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdint.\+h$>$}\newline
+{\ttfamily \+\#include "{}sha256.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \doxymbox{\hyperlink{sha256_8c_ae6df48a091396d689596c17b343b40e4}{pad\+Msg}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}padded\+Binary\+Msg, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}binary, int len, int pad\+Len)
+\begin{DoxyCompactList}\small\item\em Pads the input message according to SHA-\/256 specification. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{sha256_8c_ac5f9d0a1c65d6535a9c2f6d6d46597da}{int\+To\+Bin}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}padded\+Binary\+Msg, int offset, uint64\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Converts an integer to a big-\/endian binary representation and appends it to the buffer. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{sha256_8c_a10ce458a2f6eab36bf06e1ed953b7c31}{get\+Blocks}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}blocks, int no\+Of\+Blocks, uint8\+\_\+t \texorpdfstring{$\ast$}{*}bin\+Msg, int msg\+Len)
+\begin{DoxyCompactList}\small\item\em Splits the message into 512-\/bit blocks. \end{DoxyCompactList}\item 
+uint32\+\_\+t \doxymbox{\hyperlink{sha256_8c_a6501a7f7181dd9826f194eee6ff21419}{right\+Rotate}} (const uint32\+\_\+t word, int offset)
+\begin{DoxyCompactList}\small\item\em Performs a right rotation on a 32-\/bit word. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{sha256_8c_a456db2b809c4bfa6046c7289d96e8592}{hash}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}blocks, int no\+Of\+Blocks, uint8\+\_\+t \texorpdfstring{$\ast$}{*}hashed\+Msg)
+\begin{DoxyCompactList}\small\item\em Main SHA-\/256 hashing loop. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{sha256_8c_aca844ee646e72fb51afb17b7bed67878}{SHA256}} (const uint8\+\_\+t \texorpdfstring{$\ast$}{*}msg, size\+\_\+t msg\+Len, uint8\+\_\+t \texorpdfstring{$\ast$}{*}digest)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+SHA-\/256 implementation. 
+
+
+
+\label{doc-func-members}
+\Hypertarget{sha256_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{sha256_8c_a10ce458a2f6eab36bf06e1ed953b7c31}\index{sha256.c@{sha256.c}!getBlocks@{getBlocks}}
+\index{getBlocks@{getBlocks}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{getBlocks()}{getBlocks()}}
+{\footnotesize\ttfamily \label{sha256_8c_a10ce458a2f6eab36bf06e1ed953b7c31} 
+int get\+Blocks (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{blocks}{, }\item[{int}]{no\+Of\+Blocks}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{bin\+Msg}{, }\item[{int}]{msg\+Len}{}\end{DoxyParamCaption})}
+
+
+
+Splits the message into 512-\/bit blocks. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em blocks} & Output array of blocks. \\
+\hline
+{\em no\+Of\+Blocks} & Number of blocks. \\
+\hline
+{\em bin\+Msg} & Padded binary message. \\
+\hline
+{\em msg\+Len} & Length of the padded message. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 on success, 1 on failure. 
+\end{DoxyReturn}
+\Hypertarget{sha256_8c_a456db2b809c4bfa6046c7289d96e8592}\index{sha256.c@{sha256.c}!hash@{hash}}
+\index{hash@{hash}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{hash()}{hash()}}
+{\footnotesize\ttfamily \label{sha256_8c_a456db2b809c4bfa6046c7289d96e8592} 
+void hash (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{blocks}{, }\item[{int}]{no\+Of\+Blocks}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{hashed\+Msg}{}\end{DoxyParamCaption})}
+
+
+
+Main SHA-\/256 hashing loop. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em blocks} & Input blocks. \\
+\hline
+{\em no\+Of\+Blocks} & Number of blocks. \\
+\hline
+{\em hashed\+Msg} & Output buffer for the hash. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{sha256_8c_ac5f9d0a1c65d6535a9c2f6d6d46597da}\index{sha256.c@{sha256.c}!intToBin@{intToBin}}
+\index{intToBin@{intToBin}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{intToBin()}{intToBin()}}
+{\footnotesize\ttfamily \label{sha256_8c_ac5f9d0a1c65d6535a9c2f6d6d46597da} 
+void int\+To\+Bin (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{padded\+Binary\+Msg}{, }\item[{int}]{offset}{, }\item[{uint64\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Converts an integer to a big-\/endian binary representation and appends it to the buffer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em padded\+Binary\+Msg} & Output buffer. \\
+\hline
+{\em offset} & Start offset in the buffer. \\
+\hline
+{\em len} & The value to convert (message length in bits). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{sha256_8c_ae6df48a091396d689596c17b343b40e4}\index{sha256.c@{sha256.c}!padMsg@{padMsg}}
+\index{padMsg@{padMsg}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{padMsg()}{padMsg()}}
+{\footnotesize\ttfamily \label{sha256_8c_ae6df48a091396d689596c17b343b40e4} 
+void pad\+Msg (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{padded\+Binary\+Msg}{, }\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{binary}{, }\item[{int}]{len}{, }\item[{int}]{pad\+Len}{}\end{DoxyParamCaption})}
+
+
+
+Pads the input message according to SHA-\/256 specification. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em padded\+Binary\+Msg} & Output buffer for the padded message. \\
+\hline
+{\em binary} & Input message. \\
+\hline
+{\em len} & Original message length. \\
+\hline
+{\em pad\+Len} & Number of padding bytes. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{sha256_8c_a6501a7f7181dd9826f194eee6ff21419}\index{sha256.c@{sha256.c}!rightRotate@{rightRotate}}
+\index{rightRotate@{rightRotate}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{rightRotate()}{rightRotate()}}
+{\footnotesize\ttfamily \label{sha256_8c_a6501a7f7181dd9826f194eee6ff21419} 
+uint32\+\_\+t right\+Rotate (\begin{DoxyParamCaption}\item[{const uint32\+\_\+t}]{word}{, }\item[{int}]{offset}{}\end{DoxyParamCaption})}
+
+
+
+Performs a right rotation on a 32-\/bit word. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em word} & The word to rotate. \\
+\hline
+{\em offset} & Number of bits to rotate. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The rotated word. 
+\end{DoxyReturn}
+\Hypertarget{sha256_8c_aca844ee646e72fb51afb17b7bed67878}\index{sha256.c@{sha256.c}!SHA256@{SHA256}}
+\index{SHA256@{SHA256}!sha256.c@{sha256.c}}
+\doxysubsubsection{\texorpdfstring{SHA256()}{SHA256()}}
+{\footnotesize\ttfamily \label{sha256_8c_aca844ee646e72fb51afb17b7bed67878} 
+int SHA256 (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{msg}{, }\item[{size\+\_\+t}]{msg\+Len}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{digest}{}\end{DoxyParamCaption})}
+
+Computes the SHA-\/256 hash of the given input message.
+
+
+\begin{DoxyParams}{Parameters}
+{\em msg} & Pointer to the input message (raw bytes). \\
+\hline
+{\em msg\+Len} & Length of the input message in bytes. \\
+\hline
+{\em digest} & Pointer to a buffer of at least SHA256\+\_\+\+DIGEST\+\_\+\+SIZE bytes. The resulting 32-\/byte hash will be written here.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 on success, non-\/zero on failure. 
+\end{DoxyReturn}

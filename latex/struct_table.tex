@@ -1,0 +1,110 @@
+\doxysection{Table Struct Reference}
+\hypertarget{struct_table}{}\label{struct_table}\index{Table@{Table}}
+
+
+Lua table structure.  
+
+
+
+
+{\ttfamily \+\#include $<$lobject.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{struct_table_aeceeffe77c9ef26aeca656183fc50110}\label{struct_table_aeceeffe77c9ef26aeca656183fc50110} 
+{\bfseries Common\+Header}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_table_a643cf38ebbab9e5af99ff8a980ffbae5}{flags}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_table_aed057d880ebe0f38f65e626f646adf6a}{lsizenode}}
+\item 
+unsigned int \doxymbox{\hyperlink{struct_table_ae3f37684c90455eb16760c328b33cdbd}{alimit}}
+\item 
+\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_table_a36bebd30ab45163c31feb821c936e160}{array}}
+\item 
+\doxymbox{\hyperlink{union_node}{Node}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_table_a519f179c707cb4e93bb66d09151c89e5}{node}}
+\item 
+\doxymbox{\hyperlink{union_node}{Node}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_table_a3c072f13eb5ce9103526b4aa83c284be}{lastfree}}
+\item 
+struct \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_table_a99c20fa696fb6a4e89890efa3819ebdc}{metatable}}
+\item 
+\doxymbox{\hyperlink{struct_g_c_object}{GCObject}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_table_a1b6f3d76efed2011a36ee7c78f65aa70}{gclist}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_table_a734669ecbc03574a7838e7424c89903d}{type}}
+\item 
+\doxymbox{\hyperlink{structl__rwlock__t}{l\+\_\+rwlock\+\_\+t}} \doxymbox{\hyperlink{struct_table_a7753c32bc58e3e16b50f57b5e5b98403}{lock}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lua table structure. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_table_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_table_ae3f37684c90455eb16760c328b33cdbd}\index{Table@{Table}!alimit@{alimit}}
+\index{alimit@{alimit}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{alimit}{alimit}}
+{\footnotesize\ttfamily \label{struct_table_ae3f37684c90455eb16760c328b33cdbd} 
+unsigned int Table::\+alimit}
+
+"{}limit"{} of \textquotesingle{}array\textquotesingle{} array. \Hypertarget{struct_table_a36bebd30ab45163c31feb821c936e160}\index{Table@{Table}!array@{array}}
+\index{array@{array}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{array}{array}}
+{\footnotesize\ttfamily \label{struct_table_a36bebd30ab45163c31feb821c936e160} 
+\doxymbox{\hyperlink{struct_t_value}{TValue}}\texorpdfstring{$\ast$}{*} Table::\+array}
+
+\doxylink{struct_array}{Array} part. \Hypertarget{struct_table_a643cf38ebbab9e5af99ff8a980ffbae5}\index{Table@{Table}!flags@{flags}}
+\index{flags@{flags}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{flags}{flags}}
+{\footnotesize\ttfamily \label{struct_table_a643cf38ebbab9e5af99ff8a980ffbae5} 
+lu\+\_\+byte Table::\+flags}
+
+1\texorpdfstring{$<$}{<}\texorpdfstring{$<$}{<}p means tagmethod(p) is not present. \Hypertarget{struct_table_a1b6f3d76efed2011a36ee7c78f65aa70}\index{Table@{Table}!gclist@{gclist}}
+\index{gclist@{gclist}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{gclist}{gclist}}
+{\footnotesize\ttfamily \label{struct_table_a1b6f3d76efed2011a36ee7c78f65aa70} 
+\doxymbox{\hyperlink{struct_g_c_object}{GCObject}}\texorpdfstring{$\ast$}{*} Table::\+gclist}
+
+garbage collector list \Hypertarget{struct_table_a3c072f13eb5ce9103526b4aa83c284be}\index{Table@{Table}!lastfree@{lastfree}}
+\index{lastfree@{lastfree}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{lastfree}{lastfree}}
+{\footnotesize\ttfamily \label{struct_table_a3c072f13eb5ce9103526b4aa83c284be} 
+\doxymbox{\hyperlink{union_node}{Node}}\texorpdfstring{$\ast$}{*} Table::\+lastfree}
+
+Any free position is before this position. \Hypertarget{struct_table_a7753c32bc58e3e16b50f57b5e5b98403}\index{Table@{Table}!lock@{lock}}
+\index{lock@{lock}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{lock}{lock}}
+{\footnotesize\ttfamily \label{struct_table_a7753c32bc58e3e16b50f57b5e5b98403} 
+\doxymbox{\hyperlink{structl__rwlock__t}{l\+\_\+rwlock\+\_\+t}} Table::\+lock}
+
+Lock for thread safety. \Hypertarget{struct_table_aed057d880ebe0f38f65e626f646adf6a}\index{Table@{Table}!lsizenode@{lsizenode}}
+\index{lsizenode@{lsizenode}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{lsizenode}{lsizenode}}
+{\footnotesize\ttfamily \label{struct_table_aed057d880ebe0f38f65e626f646adf6a} 
+lu\+\_\+byte Table::\+lsizenode}
+
+log2 of size of \textquotesingle{}node\textquotesingle{} array. \Hypertarget{struct_table_a99c20fa696fb6a4e89890efa3819ebdc}\index{Table@{Table}!metatable@{metatable}}
+\index{metatable@{metatable}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{metatable}{metatable}}
+{\footnotesize\ttfamily \label{struct_table_a99c20fa696fb6a4e89890efa3819ebdc} 
+struct \doxymbox{\hyperlink{struct_table}{Table}}\texorpdfstring{$\ast$}{*} Table::\+metatable}
+
+Metatable pointer. \Hypertarget{struct_table_a519f179c707cb4e93bb66d09151c89e5}\index{Table@{Table}!node@{node}}
+\index{node@{node}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{node}{node}}
+{\footnotesize\ttfamily \label{struct_table_a519f179c707cb4e93bb66d09151c89e5} 
+\doxymbox{\hyperlink{union_node}{Node}}\texorpdfstring{$\ast$}{*} Table::\+node}
+
+Hash part. \Hypertarget{struct_table_a734669ecbc03574a7838e7424c89903d}\index{Table@{Table}!type@{type}}
+\index{type@{type}!Table@{Table}}
+\doxysubsubsection{\texorpdfstring{type}{type}}
+{\footnotesize\ttfamily \label{struct_table_a734669ecbc03574a7838e7424c89903d} 
+lu\+\_\+byte Table::\+type}
+
+Custom type flag. 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lobject.\+h\end{DoxyCompactItemize}

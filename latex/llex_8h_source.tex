@@ -1,0 +1,192 @@
+\doxysection{llex.\+h}
+\hypertarget{llex_8h_source}{}\label{llex_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ llex.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Lexical\ Analyzer}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ llex\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ llex\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ <limits.h>}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}lzio.h"{}}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00017\ \textcolor{comment}{**\ Single-\/char\ tokens\ (terminal\ symbols)\ are\ represented\ by\ their\ own}}
+\DoxyCodeLine{00018\ \textcolor{comment}{**\ numeric\ code.\ Other\ tokens\ start\ at\ the\ following\ value.}}
+\DoxyCodeLine{00019\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#define\ FIRST\_RESERVED\ \ (UCHAR\_MAX\ +\ 1)}}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#if\ !defined(LUA\_ENV)}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#define\ LUA\_ENV\ \ \ \ \ "{}\_ENV"{}}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00029\ \textcolor{comment}{*\ WARNING:\ if\ you\ change\ the\ order\ of\ this\ enumeration,}}
+\DoxyCodeLine{00030\ \textcolor{comment}{*\ grep\ "{}ORDER\ RESERVED"{}}}
+\DoxyCodeLine{00031\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00032\ \textcolor{keyword}{enum}\ RESERVED\ \{}
+\DoxyCodeLine{00033\ \ \ \textcolor{comment}{/*\ terminal\ symbols\ denoted\ by\ reserved\ words\ */}}
+\DoxyCodeLine{00034\ \ \ TK\_AND\ =\ FIRST\_RESERVED,\ TK\_ASM,\ TK\_ASYNC,\ TK\_AWAIT,\ TK\_BREAK,\ TK\_CASE,\ TK\_CATCH,\ TK\_COMMAND,\ TK\_CONCEPT,\ TK\_CONST,\ TK\_CONTINUE,\ TK\_DEFAULT,}
+\DoxyCodeLine{00035\ \ \ TK\_DEFER,\ TK\_DO,\ TK\_ELSE,\ TK\_ELSEIF,\ TK\_END,\ TK\_ENUM,\ TK\_EXPORT,\ TK\_FALSE,\ TK\_FINALLY,\ TK\_FOR,\ TK\_FUNCTION,}
+\DoxyCodeLine{00036\ \ \ TK\_GLOBAL,\ TK\_GOTO,\ TK\_IF,\ TK\_IN,\ TK\_IS,\ TK\_KEYWORD,\ TK\_LAMBDA,\ TK\_LOCAL,\ TK\_NIL,\ TK\_NOT,\ TK\_OPERATOR,\ TK\_OR,}
+\DoxyCodeLine{00037\ \ \ TK\_REPEAT,\ TK\_REQUIRES,}
+\DoxyCodeLine{00038\ \ \ TK\_RETURN,\ TK\_STRUCT,\ TK\_SWITCH,\ TK\_TAKE,\ TK\_THEN,\ TK\_TRUE,\ TK\_TRY,\ TK\_UNTIL,\ TK\_WHEN,\ TK\_WHILE,\ TK\_WITH,}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \ \ \textcolor{comment}{/*\ other\ terminal\ symbols\ */}}
+\DoxyCodeLine{00041\ \ \ TK\_IDIV,\ TK\_CONCAT,\ TK\_DOTS,\ TK\_EQ,\ TK\_GE,\ TK\_LE,\ TK\_NE,}
+\DoxyCodeLine{00042\ \ \ TK\_SHL,\ TK\_SHR,\ TK\_PIPE,\ TK\_REVPIPE,\ TK\_SAFEPIPE,}
+\DoxyCodeLine{00043\ \ \ TK\_DBCOLON,\ TK\_EOS,}
+\DoxyCodeLine{00044\ \ \ TK\_LET,\ TK\_MEAN,\ TK\_WALRUS,\ TK\_ARROW,}
+\DoxyCodeLine{00045\ \ \ \textcolor{comment}{/*\ 复合赋值运算符\ */}}
+\DoxyCodeLine{00046\ \ \ TK\_ADDEQ,\ \ \ \ \ \textcolor{comment}{/*\ +=\ */}}
+\DoxyCodeLine{00047\ \ \ TK\_SUBEQ,\ \ \ \ \ \textcolor{comment}{/*\ -\/=\ */}}
+\DoxyCodeLine{00048\ \ \ TK\_MULEQ,\ \ \ \ \ \textcolor{comment}{/*\ *=\ */}}
+\DoxyCodeLine{00049\ \ \ TK\_DIVEQ,\ \ \ \ \ \textcolor{comment}{/*\ /=\ */}}
+\DoxyCodeLine{00050\ \ \ TK\_IDIVEQ,\ \ \ \ \textcolor{comment}{/*\ //=\ */}}
+\DoxyCodeLine{00051\ \ \ TK\_MODEQ,\ \ \ \ \ \textcolor{comment}{/*\ \%=\ */}}
+\DoxyCodeLine{00052\ \ \ TK\_BANDEQ,\ \ \ \ \textcolor{comment}{/*\ \&=\ */}}
+\DoxyCodeLine{00053\ \ \ TK\_BOREQ,\ \ \ \ \ \textcolor{comment}{/*\ |=\ */}}
+\DoxyCodeLine{00054\ \ \ TK\_BXOREQ,\ \ \ \ \textcolor{comment}{/*\ \string~=\ 作为位异或赋值（在赋值上下文中）\ */}}
+\DoxyCodeLine{00055\ \ \ TK\_SHREQ,\ \ \ \ \ \textcolor{comment}{/*\ >>=\ */}}
+\DoxyCodeLine{00056\ \ \ TK\_SHLEQ,\ \ \ \ \ \textcolor{comment}{/*\ <<=\ */}}
+\DoxyCodeLine{00057\ \ \ TK\_CONCATEQ,\ \ \textcolor{comment}{/*\ ..=\ */}}
+\DoxyCodeLine{00058\ \ \ TK\_PLUSPLUS,\ \ \textcolor{comment}{/*\ ++\ 自增运算符\ */}}
+\DoxyCodeLine{00059\ \ \ TK\_OPTCHAIN,\ \ \textcolor{comment}{/*\ ?.\ 可选链运算符\ */}}
+\DoxyCodeLine{00060\ \ \ TK\_NULLCOAL,\ \ \textcolor{comment}{/*\ ??\ 空值合并运算符\ */}}
+\DoxyCodeLine{00061\ \ \ TK\_SPACESHIP,\ \textcolor{comment}{/*\ <=>\ 三路比较运算符\ */}}
+\DoxyCodeLine{00062\ \ \ TK\_DOLLAR,\ \ \ \ \textcolor{comment}{/*\ \$\ 宏调用前缀\ */}}
+\DoxyCodeLine{00063\ \ \ TK\_DOLLDOLL,\ \ \textcolor{comment}{/*\ \$\$\ 运算符调用前缀\ */}}
+\DoxyCodeLine{00064\ \ \ TK\_FLT,\ TK\_INT,\ TK\_NAME,\ TK\_STRING,\ TK\_INTERPSTRING,\ TK\_RAWSTRING}
+\DoxyCodeLine{00065\ \};}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \textcolor{comment}{/*\ number\ of\ reserved\ words\ */}}
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#define\ NUM\_RESERVED\ \ \ \ (cast\_int(TK\_WITH-\/FIRST\_RESERVED\ +\ 1))}}
+\DoxyCodeLine{00069\ }
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00072\ \ \ WT\_ALL\ =\ 0,}
+\DoxyCodeLine{00073\ \ \ WT\_VAR\_SHADOW,}
+\DoxyCodeLine{00074\ \ \ WT\_GLOBAL\_SHADOW,}
+\DoxyCodeLine{00075\ \ \ WT\_TYPE\_MISMATCH,}
+\DoxyCodeLine{00076\ \ \ WT\_UNREACHABLE\_CODE,}
+\DoxyCodeLine{00077\ \ \ WT\_EXCESSIVE\_ARGUMENTS,}
+\DoxyCodeLine{00078\ \ \ WT\_BAD\_PRACTICE,}
+\DoxyCodeLine{00079\ \ \ WT\_POSSIBLE\_TYPO,}
+\DoxyCodeLine{00080\ \ \ WT\_NON\_PORTABLE\_CODE,}
+\DoxyCodeLine{00081\ \ \ WT\_NON\_PORTABLE\_BYTECODE,}
+\DoxyCodeLine{00082\ \ \ WT\_NON\_PORTABLE\_NAME,}
+\DoxyCodeLine{00083\ \ \ WT\_IMPLICIT\_GLOBAL,}
+\DoxyCodeLine{00084\ \ \ WT\_UNANNOTATED\_FALLTHROUGH,}
+\DoxyCodeLine{00085\ \ \ WT\_DISCARDED\_RETURN,}
+\DoxyCodeLine{00086\ \ \ WT\_FIELD\_SHADOW,}
+\DoxyCodeLine{00087\ \ \ WT\_UNUSED\_VAR,}
+\DoxyCodeLine{00088\ \ \ WT\_COUNT}
+\DoxyCodeLine{00089\ \}\ WarningType;}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00092\ \ \ WS\_OFF,}
+\DoxyCodeLine{00093\ \ \ WS\_ON,}
+\DoxyCodeLine{00094\ \ \ WS\_ERROR}
+\DoxyCodeLine{00095\ \}\ WarningState;}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00098\ \ \ WarningState\ states[WT\_COUNT];}
+\DoxyCodeLine{00099\ \}\ \doxymbox{\hyperlink{struct_warning_config}{WarningConfig}};}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ }
+\DoxyCodeLine{00102\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{union\ }\{}
+\DoxyCodeLine{00103\ \ \ lua\_Number\ r;}
+\DoxyCodeLine{00104\ \ \ lua\_Integer\ i;}
+\DoxyCodeLine{00105\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *ts;}
+\DoxyCodeLine{00106\ \}\ \doxymbox{\hyperlink{union_sem_info}{SemInfo}};\ \ \textcolor{comment}{/*\ semantics\ information\ */}}
+\DoxyCodeLine{00107\ }
+\DoxyCodeLine{00108\ }
+\DoxyCodeLine{00109\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_token}{Token}}\ \{}
+\DoxyCodeLine{00110\ \ \ \textcolor{keywordtype}{int}\ token;}
+\DoxyCodeLine{00111\ \ \ \doxymbox{\hyperlink{union_sem_info}{SemInfo}}\ seminfo;}
+\DoxyCodeLine{00112\ \}\ \doxymbox{\hyperlink{struct_token}{Token}};}
+\DoxyCodeLine{00113\ }
+\DoxyCodeLine{00114\ }
+\DoxyCodeLine{00115\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_alias}{Alias}}\ \{}
+\DoxyCodeLine{00116\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *name;}
+\DoxyCodeLine{00117\ \ \ \doxymbox{\hyperlink{struct_token}{Token}}\ *tokens;}
+\DoxyCodeLine{00118\ \ \ \textcolor{keywordtype}{int}\ ntokens;}
+\DoxyCodeLine{00119\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_alias}{Alias}}\ *next;}
+\DoxyCodeLine{00120\ \}\ \doxymbox{\hyperlink{struct_alias}{Alias}};}
+\DoxyCodeLine{00121\ }
+\DoxyCodeLine{00122\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_include_state}{IncludeState}}\ \{}
+\DoxyCodeLine{00123\ \ \ ZIO\ *z;}
+\DoxyCodeLine{00124\ \ \ \doxymbox{\hyperlink{struct_mbuffer}{Mbuffer}}\ *buff;}
+\DoxyCodeLine{00125\ \ \ \textcolor{keywordtype}{int}\ linenumber;}
+\DoxyCodeLine{00126\ \ \ \textcolor{keywordtype}{int}\ lastline;}
+\DoxyCodeLine{00127\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *source;}
+\DoxyCodeLine{00128\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_include_state}{IncludeState}}\ *prev;}
+\DoxyCodeLine{00129\ \}\ \doxymbox{\hyperlink{struct_include_state}{IncludeState}};}
+\DoxyCodeLine{00130\ }
+\DoxyCodeLine{00131\ }
+\DoxyCodeLine{00132\ \textcolor{comment}{/*\ state\ of\ the\ lexer\ plus\ state\ of\ the\ parser\ when\ shared\ by\ all}}
+\DoxyCodeLine{00133\ \textcolor{comment}{\ \ \ functions\ */}}
+\DoxyCodeLine{00134\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ \{}
+\DoxyCodeLine{00135\ }
+\DoxyCodeLine{00136\ \ \ \textcolor{keywordtype}{int}\ lasttoken;}
+\DoxyCodeLine{00137\ \ \ \textcolor{keywordtype}{int}\ curpos;}
+\DoxyCodeLine{00138\ \ \ \textcolor{keywordtype}{int}\ tokpos;}
+\DoxyCodeLine{00139\ \ \ \textcolor{keywordtype}{int}\ current;\ \ \textcolor{comment}{/*\ current\ character\ (charint)\ */}}
+\DoxyCodeLine{00140\ \ \ \textcolor{keywordtype}{int}\ linenumber;\ \ \textcolor{comment}{/*\ input\ line\ counter\ */}}
+\DoxyCodeLine{00141\ \ \ \textcolor{keywordtype}{int}\ lastline;\ \ \textcolor{comment}{/*\ line\ of\ last\ token\ 'consumed'\ */}}
+\DoxyCodeLine{00142\ \ \ \doxymbox{\hyperlink{struct_token}{Token}}\ t;\ \ \textcolor{comment}{/*\ current\ token\ */}}
+\DoxyCodeLine{00143\ \ \ \doxymbox{\hyperlink{struct_token}{Token}}\ lookahead;\ \ \textcolor{comment}{/*\ look\ ahead\ token\ */}}
+\DoxyCodeLine{00144\ \ \ \doxymbox{\hyperlink{struct_token}{Token}}\ lookahead2;\ \textcolor{comment}{/*\ second\ look\ ahead\ token\ */}}
+\DoxyCodeLine{00145\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_func_state}{FuncState}}\ *fs;\ \ \textcolor{comment}{/*\ current\ function\ (parser)\ */}}
+\DoxyCodeLine{00146\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L;}
+\DoxyCodeLine{00147\ \ \ ZIO\ *z;\ \ \textcolor{comment}{/*\ input\ stream\ */}}
+\DoxyCodeLine{00148\ \ \ \doxymbox{\hyperlink{struct_mbuffer}{Mbuffer}}\ *lastbuff;}
+\DoxyCodeLine{00149\ \ \ \doxymbox{\hyperlink{struct_mbuffer}{Mbuffer}}\ *buff;\ \ \textcolor{comment}{/*\ buffer\ for\ tokens\ */}}
+\DoxyCodeLine{00150\ \ \ \doxymbox{\hyperlink{struct_table}{Table}}\ *h;\ \ \textcolor{comment}{/*\ to\ avoid\ collection/reuse\ strings\ */}}
+\DoxyCodeLine{00151\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_dyndata}{Dyndata}}\ *dyd;\ \ \textcolor{comment}{/*\ dynamic\ structures\ used\ by\ the\ parser\ */}}
+\DoxyCodeLine{00152\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *source;\ \ \textcolor{comment}{/*\ current\ source\ name\ */}}
+\DoxyCodeLine{00153\ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *envn;\ \ \textcolor{comment}{/*\ environment\ variable\ name\ */}}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \ \ \textcolor{comment}{/*\ Preprocessor\ additions\ */}}
+\DoxyCodeLine{00156\ \ \ \doxymbox{\hyperlink{struct_alias}{Alias}}\ *aliases;}
+\DoxyCodeLine{00157\ \ \ \doxymbox{\hyperlink{struct_include_state}{IncludeState}}\ *inc\_stack;}
+\DoxyCodeLine{00158\ \ \ \doxymbox{\hyperlink{struct_token}{Token}}\ *pending\_tokens;\ \textcolor{comment}{/*\ For\ alias\ expansion\ */}}
+\DoxyCodeLine{00159\ \ \ \textcolor{keywordtype}{int}\ npending;}
+\DoxyCodeLine{00160\ \ \ \textcolor{keywordtype}{int}\ pending\_idx;}
+\DoxyCodeLine{00161\ \ \ \doxymbox{\hyperlink{struct_table}{Table}}\ *defines;\ \textcolor{comment}{/*\ Compile-\/time\ constants\ */}}
+\DoxyCodeLine{00162\ \ \ \doxymbox{\hyperlink{struct_table}{Table}}\ *named\_types;\ \textcolor{comment}{/*\ Named\ types\ */}}
+\DoxyCodeLine{00163\ \ \ \doxymbox{\hyperlink{struct_table}{Table}}\ *declared\_globals;\ \textcolor{comment}{/*\ Declared\ global\ variables\ */}}
+\DoxyCodeLine{00164\ \ \ \textcolor{keyword}{struct\ }\doxymbox{\hyperlink{struct_type_hint}{TypeHint}}\ *all\_type\_hints;\ \textcolor{comment}{/*\ List\ of\ allocated\ type\ hints\ */}}
+\DoxyCodeLine{00165\ }
+\DoxyCodeLine{00166\ \ \ \textcolor{comment}{/*\ Warnings\ */}}
+\DoxyCodeLine{00167\ \ \ \doxymbox{\hyperlink{struct_warning_config}{WarningConfig}}\ warnings;}
+\DoxyCodeLine{00168\ \ \ \textcolor{keywordtype}{int}\ disable\_warnings\_next\_line;}
+\DoxyCodeLine{00169\ }
+\DoxyCodeLine{00170\ \ \ \textcolor{comment}{/*\ Expression\ parsing\ flags\ */}}
+\DoxyCodeLine{00171\ \ \ \textcolor{keywordtype}{int}\ expr\_flags;}
+\DoxyCodeLine{00172\ \}\ \doxymbox{\hyperlink{struct_lex_state}{LexState}};}
+\DoxyCodeLine{00173\ }
+\DoxyCodeLine{00174\ }
+\DoxyCodeLine{00175\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaX\_init\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00176\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaX\_warning\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *msg,\ WarningType\ wt);}
+\DoxyCodeLine{00177\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaX\_setinput\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls,\ ZIO\ *z,}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *source,\ \textcolor{keywordtype}{int}\ firstchar);}
+\DoxyCodeLine{00179\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *luaX\_newstring\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *str,\ \textcolor{keywordtype}{size\_t}\ l);}
+\DoxyCodeLine{00180\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaX\_next\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls);}
+\DoxyCodeLine{00181\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaX\_lookahead\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls);}
+\DoxyCodeLine{00182\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaX\_lookahead2\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls);}
+\DoxyCodeLine{00183\ LUAI\_FUNC\ l\_noret\ luaX\_syntaxerror\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s);}
+\DoxyCodeLine{00184\ LUAI\_FUNC\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *luaX\_token2str\ (\doxymbox{\hyperlink{struct_lex_state}{LexState}}\ *ls,\ \textcolor{keywordtype}{int}\ token);}
+\DoxyCodeLine{00185\ }
+\DoxyCodeLine{00186\ }
+\DoxyCodeLine{00187\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

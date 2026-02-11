@@ -1,0 +1,99 @@
+\doxysection{VMProtect\+Context Struct Reference}
+\hypertarget{struct_v_m_protect_context}{}\label{struct_v_m_protect_context}\index{VMProtectContext@{VMProtectContext}}
+
+
+VM Protection context.  
+
+
+
+
+{\ttfamily \+\#include $<$lobfuscate.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_protect_context_add776dafd2229084c3395732778e2abe}{L}}
+\item 
+\doxymbox{\hyperlink{struct_proto}{Proto}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_protect_context_a4a928c4eb16559be41fecab50b59878c}{f}}
+\item 
+\doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_protect_context_aaab5ad8cd2500fea6812f6ccc2b78a65}{vm\+\_\+code}}
+\item 
+int \doxymbox{\hyperlink{struct_v_m_protect_context_ab6aca93e176a731f7a7c6d0dfe3000ec}{vm\+\_\+code\+\_\+size}}
+\item 
+int \doxymbox{\hyperlink{struct_v_m_protect_context_adf218b005bbe50abd827f0696d783293}{vm\+\_\+code\+\_\+capacity}}
+\item 
+uint64\+\_\+t \doxymbox{\hyperlink{struct_v_m_protect_context_a55c124a0868a14afb0ed4466463e3d1c}{encrypt\+\_\+key}}
+\item 
+int \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_protect_context_a99f3e785cd811a7e686e69ae7f946948}{opcode\+\_\+map}}
+\item 
+int \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_protect_context_ad999bad4e9c9ac55229381580b6fb121}{reverse\+\_\+map}}
+\item 
+unsigned int \doxymbox{\hyperlink{struct_v_m_protect_context_adc36897ee3d40b7804aa81efa8d0de3b}{seed}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+VM Protection context. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_v_m_protect_context_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_v_m_protect_context_a55c124a0868a14afb0ed4466463e3d1c}\index{VMProtectContext@{VMProtectContext}!encrypt\_key@{encrypt\_key}}
+\index{encrypt\_key@{encrypt\_key}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{encrypt\_key}{encrypt\_key}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_a55c124a0868a14afb0ed4466463e3d1c} 
+uint64\+\_\+t VMProtect\+Context::\+encrypt\+\_\+key}
+
+Encryption key. \Hypertarget{struct_v_m_protect_context_a4a928c4eb16559be41fecab50b59878c}\index{VMProtectContext@{VMProtectContext}!f@{f}}
+\index{f@{f}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{f}{f}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_a4a928c4eb16559be41fecab50b59878c} 
+\doxymbox{\hyperlink{struct_proto}{Proto}}\texorpdfstring{$\ast$}{*} VMProtect\+Context::\+f}
+
+Original prototype. \Hypertarget{struct_v_m_protect_context_add776dafd2229084c3395732778e2abe}\index{VMProtectContext@{VMProtectContext}!L@{L}}
+\index{L@{L}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{L}{L}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_add776dafd2229084c3395732778e2abe} 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}}\texorpdfstring{$\ast$}{*} VMProtect\+Context::\+L}
+
+Lua state. \Hypertarget{struct_v_m_protect_context_a99f3e785cd811a7e686e69ae7f946948}\index{VMProtectContext@{VMProtectContext}!opcode\_map@{opcode\_map}}
+\index{opcode\_map@{opcode\_map}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{opcode\_map}{opcode\_map}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_a99f3e785cd811a7e686e69ae7f946948} 
+int\texorpdfstring{$\ast$}{*} VMProtect\+Context::\+opcode\+\_\+map}
+
+Opcode mapping table. \Hypertarget{struct_v_m_protect_context_ad999bad4e9c9ac55229381580b6fb121}\index{VMProtectContext@{VMProtectContext}!reverse\_map@{reverse\_map}}
+\index{reverse\_map@{reverse\_map}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{reverse\_map}{reverse\_map}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_ad999bad4e9c9ac55229381580b6fb121} 
+int\texorpdfstring{$\ast$}{*} VMProtect\+Context::\+reverse\+\_\+map}
+
+Reverse mapping table. \Hypertarget{struct_v_m_protect_context_adc36897ee3d40b7804aa81efa8d0de3b}\index{VMProtectContext@{VMProtectContext}!seed@{seed}}
+\index{seed@{seed}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{seed}{seed}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_adc36897ee3d40b7804aa81efa8d0de3b} 
+unsigned int VMProtect\+Context::\+seed}
+
+Random seed. \Hypertarget{struct_v_m_protect_context_aaab5ad8cd2500fea6812f6ccc2b78a65}\index{VMProtectContext@{VMProtectContext}!vm\_code@{vm\_code}}
+\index{vm\_code@{vm\_code}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{vm\_code}{vm\_code}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_aaab5ad8cd2500fea6812f6ccc2b78a65} 
+\doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\texorpdfstring{$\ast$}{*} VMProtect\+Context::\+vm\+\_\+code}
+
+Encrypted VM instructions. \Hypertarget{struct_v_m_protect_context_adf218b005bbe50abd827f0696d783293}\index{VMProtectContext@{VMProtectContext}!vm\_code\_capacity@{vm\_code\_capacity}}
+\index{vm\_code\_capacity@{vm\_code\_capacity}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{vm\_code\_capacity}{vm\_code\_capacity}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_adf218b005bbe50abd827f0696d783293} 
+int VMProtect\+Context::\+vm\+\_\+code\+\_\+capacity}
+
+\doxylink{struct_array}{Array} capacity. \Hypertarget{struct_v_m_protect_context_ab6aca93e176a731f7a7c6d0dfe3000ec}\index{VMProtectContext@{VMProtectContext}!vm\_code\_size@{vm\_code\_size}}
+\index{vm\_code\_size@{vm\_code\_size}!VMProtectContext@{VMProtectContext}}
+\doxysubsubsection{\texorpdfstring{vm\_code\_size}{vm\_code\_size}}
+{\footnotesize\ttfamily \label{struct_v_m_protect_context_ab6aca93e176a731f7a7c6d0dfe3000ec} 
+int VMProtect\+Context::\+vm\+\_\+code\+\_\+size}
+
+Number of instructions. 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{lobfuscate_8h}{lobfuscate.\+h}}\end{DoxyCompactItemize}

@@ -1,0 +1,83 @@
+\doxysection{CFFMetadata Struct Reference}
+\hypertarget{struct_c_f_f_metadata}{}\label{struct_c_f_f_metadata}\index{CFFMetadata@{CFFMetadata}}
+
+
+Flattening metadata. Information required to de-\/flatten or interpret the obfuscated code.  
+
+
+
+
+{\ttfamily \+\#include $<$lobfuscate.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \doxymbox{\hyperlink{struct_c_f_f_metadata_aa8b9345e1ff18705bc3d43d45d8a3872}{enabled}}
+\item 
+int \doxymbox{\hyperlink{struct_c_f_f_metadata_ae7a86a745584e407cec3a43d29e17b97}{num\+\_\+blocks}}
+\item 
+int \doxymbox{\hyperlink{struct_c_f_f_metadata_aa5ee5138a043ac85049980695faf915e}{state\+\_\+reg}}
+\item 
+int \doxymbox{\hyperlink{struct_c_f_f_metadata_afe937432383d9ca7c1272527a28ad2e7}{dispatcher\+\_\+pc}}
+\item 
+int \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_c_f_f_metadata_a374d4f21b79e09da4e92be61f39aff9e}{block\+\_\+mapping}}
+\item 
+int \doxymbox{\hyperlink{struct_c_f_f_metadata_a7e892cdaa7c869980d34b45cea6289da}{original\+\_\+size}}
+\item 
+unsigned int \doxymbox{\hyperlink{struct_c_f_f_metadata_acf798fea37de2dcf163d5e9e4f1d4f48}{seed}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Flattening metadata. Information required to de-\/flatten or interpret the obfuscated code. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_c_f_f_metadata_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_c_f_f_metadata_a374d4f21b79e09da4e92be61f39aff9e}\index{CFFMetadata@{CFFMetadata}!block\_mapping@{block\_mapping}}
+\index{block\_mapping@{block\_mapping}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{block\_mapping}{block\_mapping}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_a374d4f21b79e09da4e92be61f39aff9e} 
+int\texorpdfstring{$\ast$}{*} CFFMetadata::\+block\+\_\+mapping}
+
+Mapping from state ID to original PC. \Hypertarget{struct_c_f_f_metadata_afe937432383d9ca7c1272527a28ad2e7}\index{CFFMetadata@{CFFMetadata}!dispatcher\_pc@{dispatcher\_pc}}
+\index{dispatcher\_pc@{dispatcher\_pc}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{dispatcher\_pc}{dispatcher\_pc}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_afe937432383d9ca7c1272527a28ad2e7} 
+int CFFMetadata::\+dispatcher\+\_\+pc}
+
+Dispatcher PC. \Hypertarget{struct_c_f_f_metadata_aa8b9345e1ff18705bc3d43d45d8a3872}\index{CFFMetadata@{CFFMetadata}!enabled@{enabled}}
+\index{enabled@{enabled}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{enabled}{enabled}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_aa8b9345e1ff18705bc3d43d45d8a3872} 
+int CFFMetadata::\+enabled}
+
+True if flattening is enabled. \Hypertarget{struct_c_f_f_metadata_ae7a86a745584e407cec3a43d29e17b97}\index{CFFMetadata@{CFFMetadata}!num\_blocks@{num\_blocks}}
+\index{num\_blocks@{num\_blocks}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{num\_blocks}{num\_blocks}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_ae7a86a745584e407cec3a43d29e17b97} 
+int CFFMetadata::\+num\+\_\+blocks}
+
+Number of basic blocks. \Hypertarget{struct_c_f_f_metadata_a7e892cdaa7c869980d34b45cea6289da}\index{CFFMetadata@{CFFMetadata}!original\_size@{original\_size}}
+\index{original\_size@{original\_size}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{original\_size}{original\_size}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_a7e892cdaa7c869980d34b45cea6289da} 
+int CFFMetadata::\+original\+\_\+size}
+
+Original code size. \Hypertarget{struct_c_f_f_metadata_acf798fea37de2dcf163d5e9e4f1d4f48}\index{CFFMetadata@{CFFMetadata}!seed@{seed}}
+\index{seed@{seed}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{seed}{seed}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_acf798fea37de2dcf163d5e9e4f1d4f48} 
+unsigned int CFFMetadata::\+seed}
+
+Random seed used for generation. \Hypertarget{struct_c_f_f_metadata_aa5ee5138a043ac85049980695faf915e}\index{CFFMetadata@{CFFMetadata}!state\_reg@{state\_reg}}
+\index{state\_reg@{state\_reg}!CFFMetadata@{CFFMetadata}}
+\doxysubsubsection{\texorpdfstring{state\_reg}{state\_reg}}
+{\footnotesize\ttfamily \label{struct_c_f_f_metadata_aa5ee5138a043ac85049980695faf915e} 
+int CFFMetadata::\+state\+\_\+reg}
+
+State variable register. 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{lobfuscate_8h}{lobfuscate.\+h}}\end{DoxyCompactItemize}

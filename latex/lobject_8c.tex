@@ -1,0 +1,385 @@
+\doxysection{lobject.\+c File Reference}
+\hypertarget{lobject_8c}{}\label{lobject_8c}\index{lobject.c@{lobject.c}}
+
+
+Lua Objects and generic functions.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$float.\+h$>$}\newline
+{\ttfamily \+\#include $<$locale.\+h$>$}\newline
+{\ttfamily \+\#include $<$math.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdarg.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdio.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}lctype.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldebug.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstring.\+h"{}}\newline
+{\ttfamily \+\#include "{}lvm.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{struct_buff_f_s}{Buff\+FS}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lobject_8c_a38dc0318b49040ead76a3cbd8bdc573f}\label{lobject_8c_a38dc0318b49040ead76a3cbd8bdc573f} 
+\+\#define {\bfseries lobject\+\_\+c}
+\item 
+\Hypertarget{lobject_8c_abf0b3947b59218777a8e928a10be205b}\label{lobject_8c_abf0b3947b59218777a8e928a10be205b} 
+\+\#define {\bfseries LUA\+\_\+\+CORE}
+\item 
+\Hypertarget{lobject_8c_a98d71ac135df4047b2f051fcc7a1f40f}\label{lobject_8c_a98d71ac135df4047b2f051fcc7a1f40f} 
+\+\#define {\bfseries L\+\_\+\+MAXLENNUM}~200
+\item 
+\Hypertarget{lobject_8c_a35cd00c271dac7479b5a1812648be3a6}\label{lobject_8c_a35cd00c271dac7479b5a1812648be3a6} 
+\+\#define {\bfseries MAXBY10}~cast(lua\+\_\+\+Unsigned, LUA\+\_\+\+MAXINTEGER /\+ 10)
+\item 
+\Hypertarget{lobject_8c_a3a297bd7005980375f9df0c1f8204aca}\label{lobject_8c_a3a297bd7005980375f9df0c1f8204aca} 
+\+\#define {\bfseries MAXLASTD}~cast\+\_\+int(LUA\+\_\+\+MAXINTEGER \% 10)
+\item 
+\Hypertarget{lobject_8c_a5df23b13777a59c7db57ba5ed55a5d98}\label{lobject_8c_a5df23b13777a59c7db57ba5ed55a5d98} 
+\+\#define {\bfseries BUFVFS}~cast\+\_\+uint(LUA\+\_\+\+IDSIZE + LUA\+\_\+\+N2\+SBUFFSZ + 95)
+\item 
+\+\#define \doxymbox{\hyperlink{lobject_8c_a5fa009dd087e1c8394b09e5bd9087bc7}{addsize}}(b,  sz)
+\item 
+\Hypertarget{lobject_8c_aa932c88a1737cf31f4e16c6d72254f59}\label{lobject_8c_aa932c88a1737cf31f4e16c6d72254f59} 
+\+\#define {\bfseries RETS}~"{}..."{}
+\item 
+\Hypertarget{lobject_8c_a349316092037fdd0773335fab4e15ee8}\label{lobject_8c_a349316092037fdd0773335fab4e15ee8} 
+\+\#define {\bfseries PRE}~"{}\+[string \textbackslash{}"{}"{}
+\item 
+\Hypertarget{lobject_8c_a63cb3834e6075ddad87f8ce324e53988}\label{lobject_8c_a63cb3834e6075ddad87f8ce324e53988} 
+\+\#define {\bfseries POS}~"{}\textbackslash{}"{}]\+"{}
+\item 
+\+\#define \doxymbox{\hyperlink{lobject_8c_a0cbd5d41f14d898a5bacbe8935b01d0c}{addstr}}(a,  b,  l)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lobject_8c_a15e052831e7638ed8e7fc07b1bc1e67a}\label{lobject_8c_a15e052831e7638ed8e7fc07b1bc1e67a} 
+typedef struct Buff\+FS {\bfseries Buff\+FS}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \doxymbox{\hyperlink{lobject_8c_a731a3a2f9db35aaddeadf8cb19d507bd}{lua\+O\+\_\+ceillog2}} (unsigned int x)
+\begin{DoxyCompactList}\small\item\em Computes ceil(log2(x)). \end{DoxyCompactList}\item 
+lu\+\_\+byte \doxymbox{\hyperlink{lobject_8c_a95619a9321a2a2f2630f250734986525}{lua\+O\+\_\+codeparam}} (unsigned int p)
+\begin{DoxyCompactList}\small\item\em Encodes \textquotesingle{}p\textquotesingle{}\% as a floating-\/point byte (eeeexxxx). \end{DoxyCompactList}\item 
+l\+\_\+mem \doxymbox{\hyperlink{lobject_8c_af3125a767113bc412a0abdf68f698436}{lua\+O\+\_\+applyparam}} (lu\+\_\+byte p, l\+\_\+mem x)
+\begin{DoxyCompactList}\small\item\em Computes \textquotesingle{}p\textquotesingle{} times \textquotesingle{}x\textquotesingle{}, where \textquotesingle{}p\textquotesingle{} is a floating-\/point byte. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{lobject_8c_aae42f4eba2d45e27d6f217f4497d106d}{lua\+O\+\_\+rawarith}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int op, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}p1, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}p2, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}res)
+\begin{DoxyCompactList}\small\item\em Performs a raw arithmetic operation. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lobject_8c_a70e6a84042c5cf25f3812cba16e1fc3d}{lua\+O\+\_\+arith}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int op, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}p1, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}p2, Stk\+Id res)
+\begin{DoxyCompactList}\small\item\em Performs an arithmetic operation, calling metamethods if necessary. \end{DoxyCompactList}\item 
+\Hypertarget{lobject_8c_a4b35840325c43848d5949e44f6c371a6}\label{lobject_8c_a4b35840325c43848d5949e44f6c371a6} 
+lu\+\_\+byte {\bfseries lua\+O\+\_\+hexavalue} (int c)
+\item 
+size\+\_\+t \doxymbox{\hyperlink{lobject_8c_ab1956c979ca7ff39b07534390714505d}{lua\+O\+\_\+str2num}} (const char \texorpdfstring{$\ast$}{*}s, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}o)
+\begin{DoxyCompactList}\small\item\em Converts a string to a Lua number. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{lobject_8c_a685d166204b13aa36463f415c350ab4f}{lua\+O\+\_\+utf8esc}} (char \texorpdfstring{$\ast$}{*}buff, l\+\_\+uint32 x)
+\begin{DoxyCompactList}\small\item\em Encodes a UTF-\/8 character into a buffer. \end{DoxyCompactList}\item 
+unsigned \doxymbox{\hyperlink{lobject_8c_a9136ddfe097a1202397216fb1c22e201}{lua\+O\+\_\+tostringbuff}} (const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}obj, char \texorpdfstring{$\ast$}{*}buff)
+\begin{DoxyCompactList}\small\item\em Converts a number object to a string, writing it to a buffer. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lobject_8c_a53824ade5220a50d44148175f7787199}{lua\+O\+\_\+tostring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}obj)
+\begin{DoxyCompactList}\small\item\em Converts a number object to a Lua string, replacing the value at \textquotesingle{}obj\textquotesingle{}. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lobject_8c_ae815c06421d341ce3c584d93ba9edc13}{lua\+O\+\_\+pushvfstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}fmt, va\+\_\+list argp)
+\begin{DoxyCompactList}\small\item\em Formats a string using a variable argument list and pushes it onto the stack. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lobject_8c_a65ca3be2a1f862455baaedd6a2275238}{lua\+O\+\_\+pushfstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}fmt,...)
+\begin{DoxyCompactList}\small\item\em Formats a string and pushes it onto the stack. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lobject_8c_ac331b4119bbeb45a8a7e5a1afe553b2e}{lua\+O\+\_\+chunkid}} (char \texorpdfstring{$\ast$}{*}out, const char \texorpdfstring{$\ast$}{*}source, size\+\_\+t srclen)
+\begin{DoxyCompactList}\small\item\em Generates a readable identification for a chunk. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lua Objects and generic functions. 
+
+This file contains functions to manipulate Lua objects, including arithmetic operations, string conversions, and other utilities. 
+
+\label{doc-define-members}
+\Hypertarget{lobject_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{lobject_8c_a5fa009dd087e1c8394b09e5bd9087bc7}\index{lobject.c@{lobject.c}!addsize@{addsize}}
+\index{addsize@{addsize}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{addsize}{addsize}}
+{\footnotesize\ttfamily \label{lobject_8c_a5fa009dd087e1c8394b09e5bd9087bc7} 
+\+\#define addsize(\begin{DoxyParamCaption}\item[{}]{b}{, }\item[{}]{sz}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((b)-\/>blen\ +=\ (sz))}
+
+\end{DoxyCode}
+\Hypertarget{lobject_8c_a0cbd5d41f14d898a5bacbe8935b01d0c}\index{lobject.c@{lobject.c}!addstr@{addstr}}
+\index{addstr@{addstr}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{addstr}{addstr}}
+{\footnotesize\ttfamily \label{lobject_8c_a0cbd5d41f14d898a5bacbe8935b01d0c} 
+\+\#define addstr(\begin{DoxyParamCaption}\item[{}]{a}{, }\item[{}]{b}{, }\item[{}]{l}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(\ memcpy(a,b,(l)\ *\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{char})),\ a\ +=\ (l)\ )}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{lobject_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{lobject_8c_af3125a767113bc412a0abdf68f698436}\index{lobject.c@{lobject.c}!luaO\_applyparam@{luaO\_applyparam}}
+\index{luaO\_applyparam@{luaO\_applyparam}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_applyparam()}{luaO\_applyparam()}}
+{\footnotesize\ttfamily \label{lobject_8c_af3125a767113bc412a0abdf68f698436} 
+l\+\_\+mem lua\+O\+\_\+applyparam (\begin{DoxyParamCaption}\item[{lu\+\_\+byte}]{p}{, }\item[{l\+\_\+mem}]{x}{}\end{DoxyParamCaption})}
+
+
+
+Computes \textquotesingle{}p\textquotesingle{} times \textquotesingle{}x\textquotesingle{}, where \textquotesingle{}p\textquotesingle{} is a floating-\/point byte. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em p} & The encoded percentage. \\
+\hline
+{\em x} & The value to apply the percentage to. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The result of (p\% \texorpdfstring{$\ast$}{*} x). 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_a70e6a84042c5cf25f3812cba16e1fc3d}\index{lobject.c@{lobject.c}!luaO\_arith@{luaO\_arith}}
+\index{luaO\_arith@{luaO\_arith}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_arith()}{luaO\_arith()}}
+{\footnotesize\ttfamily \label{lobject_8c_a70e6a84042c5cf25f3812cba16e1fc3d} 
+void lua\+O\+\_\+arith (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{op}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{p1}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{p2}{, }\item[{Stk\+Id}]{res}{}\end{DoxyParamCaption})}
+
+
+
+Performs an arithmetic operation, calling metamethods if necessary. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em op} & The operation code. \\
+\hline
+{\em p1} & First operand. \\
+\hline
+{\em p2} & Second operand. \\
+\hline
+{\em res} & Where to store the result. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lobject_8c_a731a3a2f9db35aaddeadf8cb19d507bd}\index{lobject.c@{lobject.c}!luaO\_ceillog2@{luaO\_ceillog2}}
+\index{luaO\_ceillog2@{luaO\_ceillog2}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_ceillog2()}{luaO\_ceillog2()}}
+{\footnotesize\ttfamily \label{lobject_8c_a731a3a2f9db35aaddeadf8cb19d507bd} 
+int lua\+O\+\_\+ceillog2 (\begin{DoxyParamCaption}\item[{unsigned int}]{x}{}\end{DoxyParamCaption})}
+
+
+
+Computes ceil(log2(x)). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em x} & The input unsigned integer. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The smallest integer n such that x \texorpdfstring{$<$}{<}= (1 \texorpdfstring{$<$}{<}\texorpdfstring{$<$}{<} n). 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_ac331b4119bbeb45a8a7e5a1afe553b2e}\index{lobject.c@{lobject.c}!luaO\_chunkid@{luaO\_chunkid}}
+\index{luaO\_chunkid@{luaO\_chunkid}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_chunkid()}{luaO\_chunkid()}}
+{\footnotesize\ttfamily \label{lobject_8c_ac331b4119bbeb45a8a7e5a1afe553b2e} 
+void lua\+O\+\_\+chunkid (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{out}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{source}{, }\item[{size\+\_\+t}]{srclen}{}\end{DoxyParamCaption})}
+
+
+
+Generates a readable identification for a chunk. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em out} & Buffer to store the result. \\
+\hline
+{\em source} & The source string. \\
+\hline
+{\em srclen} & Length of the source string. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lobject_8c_a95619a9321a2a2f2630f250734986525}\index{lobject.c@{lobject.c}!luaO\_codeparam@{luaO\_codeparam}}
+\index{luaO\_codeparam@{luaO\_codeparam}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_codeparam()}{luaO\_codeparam()}}
+{\footnotesize\ttfamily \label{lobject_8c_a95619a9321a2a2f2630f250734986525} 
+lu\+\_\+byte lua\+O\+\_\+codeparam (\begin{DoxyParamCaption}\item[{unsigned int}]{p}{}\end{DoxyParamCaption})}
+
+
+
+Encodes \textquotesingle{}p\textquotesingle{}\% as a floating-\/point byte (eeeexxxx). 
+
+The exponent is represented using excess-\/7. Mimicking IEEE 754, the representation normalizes the number when possible, assuming an extra 1 before the mantissa (xxxx) and adding one to the exponent (eeee) to signal that. So, the real value is (1xxxx) \texorpdfstring{$\ast$}{*} 2\texorpdfstring{$^\wedge$}{\string^}(eeee -\/ 7 -\/ 1) if eeee != 0, and (xxxx) \texorpdfstring{$\ast$}{*} 2\texorpdfstring{$^\wedge$}{\string^}-\/7 otherwise (subnormal numbers).
+
+
+\begin{DoxyParams}{Parameters}
+{\em p} & The percentage value. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The encoded byte. 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_a65ca3be2a1f862455baaedd6a2275238}\index{lobject.c@{lobject.c}!luaO\_pushfstring@{luaO\_pushfstring}}
+\index{luaO\_pushfstring@{luaO\_pushfstring}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_pushfstring()}{luaO\_pushfstring()}}
+{\footnotesize\ttfamily \label{lobject_8c_a65ca3be2a1f862455baaedd6a2275238} 
+const char \texorpdfstring{$\ast$}{*} lua\+O\+\_\+pushfstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{fmt}{, }\item[{}]{...}{}\end{DoxyParamCaption})}
+
+
+
+Formats a string and pushes it onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fmt} & The format string. \\
+\hline
+{\em ...} & The arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The formatted string. 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_ae815c06421d341ce3c584d93ba9edc13}\index{lobject.c@{lobject.c}!luaO\_pushvfstring@{luaO\_pushvfstring}}
+\index{luaO\_pushvfstring@{luaO\_pushvfstring}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_pushvfstring()}{luaO\_pushvfstring()}}
+{\footnotesize\ttfamily \label{lobject_8c_ae815c06421d341ce3c584d93ba9edc13} 
+const char \texorpdfstring{$\ast$}{*} lua\+O\+\_\+pushvfstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{fmt}{, }\item[{va\+\_\+list}]{argp}{}\end{DoxyParamCaption})}
+
+
+
+Formats a string using a variable argument list and pushes it onto the stack. 
+
+Supports s, c, d, I (lua\+\_\+\+Integer), f, p, U (unsigned long as UTF-\/8).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fmt} & The format string. \\
+\hline
+{\em argp} & The variable argument list. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The formatted string. 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_aae42f4eba2d45e27d6f217f4497d106d}\index{lobject.c@{lobject.c}!luaO\_rawarith@{luaO\_rawarith}}
+\index{luaO\_rawarith@{luaO\_rawarith}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_rawarith()}{luaO\_rawarith()}}
+{\footnotesize\ttfamily \label{lobject_8c_aae42f4eba2d45e27d6f217f4497d106d} 
+int lua\+O\+\_\+rawarith (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{op}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{p1}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{p2}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{res}{}\end{DoxyParamCaption})}
+
+
+
+Performs a raw arithmetic operation. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em op} & The operation code (LUA\+\_\+\+OP\texorpdfstring{$\ast$}{*}). \\
+\hline
+{\em p1} & First operand. \\
+\hline
+{\em p2} & Second operand. \\
+\hline
+{\em res} & Where to store the result. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure (e.\+g. invalid operands for bitwise ops). 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_ab1956c979ca7ff39b07534390714505d}\index{lobject.c@{lobject.c}!luaO\_str2num@{luaO\_str2num}}
+\index{luaO\_str2num@{luaO\_str2num}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_str2num()}{luaO\_str2num()}}
+{\footnotesize\ttfamily \label{lobject_8c_ab1956c979ca7ff39b07534390714505d} 
+size\+\_\+t lua\+O\+\_\+str2num (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{o}{}\end{DoxyParamCaption})}
+
+
+
+Converts a string to a Lua number. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s} & The string to convert. \\
+\hline
+{\em o} & The \doxylink{struct_t_value}{TValue} to store the result. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The size of the converted string + 1, or 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_a53824ade5220a50d44148175f7787199}\index{lobject.c@{lobject.c}!luaO\_tostring@{luaO\_tostring}}
+\index{luaO\_tostring@{luaO\_tostring}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_tostring()}{luaO\_tostring()}}
+{\footnotesize\ttfamily \label{lobject_8c_a53824ade5220a50d44148175f7787199} 
+void lua\+O\+\_\+tostring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{obj}{}\end{DoxyParamCaption})}
+
+
+
+Converts a number object to a Lua string, replacing the value at \textquotesingle{}obj\textquotesingle{}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em obj} & The object to convert (must be a number). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lobject_8c_a9136ddfe097a1202397216fb1c22e201}\index{lobject.c@{lobject.c}!luaO\_tostringbuff@{luaO\_tostringbuff}}
+\index{luaO\_tostringbuff@{luaO\_tostringbuff}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_tostringbuff()}{luaO\_tostringbuff()}}
+{\footnotesize\ttfamily \label{lobject_8c_a9136ddfe097a1202397216fb1c22e201} 
+unsigned lua\+O\+\_\+tostringbuff (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{buff}{}\end{DoxyParamCaption})}
+
+
+
+Converts a number object to a string, writing it to a buffer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & The number object. \\
+\hline
+{\em buff} & The buffer (must be at least LUA\+\_\+\+N2\+SBUFFSZ bytes). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The length of the string. 
+\end{DoxyReturn}
+\Hypertarget{lobject_8c_a685d166204b13aa36463f415c350ab4f}\index{lobject.c@{lobject.c}!luaO\_utf8esc@{luaO\_utf8esc}}
+\index{luaO\_utf8esc@{luaO\_utf8esc}!lobject.c@{lobject.c}}
+\doxysubsubsection{\texorpdfstring{luaO\_utf8esc()}{luaO\_utf8esc()}}
+{\footnotesize\ttfamily \label{lobject_8c_a685d166204b13aa36463f415c350ab4f} 
+int lua\+O\+\_\+utf8esc (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{buff}{, }\item[{l\+\_\+uint32}]{x}{}\end{DoxyParamCaption})}
+
+
+
+Encodes a UTF-\/8 character into a buffer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em buff} & The buffer to write to. \\
+\hline
+{\em x} & The code point. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The number of bytes written. 
+\end{DoxyReturn}

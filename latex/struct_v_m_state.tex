@@ -1,0 +1,83 @@
+\doxysection{VMState Struct Reference}
+\hypertarget{struct_v_m_state}{}\label{struct_v_m_state}\index{VMState@{VMState}}
+
+
+VM Runtime state.  
+
+
+
+
+{\ttfamily \+\#include $<$lobfuscate.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_state_a94e8a0a52ac9feb7434017e72e9e215f}{code}}
+\item 
+int \doxymbox{\hyperlink{struct_v_m_state_ad407eb7763d0ab8f4939937c6e6f6171}{code\+\_\+size}}
+\item 
+int \doxymbox{\hyperlink{struct_v_m_state_ac96eaea4836cb92b26da2ccee4d2ad7f}{pc}}
+\item 
+uint64\+\_\+t \doxymbox{\hyperlink{struct_v_m_state_a986ca6e8eecdf8abe41931e9bb563429}{decrypt\+\_\+key}}
+\item 
+int \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_state_a76462bf2d42d8566b3a3cd7b010a8206}{opcode\+\_\+map}}
+\item 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_state_a2ad4ff83a06ab62d82bc2245a828f6d6}{L}}
+\item 
+\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_v_m_state_ae843606907b6dcc2881101d47a611566}{ci}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+VM Runtime state. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_v_m_state_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_v_m_state_ae843606907b6dcc2881101d47a611566}\index{VMState@{VMState}!ci@{ci}}
+\index{ci@{ci}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{ci}{ci}}
+{\footnotesize\ttfamily \label{struct_v_m_state_ae843606907b6dcc2881101d47a611566} 
+\doxymbox{\hyperlink{struct_call_info}{Call\+Info}}\texorpdfstring{$\ast$}{*} VMState::\+ci}
+
+Call info. \Hypertarget{struct_v_m_state_a94e8a0a52ac9feb7434017e72e9e215f}\index{VMState@{VMState}!code@{code}}
+\index{code@{code}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{code}{code}}
+{\footnotesize\ttfamily \label{struct_v_m_state_a94e8a0a52ac9feb7434017e72e9e215f} 
+\doxymbox{\hyperlink{lobfuscate_8h_a46a21cfa802a0115cc8dac6e80a7223e}{VMInstruction}}\texorpdfstring{$\ast$}{*} VMState::\+code}
+
+VM code. \Hypertarget{struct_v_m_state_ad407eb7763d0ab8f4939937c6e6f6171}\index{VMState@{VMState}!code\_size@{code\_size}}
+\index{code\_size@{code\_size}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{code\_size}{code\_size}}
+{\footnotesize\ttfamily \label{struct_v_m_state_ad407eb7763d0ab8f4939937c6e6f6171} 
+int VMState::\+code\+\_\+size}
+
+Code size. \Hypertarget{struct_v_m_state_a986ca6e8eecdf8abe41931e9bb563429}\index{VMState@{VMState}!decrypt\_key@{decrypt\_key}}
+\index{decrypt\_key@{decrypt\_key}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{decrypt\_key}{decrypt\_key}}
+{\footnotesize\ttfamily \label{struct_v_m_state_a986ca6e8eecdf8abe41931e9bb563429} 
+uint64\+\_\+t VMState::\+decrypt\+\_\+key}
+
+Decryption key. \Hypertarget{struct_v_m_state_a2ad4ff83a06ab62d82bc2245a828f6d6}\index{VMState@{VMState}!L@{L}}
+\index{L@{L}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{L}{L}}
+{\footnotesize\ttfamily \label{struct_v_m_state_a2ad4ff83a06ab62d82bc2245a828f6d6} 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}}\texorpdfstring{$\ast$}{*} VMState::\+L}
+
+Lua state. \Hypertarget{struct_v_m_state_a76462bf2d42d8566b3a3cd7b010a8206}\index{VMState@{VMState}!opcode\_map@{opcode\_map}}
+\index{opcode\_map@{opcode\_map}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{opcode\_map}{opcode\_map}}
+{\footnotesize\ttfamily \label{struct_v_m_state_a76462bf2d42d8566b3a3cd7b010a8206} 
+int\texorpdfstring{$\ast$}{*} VMState::\+opcode\+\_\+map}
+
+Opcode map. \Hypertarget{struct_v_m_state_ac96eaea4836cb92b26da2ccee4d2ad7f}\index{VMState@{VMState}!pc@{pc}}
+\index{pc@{pc}!VMState@{VMState}}
+\doxysubsubsection{\texorpdfstring{pc}{pc}}
+{\footnotesize\ttfamily \label{struct_v_m_state_ac96eaea4836cb92b26da2ccee4d2ad7f} 
+int VMState::\+pc}
+
+Program Counter. 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{lobfuscate_8h}{lobfuscate.\+h}}\end{DoxyCompactItemize}

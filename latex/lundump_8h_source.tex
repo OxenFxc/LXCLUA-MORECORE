@@ -1,0 +1,49 @@
+\doxysection{lundump.\+h}
+\hypertarget{lundump_8h_source}{}\label{lundump_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lundump.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ load\ precompiled\ Lua\ chunks}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ lundump\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ lundump\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}llimits.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}lzio.h"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{comment}{/*\ data\ to\ catch\ conversion\ errors\ */}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ LUAC\_DATA\ \ \ "{}\(\backslash\)x19\(\backslash\)x93\(\backslash\)r\(\backslash\)n\(\backslash\)x1a\(\backslash\)n"{}}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#define\ LUAC\_INT\ \ \ \ 0x5678}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#define\ LUAC\_NUM\ \ \ \ cast\_num(370.5)}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00022\ \textcolor{comment}{**\ Encode\ major-\/minor\ version\ in\ one\ byte,\ one\ nibble\ for\ each}}
+\DoxyCodeLine{00023\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#define\ LUAC\_VERSION\ \ (((LUA\_VERSION\_NUM\ /\ 100)\ *\ 16)\ +\ LUA\_VERSION\_NUM\ \%\ 100)}}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#define\ LUAC\_FORMAT\ 0\ \ \ }\textcolor{comment}{/*\ this\ is\ the\ official\ format\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{comment}{/*\ load\ one\ chunk;\ from\ lundump.c\ */}}
+\DoxyCodeLine{00029\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_l_closure}{LClosure}}*\ luaU\_undump\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}*\ L,\ ZIO*\ Z,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ name,\ \textcolor{keywordtype}{int}\ force\_standard);}
+\DoxyCodeLine{00030\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_l_closure}{LClosure}}*\ luaU\_Vundump\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}*\ L,\ ZIO*\ Z,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ name);}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \textcolor{comment}{/*\ dump\ one\ chunk;\ from\ ldump.c\ */}}
+\DoxyCodeLine{00033\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaU\_dump\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}*\ L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_proto}{Proto}}*\ f,\ lua\_Writer\ w,}
+\DoxyCodeLine{00034\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}*\ data,\ \textcolor{keywordtype}{int}\ strip);}
+\DoxyCodeLine{00035\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaU\_Vdump\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}*\ L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_proto}{Proto}}*\ f,\ lua\_Writer\ w,}
+\DoxyCodeLine{00036\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}*\ data,\ \textcolor{keywordtype}{int}\ strip);}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \textcolor{comment}{/*\ dump\ one\ chunk\ with\ control\ flow\ flattening\ obfuscation;\ from\ ldump.c\ */}}
+\DoxyCodeLine{00039\ \textcolor{comment}{/*\ 带控制流扁平化混淆的字节码导出函数\ */}}
+\DoxyCodeLine{00040\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaU\_dump\_obfuscated\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}*\ L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_proto}{Proto}}*\ f,\ lua\_Writer\ w,}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}*\ data,\ \textcolor{keywordtype}{int}\ strip,\ \textcolor{keywordtype}{int}\ obfuscate\_flags,}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ seed,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *log\_path);}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

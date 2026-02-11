@@ -1,0 +1,23 @@
+\doxysection{lstruct.\+h}
+\hypertarget{lstruct_8h_source}{}\label{lstruct_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lstruct.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ Struct\ support}}
+\DoxyCodeLine{00004\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#ifndef\ lstruct\_h}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#define\ lstruct\_h}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}lua.h"{}}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaS\_copystruct\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *dest,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *src);}
+\DoxyCodeLine{00013\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaopen\_struct\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00014\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaS\_structindex\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *t,\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *key,\ StkId\ val);}
+\DoxyCodeLine{00015\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ luaS\_structnewindex\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *t,\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *key,\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *val);}
+\DoxyCodeLine{00016\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ luaS\_structeq\ (\textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *t1,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{struct_t_value}{TValue}}\ *t2);}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

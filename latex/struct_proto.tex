@@ -1,0 +1,262 @@
+\doxysection{Proto Struct Reference}
+\hypertarget{struct_proto}{}\label{struct_proto}\index{Proto@{Proto}}
+
+
+Function prototype structure.  
+
+
+
+
+{\ttfamily \+\#include $<$lobject.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{struct_proto_a5b0bf6a93e383f0a873573b9c99dfb95}\label{struct_proto_a5b0bf6a93e383f0a873573b9c99dfb95} 
+{\bfseries Common\+Header}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a3f106f177af6c68ffd8b042713266b98}{numparams}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a16d8b2f349f89bdeabda995cf96c1fb0}{flag}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a82302f2e9040b681d5b34c1239dcd673}{is\+\_\+vararg}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a9c9ed4e9d996233f75cdf56b912e4803}{maxstacksize}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a3f29f1c88d85272a78ce093ab54bf0a2}{nodiscard}}
+\item 
+lu\+\_\+byte \doxymbox{\hyperlink{struct_proto_a206611efcb6758d610ef1b363a62f570}{difierline\+\_\+mode}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a624f17f50b95a6160ded4144fab07572}{difierline\+\_\+magicnum}}
+\item 
+uint64\+\_\+t \doxymbox{\hyperlink{struct_proto_a7777a0a8b01abc0f6e9a0c18cff205bd}{difierline\+\_\+data}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a6ecec897497ba7d94df6ef69289ef5c0}{sizeupvalues}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a5bd719e0486168f6ecd4b01bf41a7444}{sizek}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a43e4d3849b5859112d93bdc2534a7cc0}{sizecode}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a65303ae1d815313f3358a578113fcc6e}{sizelineinfo}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a73ddad1a18b7c46be46ec32aa2a08632}{sizep}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_ac2ab37e941e8866687f44f7b2f4b95a9}{sizelocvars}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a48c289d2c5198fb3bb997196943e9902}{sizeabslineinfo}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a62cf1c61b70bfaa4f1fb839b7398160b}{linedefined}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_a9ef7fae1b22b11f5a145cfee8150059c}{lastlinedefined}}
+\item 
+\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_ae292fb0c0558679704933824ce96eac2}{k}}
+\item 
+Instruction \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a53b66e4e4ac4b612a41b67a0ace9b6a5}{code}}
+\item 
+struct \doxymbox{\hyperlink{struct_proto}{Proto}} \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a54dc8e2e8973007794fa0ab0e4a71461}{p}}
+\item 
+\doxymbox{\hyperlink{struct_upvaldesc}{Upvaldesc}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a028070514796b4accbd99c59e6b83930}{upvalues}}
+\item 
+ls\+\_\+byte \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a4d8b6a245668e28870027f70a98cce98}{lineinfo}}
+\item 
+\doxymbox{\hyperlink{struct_abs_line_info}{Abs\+Line\+Info}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a012268f6cdec514d296b50356decff4e}{abslineinfo}}
+\item 
+\doxymbox{\hyperlink{struct_loc_var}{Loc\+Var}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a41d627972548e1a6aaf358480ed46f69}{locvars}}
+\item 
+\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a92b6ec319e7aa1ee8b8ff7807353ad96}{source}}
+\item 
+\doxymbox{\hyperlink{struct_g_c_object}{GCObject}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a7991ec396b493a42b5c7f38b4e162959}{gclist}}
+\item 
+int \doxymbox{\hyperlink{struct_proto_af92ad52a54e05566d7c9e96786cc6f8f}{is\+\_\+sleeping}}
+\item 
+\doxymbox{\hyperlink{struct_call_queue}{Call\+Queue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a45556fd09b0fbff31a7454727f005958}{call\+\_\+queue}}
+\item 
+struct \doxymbox{\hyperlink{struct_v_m_code_table}{VMCode\+Table}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_proto_a95b6bf5e812f63bb474e936f9b7230f3}{vm\+\_\+code\+\_\+table}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Function prototype structure. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_proto_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_proto_a012268f6cdec514d296b50356decff4e}\index{Proto@{Proto}!abslineinfo@{abslineinfo}}
+\index{abslineinfo@{abslineinfo}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{abslineinfo}{abslineinfo}}
+{\footnotesize\ttfamily \label{struct_proto_a012268f6cdec514d296b50356decff4e} 
+\doxymbox{\hyperlink{struct_abs_line_info}{Abs\+Line\+Info}}\texorpdfstring{$\ast$}{*} Proto::\+abslineinfo}
+
+Map from opcodes to absolute source lines. \Hypertarget{struct_proto_a45556fd09b0fbff31a7454727f005958}\index{Proto@{Proto}!call\_queue@{call\_queue}}
+\index{call\_queue@{call\_queue}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{call\_queue}{call\_queue}}
+{\footnotesize\ttfamily \label{struct_proto_a45556fd09b0fbff31a7454727f005958} 
+\doxymbox{\hyperlink{struct_call_queue}{Call\+Queue}}\texorpdfstring{$\ast$}{*} Proto::\+call\+\_\+queue}
+
+call queue for sleep/\+wake \Hypertarget{struct_proto_a53b66e4e4ac4b612a41b67a0ace9b6a5}\index{Proto@{Proto}!code@{code}}
+\index{code@{code}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{code}{code}}
+{\footnotesize\ttfamily \label{struct_proto_a53b66e4e4ac4b612a41b67a0ace9b6a5} 
+Instruction\texorpdfstring{$\ast$}{*} Proto::\+code}
+
+Opcodes (bytecode). \Hypertarget{struct_proto_a7777a0a8b01abc0f6e9a0c18cff205bd}\index{Proto@{Proto}!difierline\_data@{difierline\_data}}
+\index{difierline\_data@{difierline\_data}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{difierline\_data}{difierline\_data}}
+{\footnotesize\ttfamily \label{struct_proto_a7777a0a8b01abc0f6e9a0c18cff205bd} 
+uint64\+\_\+t Proto::\+difierline\+\_\+data}
+
+Extra data for obfuscation. \Hypertarget{struct_proto_a624f17f50b95a6160ded4144fab07572}\index{Proto@{Proto}!difierline\_magicnum@{difierline\_magicnum}}
+\index{difierline\_magicnum@{difierline\_magicnum}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{difierline\_magicnum}{difierline\_magicnum}}
+{\footnotesize\ttfamily \label{struct_proto_a624f17f50b95a6160ded4144fab07572} 
+int Proto::\+difierline\+\_\+magicnum}
+
+Magic number for identification. \Hypertarget{struct_proto_a206611efcb6758d610ef1b363a62f570}\index{Proto@{Proto}!difierline\_mode@{difierline\_mode}}
+\index{difierline\_mode@{difierline\_mode}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{difierline\_mode}{difierline\_mode}}
+{\footnotesize\ttfamily \label{struct_proto_a206611efcb6758d610ef1b363a62f570} 
+lu\+\_\+byte Proto::\+difierline\+\_\+mode}
+
+Obfuscation mode flags. \Hypertarget{struct_proto_a16d8b2f349f89bdeabda995cf96c1fb0}\index{Proto@{Proto}!flag@{flag}}
+\index{flag@{flag}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{flag}{flag}}
+{\footnotesize\ttfamily \label{struct_proto_a16d8b2f349f89bdeabda995cf96c1fb0} 
+lu\+\_\+byte Proto::\+flag}
+
+Flags. \Hypertarget{struct_proto_a7991ec396b493a42b5c7f38b4e162959}\index{Proto@{Proto}!gclist@{gclist}}
+\index{gclist@{gclist}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{gclist}{gclist}}
+{\footnotesize\ttfamily \label{struct_proto_a7991ec396b493a42b5c7f38b4e162959} 
+\doxymbox{\hyperlink{struct_g_c_object}{GCObject}}\texorpdfstring{$\ast$}{*} Proto::\+gclist}
+
+garbage collector list \Hypertarget{struct_proto_af92ad52a54e05566d7c9e96786cc6f8f}\index{Proto@{Proto}!is\_sleeping@{is\_sleeping}}
+\index{is\_sleeping@{is\_sleeping}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{is\_sleeping}{is\_sleeping}}
+{\footnotesize\ttfamily \label{struct_proto_af92ad52a54e05566d7c9e96786cc6f8f} 
+int Proto::\+is\+\_\+sleeping}
+
+sleep status \Hypertarget{struct_proto_a82302f2e9040b681d5b34c1239dcd673}\index{Proto@{Proto}!is\_vararg@{is\_vararg}}
+\index{is\_vararg@{is\_vararg}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{is\_vararg}{is\_vararg}}
+{\footnotesize\ttfamily \label{struct_proto_a82302f2e9040b681d5b34c1239dcd673} 
+lu\+\_\+byte Proto::\+is\+\_\+vararg}
+
+Vararg flag. \Hypertarget{struct_proto_ae292fb0c0558679704933824ce96eac2}\index{Proto@{Proto}!k@{k}}
+\index{k@{k}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{k}{k}}
+{\footnotesize\ttfamily \label{struct_proto_ae292fb0c0558679704933824ce96eac2} 
+\doxymbox{\hyperlink{struct_t_value}{TValue}}\texorpdfstring{$\ast$}{*} Proto::\+k}
+
+Constants used by the function. \Hypertarget{struct_proto_a9ef7fae1b22b11f5a145cfee8150059c}\index{Proto@{Proto}!lastlinedefined@{lastlinedefined}}
+\index{lastlinedefined@{lastlinedefined}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{lastlinedefined}{lastlinedefined}}
+{\footnotesize\ttfamily \label{struct_proto_a9ef7fae1b22b11f5a145cfee8150059c} 
+int Proto::\+lastlinedefined}
+
+Debug information:\+ end line. \Hypertarget{struct_proto_a62cf1c61b70bfaa4f1fb839b7398160b}\index{Proto@{Proto}!linedefined@{linedefined}}
+\index{linedefined@{linedefined}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{linedefined}{linedefined}}
+{\footnotesize\ttfamily \label{struct_proto_a62cf1c61b70bfaa4f1fb839b7398160b} 
+int Proto::\+linedefined}
+
+Debug information:\+ start line. \Hypertarget{struct_proto_a4d8b6a245668e28870027f70a98cce98}\index{Proto@{Proto}!lineinfo@{lineinfo}}
+\index{lineinfo@{lineinfo}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{lineinfo}{lineinfo}}
+{\footnotesize\ttfamily \label{struct_proto_a4d8b6a245668e28870027f70a98cce98} 
+ls\+\_\+byte\texorpdfstring{$\ast$}{*} Proto::\+lineinfo}
+
+Map from opcodes to source lines. \Hypertarget{struct_proto_a41d627972548e1a6aaf358480ed46f69}\index{Proto@{Proto}!locvars@{locvars}}
+\index{locvars@{locvars}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{locvars}{locvars}}
+{\footnotesize\ttfamily \label{struct_proto_a41d627972548e1a6aaf358480ed46f69} 
+\doxymbox{\hyperlink{struct_loc_var}{Loc\+Var}}\texorpdfstring{$\ast$}{*} Proto::\+locvars}
+
+Information about local variables. \Hypertarget{struct_proto_a9c9ed4e9d996233f75cdf56b912e4803}\index{Proto@{Proto}!maxstacksize@{maxstacksize}}
+\index{maxstacksize@{maxstacksize}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{maxstacksize}{maxstacksize}}
+{\footnotesize\ttfamily \label{struct_proto_a9c9ed4e9d996233f75cdf56b912e4803} 
+lu\+\_\+byte Proto::\+maxstacksize}
+
+Number of registers needed by this function. \Hypertarget{struct_proto_a3f29f1c88d85272a78ce093ab54bf0a2}\index{Proto@{Proto}!nodiscard@{nodiscard}}
+\index{nodiscard@{nodiscard}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{nodiscard}{nodiscard}}
+{\footnotesize\ttfamily \label{struct_proto_a3f29f1c88d85272a78ce093ab54bf0a2} 
+lu\+\_\+byte Proto::\+nodiscard}
+
+Function is marked as nodiscard. \Hypertarget{struct_proto_a3f106f177af6c68ffd8b042713266b98}\index{Proto@{Proto}!numparams@{numparams}}
+\index{numparams@{numparams}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{numparams}{numparams}}
+{\footnotesize\ttfamily \label{struct_proto_a3f106f177af6c68ffd8b042713266b98} 
+lu\+\_\+byte Proto::\+numparams}
+
+Number of fixed (named) parameters. \Hypertarget{struct_proto_a54dc8e2e8973007794fa0ab0e4a71461}\index{Proto@{Proto}!p@{p}}
+\index{p@{p}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{p}{p}}
+{\footnotesize\ttfamily \label{struct_proto_a54dc8e2e8973007794fa0ab0e4a71461} 
+struct \doxymbox{\hyperlink{struct_proto}{Proto}}\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} Proto::\+p}
+
+Functions defined inside this function. \Hypertarget{struct_proto_a48c289d2c5198fb3bb997196943e9902}\index{Proto@{Proto}!sizeabslineinfo@{sizeabslineinfo}}
+\index{sizeabslineinfo@{sizeabslineinfo}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizeabslineinfo}{sizeabslineinfo}}
+{\footnotesize\ttfamily \label{struct_proto_a48c289d2c5198fb3bb997196943e9902} 
+int Proto::\+sizeabslineinfo}
+
+Size of \textquotesingle{}abslineinfo\textquotesingle{} array. \Hypertarget{struct_proto_a43e4d3849b5859112d93bdc2534a7cc0}\index{Proto@{Proto}!sizecode@{sizecode}}
+\index{sizecode@{sizecode}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizecode}{sizecode}}
+{\footnotesize\ttfamily \label{struct_proto_a43e4d3849b5859112d93bdc2534a7cc0} 
+int Proto::\+sizecode}
+
+Size of \textquotesingle{}code\textquotesingle{} array. \Hypertarget{struct_proto_a5bd719e0486168f6ecd4b01bf41a7444}\index{Proto@{Proto}!sizek@{sizek}}
+\index{sizek@{sizek}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizek}{sizek}}
+{\footnotesize\ttfamily \label{struct_proto_a5bd719e0486168f6ecd4b01bf41a7444} 
+int Proto::\+sizek}
+
+Size of \textquotesingle{}k\textquotesingle{} (constants) array. \Hypertarget{struct_proto_a65303ae1d815313f3358a578113fcc6e}\index{Proto@{Proto}!sizelineinfo@{sizelineinfo}}
+\index{sizelineinfo@{sizelineinfo}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizelineinfo}{sizelineinfo}}
+{\footnotesize\ttfamily \label{struct_proto_a65303ae1d815313f3358a578113fcc6e} 
+int Proto::\+sizelineinfo}
+
+Size of \textquotesingle{}lineinfo\textquotesingle{} array. \Hypertarget{struct_proto_ac2ab37e941e8866687f44f7b2f4b95a9}\index{Proto@{Proto}!sizelocvars@{sizelocvars}}
+\index{sizelocvars@{sizelocvars}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizelocvars}{sizelocvars}}
+{\footnotesize\ttfamily \label{struct_proto_ac2ab37e941e8866687f44f7b2f4b95a9} 
+int Proto::\+sizelocvars}
+
+Size of \textquotesingle{}locvars\textquotesingle{} array. \Hypertarget{struct_proto_a73ddad1a18b7c46be46ec32aa2a08632}\index{Proto@{Proto}!sizep@{sizep}}
+\index{sizep@{sizep}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizep}{sizep}}
+{\footnotesize\ttfamily \label{struct_proto_a73ddad1a18b7c46be46ec32aa2a08632} 
+int Proto::\+sizep}
+
+Size of \textquotesingle{}p\textquotesingle{} (nested prototypes) array. \Hypertarget{struct_proto_a6ecec897497ba7d94df6ef69289ef5c0}\index{Proto@{Proto}!sizeupvalues@{sizeupvalues}}
+\index{sizeupvalues@{sizeupvalues}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{sizeupvalues}{sizeupvalues}}
+{\footnotesize\ttfamily \label{struct_proto_a6ecec897497ba7d94df6ef69289ef5c0} 
+int Proto::\+sizeupvalues}
+
+Size of \textquotesingle{}upvalues\textquotesingle{} array. \Hypertarget{struct_proto_a92b6ec319e7aa1ee8b8ff7807353ad96}\index{Proto@{Proto}!source@{source}}
+\index{source@{source}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{source}{source}}
+{\footnotesize\ttfamily \label{struct_proto_a92b6ec319e7aa1ee8b8ff7807353ad96} 
+\doxymbox{\hyperlink{struct_t_string}{TString}}\texorpdfstring{$\ast$}{*} Proto::\+source}
+
+Source file name. \Hypertarget{struct_proto_a028070514796b4accbd99c59e6b83930}\index{Proto@{Proto}!upvalues@{upvalues}}
+\index{upvalues@{upvalues}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{upvalues}{upvalues}}
+{\footnotesize\ttfamily \label{struct_proto_a028070514796b4accbd99c59e6b83930} 
+\doxymbox{\hyperlink{struct_upvaldesc}{Upvaldesc}}\texorpdfstring{$\ast$}{*} Proto::\+upvalues}
+
+Upvalue information. \Hypertarget{struct_proto_a95b6bf5e812f63bb474e936f9b7230f3}\index{Proto@{Proto}!vm\_code\_table@{vm\_code\_table}}
+\index{vm\_code\_table@{vm\_code\_table}!Proto@{Proto}}
+\doxysubsubsection{\texorpdfstring{vm\_code\_table}{vm\_code\_table}}
+{\footnotesize\ttfamily \label{struct_proto_a95b6bf5e812f63bb474e936f9b7230f3} 
+struct \doxymbox{\hyperlink{struct_v_m_code_table}{VMCode\+Table}}\texorpdfstring{$\ast$}{*} Proto::\+vm\+\_\+code\+\_\+table}
+
+VM protection code table pointer. 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lobject.\+h\end{DoxyCompactItemize}

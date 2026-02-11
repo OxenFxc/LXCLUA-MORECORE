@@ -1,0 +1,179 @@
+\doxysection{lua\+\_\+\+Debug Struct Reference}
+\hypertarget{structlua___debug}{}\label{structlua___debug}\index{lua\_Debug@{lua\_Debug}}
+
+
+Debug information structure.  
+
+
+
+
+{\ttfamily \+\#include $<$lua.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_a6578d385d2322429a0fe87b79f1ddec0}{event}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{structlua___debug_a2978ab7f2ade479a003beb16d3b7a993}{name}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{structlua___debug_a7e8c201950ea4dd3f2c7df9e1201019a}{namewhat}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{structlua___debug_afbf8df5f26e9c345378a7eb402eed081}{what}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{structlua___debug_a422bceba8605d96bce4d19ce801a62e4}{source}}
+\item 
+size\+\_\+t \doxymbox{\hyperlink{structlua___debug_aace8e6efdb999325e7a77452c849293b}{srclen}}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_a97b3ed36cdfdc6f2c694b253a3d96da6}{currentline}}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_a97cb69b18daa46d20fb1a13eec78661b}{linedefined}}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_a4c69b9d30e54cf9071cd2987ede128eb}{lastlinedefined}}
+\item 
+unsigned char \doxymbox{\hyperlink{structlua___debug_ab87c2a6ef686abf10da683f7e9af1b23}{nups}}
+\item 
+unsigned char \doxymbox{\hyperlink{structlua___debug_adb5efd1576224ce9d14f42f8bfee7a1a}{nparams}}
+\item 
+char \doxymbox{\hyperlink{structlua___debug_a943220c57a4dd46dcc1bcd1198cfea88}{isvararg}}
+\item 
+unsigned char \doxymbox{\hyperlink{structlua___debug_a6d1b973ebbf25da89b1d637bec435ce5}{extraargs}}
+\item 
+char \doxymbox{\hyperlink{structlua___debug_a08e9cf647790ffeb068db293c7572260}{istailcall}}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_a472f04b46b9a76e4b7b2b13bc06f2b7d}{ftransfer}}
+\item 
+int \doxymbox{\hyperlink{structlua___debug_ad76fcbbe403a26d349a76052ffa26558}{ntransfer}}
+\item 
+char \doxymbox{\hyperlink{structlua___debug_a9b953c2fa9ef95a72a9ffc423744e1a4}{short\+\_\+src}} \+[LUA\+\_\+\+IDSIZE]\+
+\item 
+char \doxymbox{\hyperlink{structlua___debug_ac91b40e52e2c7cd85f26389f87777673}{ishotfixed}}
+\item 
+struct \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{structlua___debug_a6cfa3d2272ea187b08164b0a2081d59d}{i\+\_\+ci}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Debug information structure. 
+
+\label{doc-variable-members}
+\Hypertarget{structlua___debug_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structlua___debug_a97b3ed36cdfdc6f2c694b253a3d96da6}\index{lua\_Debug@{lua\_Debug}!currentline@{currentline}}
+\index{currentline@{currentline}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{currentline}{currentline}}
+{\footnotesize\ttfamily \label{structlua___debug_a97b3ed36cdfdc6f2c694b253a3d96da6} 
+int lua\+\_\+\+Debug::\+currentline}
+
+(l) Current line number \Hypertarget{structlua___debug_a6578d385d2322429a0fe87b79f1ddec0}\index{lua\_Debug@{lua\_Debug}!event@{event}}
+\index{event@{event}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{event}{event}}
+{\footnotesize\ttfamily \label{structlua___debug_a6578d385d2322429a0fe87b79f1ddec0} 
+int lua\+\_\+\+Debug::\+event}
+
+Event code. \Hypertarget{structlua___debug_a6d1b973ebbf25da89b1d637bec435ce5}\index{lua\_Debug@{lua\_Debug}!extraargs@{extraargs}}
+\index{extraargs@{extraargs}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{extraargs}{extraargs}}
+{\footnotesize\ttfamily \label{structlua___debug_a6d1b973ebbf25da89b1d637bec435ce5} 
+unsigned char lua\+\_\+\+Debug::\+extraargs}
+
+(t) number of extra arguments \Hypertarget{structlua___debug_a472f04b46b9a76e4b7b2b13bc06f2b7d}\index{lua\_Debug@{lua\_Debug}!ftransfer@{ftransfer}}
+\index{ftransfer@{ftransfer}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{ftransfer}{ftransfer}}
+{\footnotesize\ttfamily \label{structlua___debug_a472f04b46b9a76e4b7b2b13bc06f2b7d} 
+int lua\+\_\+\+Debug::\+ftransfer}
+
+(r) index of first value transferred \Hypertarget{structlua___debug_a6cfa3d2272ea187b08164b0a2081d59d}\index{lua\_Debug@{lua\_Debug}!i\_ci@{i\_ci}}
+\index{i\_ci@{i\_ci}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{i\_ci}{i\_ci}}
+{\footnotesize\ttfamily \label{structlua___debug_a6cfa3d2272ea187b08164b0a2081d59d} 
+struct \doxymbox{\hyperlink{struct_call_info}{Call\+Info}}\texorpdfstring{$\ast$}{*} lua\+\_\+\+Debug::\+i\+\_\+ci}
+
+active function \Hypertarget{structlua___debug_ac91b40e52e2c7cd85f26389f87777673}\index{lua\_Debug@{lua\_Debug}!ishotfixed@{ishotfixed}}
+\index{ishotfixed@{ishotfixed}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{ishotfixed}{ishotfixed}}
+{\footnotesize\ttfamily \label{structlua___debug_ac91b40e52e2c7cd85f26389f87777673} 
+char lua\+\_\+\+Debug::\+ishotfixed}
+
+(h) whether function was hotfixed \Hypertarget{structlua___debug_a08e9cf647790ffeb068db293c7572260}\index{lua\_Debug@{lua\_Debug}!istailcall@{istailcall}}
+\index{istailcall@{istailcall}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{istailcall}{istailcall}}
+{\footnotesize\ttfamily \label{structlua___debug_a08e9cf647790ffeb068db293c7572260} 
+char lua\+\_\+\+Debug::\+istailcall}
+
+(t) is tail call \Hypertarget{structlua___debug_a943220c57a4dd46dcc1bcd1198cfea88}\index{lua\_Debug@{lua\_Debug}!isvararg@{isvararg}}
+\index{isvararg@{isvararg}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{isvararg}{isvararg}}
+{\footnotesize\ttfamily \label{structlua___debug_a943220c57a4dd46dcc1bcd1198cfea88} 
+char lua\+\_\+\+Debug::\+isvararg}
+
+(u) is vararg \Hypertarget{structlua___debug_a4c69b9d30e54cf9071cd2987ede128eb}\index{lua\_Debug@{lua\_Debug}!lastlinedefined@{lastlinedefined}}
+\index{lastlinedefined@{lastlinedefined}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{lastlinedefined}{lastlinedefined}}
+{\footnotesize\ttfamily \label{structlua___debug_a4c69b9d30e54cf9071cd2987ede128eb} 
+int lua\+\_\+\+Debug::\+lastlinedefined}
+
+(S) Last line of function definition \Hypertarget{structlua___debug_a97cb69b18daa46d20fb1a13eec78661b}\index{lua\_Debug@{lua\_Debug}!linedefined@{linedefined}}
+\index{linedefined@{linedefined}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{linedefined}{linedefined}}
+{\footnotesize\ttfamily \label{structlua___debug_a97cb69b18daa46d20fb1a13eec78661b} 
+int lua\+\_\+\+Debug::\+linedefined}
+
+(S) Line where function is defined \Hypertarget{structlua___debug_a2978ab7f2ade479a003beb16d3b7a993}\index{lua\_Debug@{lua\_Debug}!name@{name}}
+\index{name@{name}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily \label{structlua___debug_a2978ab7f2ade479a003beb16d3b7a993} 
+const char\texorpdfstring{$\ast$}{*} lua\+\_\+\+Debug::\+name}
+
+(n) Name of the function. \Hypertarget{structlua___debug_a7e8c201950ea4dd3f2c7df9e1201019a}\index{lua\_Debug@{lua\_Debug}!namewhat@{namewhat}}
+\index{namewhat@{namewhat}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{namewhat}{namewhat}}
+{\footnotesize\ttfamily \label{structlua___debug_a7e8c201950ea4dd3f2c7df9e1201019a} 
+const char\texorpdfstring{$\ast$}{*} lua\+\_\+\+Debug::\+namewhat}
+
+(n) \textquotesingle{}global\textquotesingle{}, \textquotesingle{}local\textquotesingle{}, \textquotesingle{}field\textquotesingle{}, \textquotesingle{}method\textquotesingle{} \Hypertarget{structlua___debug_adb5efd1576224ce9d14f42f8bfee7a1a}\index{lua\_Debug@{lua\_Debug}!nparams@{nparams}}
+\index{nparams@{nparams}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{nparams}{nparams}}
+{\footnotesize\ttfamily \label{structlua___debug_adb5efd1576224ce9d14f42f8bfee7a1a} 
+unsigned char lua\+\_\+\+Debug::\+nparams}
+
+(u) number of parameters \Hypertarget{structlua___debug_ad76fcbbe403a26d349a76052ffa26558}\index{lua\_Debug@{lua\_Debug}!ntransfer@{ntransfer}}
+\index{ntransfer@{ntransfer}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{ntransfer}{ntransfer}}
+{\footnotesize\ttfamily \label{structlua___debug_ad76fcbbe403a26d349a76052ffa26558} 
+int lua\+\_\+\+Debug::\+ntransfer}
+
+(r) number of transferred values \Hypertarget{structlua___debug_ab87c2a6ef686abf10da683f7e9af1b23}\index{lua\_Debug@{lua\_Debug}!nups@{nups}}
+\index{nups@{nups}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{nups}{nups}}
+{\footnotesize\ttfamily \label{structlua___debug_ab87c2a6ef686abf10da683f7e9af1b23} 
+unsigned char lua\+\_\+\+Debug::\+nups}
+
+(u) number of upvalues \Hypertarget{structlua___debug_a9b953c2fa9ef95a72a9ffc423744e1a4}\index{lua\_Debug@{lua\_Debug}!short\_src@{short\_src}}
+\index{short\_src@{short\_src}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{short\_src}{short\_src}}
+{\footnotesize\ttfamily \label{structlua___debug_a9b953c2fa9ef95a72a9ffc423744e1a4} 
+char lua\+\_\+\+Debug::\+short\+\_\+src\+[LUA\+\_\+\+IDSIZE]\+}
+
+(S) Short source name \Hypertarget{structlua___debug_a422bceba8605d96bce4d19ce801a62e4}\index{lua\_Debug@{lua\_Debug}!source@{source}}
+\index{source@{source}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{source}{source}}
+{\footnotesize\ttfamily \label{structlua___debug_a422bceba8605d96bce4d19ce801a62e4} 
+const char\texorpdfstring{$\ast$}{*} lua\+\_\+\+Debug::\+source}
+
+(S) Source code name (e.\+g. file name) \Hypertarget{structlua___debug_aace8e6efdb999325e7a77452c849293b}\index{lua\_Debug@{lua\_Debug}!srclen@{srclen}}
+\index{srclen@{srclen}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{srclen}{srclen}}
+{\footnotesize\ttfamily \label{structlua___debug_aace8e6efdb999325e7a77452c849293b} 
+size\+\_\+t lua\+\_\+\+Debug::\+srclen}
+
+(S) Source length \Hypertarget{structlua___debug_afbf8df5f26e9c345378a7eb402eed081}\index{lua\_Debug@{lua\_Debug}!what@{what}}
+\index{what@{what}!lua\_Debug@{lua\_Debug}}
+\doxysubsubsection{\texorpdfstring{what}{what}}
+{\footnotesize\ttfamily \label{structlua___debug_afbf8df5f26e9c345378a7eb402eed081} 
+const char\texorpdfstring{$\ast$}{*} lua\+\_\+\+Debug::\+what}
+
+(S) \textquotesingle{}Lua\textquotesingle{}, \textquotesingle{}C\textquotesingle{}, \textquotesingle{}main\textquotesingle{}, \textquotesingle{}tail\textquotesingle{} 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lua.\+h\end{DoxyCompactItemize}

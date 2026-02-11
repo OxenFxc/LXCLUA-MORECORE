@@ -1,0 +1,773 @@
+\doxysection{ltable.\+c File Reference}
+\hypertarget{ltable_8c}{}\label{ltable_8c}\index{ltable.c@{ltable.c}}
+
+
+Lua tables (hash) implementation.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$math.\+h$>$}\newline
+{\ttfamily \+\#include $<$limits.\+h$>$}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdio.\+h$>$}\newline
+{\ttfamily \+\#include $<$time.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldebug.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lgc.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstring.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltable.\+h"{}}\newline
+{\ttfamily \+\#include "{}lvm.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{struct_filter_pattern_list}{Filter\+Pattern\+List}}
+\item 
+struct \doxymbox{\hyperlink{struct_table_access_filter}{Table\+Access\+Filter}}
+\item 
+struct \doxymbox{\hyperlink{struct_limbox__aux}{Limbox\+\_\+aux}}
+\item 
+union \doxymbox{\hyperlink{union_limbox}{Limbox}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{ltable_8c_aa114e7aec320ef3b294533e55b5d08d4}\label{ltable_8c_aa114e7aec320ef3b294533e55b5d08d4} 
+\+\#define {\bfseries ltable\+\_\+c}
+\item 
+\Hypertarget{ltable_8c_abf0b3947b59218777a8e928a10be205b}\label{ltable_8c_abf0b3947b59218777a8e928a10be205b} 
+\+\#define {\bfseries LUA\+\_\+\+CORE}
+\item 
+\Hypertarget{ltable_8c_a2703b25dd73a265a26dd24eff35fbcf1}\label{ltable_8c_a2703b25dd73a265a26dd24eff35fbcf1} 
+\+\#define {\bfseries MAX\+\_\+\+FILTER\+\_\+\+PATTERNS}~32
+\item 
+\Hypertarget{ltable_8c_a05381e62721e45da32cde1bbce7d834d}\label{ltable_8c_a05381e62721e45da32cde1bbce7d834d} 
+\+\#define {\bfseries MAX\+\_\+\+PATTERN\+\_\+\+LENGTH}~256
+\item 
+\Hypertarget{ltable_8c_a4d1e4b8f344fafaf14be41417bdde40f}\label{ltable_8c_a4d1e4b8f344fafaf14be41417bdde40f} 
+\+\#define {\bfseries MAX\+\_\+\+DEDUP\+\_\+\+ENTRIES}~1024
+\item 
+\Hypertarget{ltable_8c_afdbae73bf387be7dbffc0776da54ed77}\label{ltable_8c_afdbae73bf387be7dbffc0776da54ed77} 
+\+\#define {\bfseries LIMFORLAST}~3  /\+\texorpdfstring{$\ast$}{*} log2 of real limit (8) \texorpdfstring{$\ast$}{*}/\+
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_ace8c6ee943854ac9af451e42d3bed52d}{haslastfree}}(t)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a29df0ed1da77d46cb39d37827cf2d269}{getlastfree}}(t)
+\item 
+\Hypertarget{ltable_8c_a08cdfe3b6bb8e0757344b850f33c4951}\label{ltable_8c_a08cdfe3b6bb8e0757344b850f33c4951} 
+\+\#define {\bfseries MAXABITS}~cast\+\_\+int(sizeof(int) \texorpdfstring{$\ast$}{*} CHAR\+\_\+\+BIT -\/ 1)
+\item 
+\Hypertarget{ltable_8c_aad7afcc388a26459991a015b7de58020}\label{ltable_8c_aad7afcc388a26459991a015b7de58020} 
+\+\#define {\bfseries MAXASIZEB}~(MAX\+\_\+\+SIZET/\+(sizeof(\doxymbox{\hyperlink{union_value}{Value}}) + 1))
+\item 
+\Hypertarget{ltable_8c_af53d6898e266c25bcd34c7eeaecd4523}\label{ltable_8c_af53d6898e266c25bcd34c7eeaecd4523} 
+\+\#define {\bfseries MAXASIZE}~(((1u $<$$<$ MAXABITS) $<$ MAXASIZEB) ? (1u $<$$<$ MAXABITS) :\+ cast\+\_\+uint(MAXASIZEB))
+\item 
+\Hypertarget{ltable_8c_a601c76074f7c0919e82088041c67f327}\label{ltable_8c_a601c76074f7c0919e82088041c67f327} 
+\+\#define {\bfseries MAXHBITS}~(MAXABITS -\/ 1)
+\item 
+\Hypertarget{ltable_8c_a219bee6ccf323698c1314a13b33149fb}\label{ltable_8c_a219bee6ccf323698c1314a13b33149fb} 
+\+\#define {\bfseries MAXHSIZE}~lua\+M\+\_\+limitN(1 $<$$<$ MAXHBITS, \doxymbox{\hyperlink{union_node}{Node}})
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a7797860730de6e3edbcc2916a0f7f166}{hashpow2}}(t,  n)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a70c9da7c141750e8e7c69bad3c0e4f20}{hashmod}}(t,  n)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a6dc1377ebc2524e79284729ad0e1b838}{hashstr}}(t,  str)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a97178f1176950bb9830839b579d7ac1a}{hashboolean}}(t,  p)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_abe268656b5851fdac88c13241391f41c}{hashpointer}}(t,  p)
+\item 
+\Hypertarget{ltable_8c_a21431126fe0cf318103085016a832cf5}\label{ltable_8c_a21431126fe0cf318103085016a832cf5} 
+\+\#define {\bfseries dummynode}~(\&dummynode\+\_\+)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_ac96d62bf47745d24f9a426d5c6656acf}{limitequalsasize}}(t)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a1604d4518b18a2e39ad7030ed2495caf}{limitasasize}}(t)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_aedd9a50828535d8b0e8ada1a74d2db1a}{ikeyinarray}}(t,  k)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a58043193a9cd519fc1d5349d510a66fb}{extra\+Lastfree}}(t)
+\item 
+\+\#define \doxymbox{\hyperlink{ltable_8c_a33c5741d68932e3bc34b5d9ce99fc13d}{array\+Xhash}}(na,  nh)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_acb298c7f93fd608d79f374f4d13a131c}{lua\+H\+\_\+set\+\_\+intelligent\+\_\+mode}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Sets the intelligent mode for table access logging. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ltable_8c_a224ce4a8650b6fb4ecdcee5fe210164a}{lua\+H\+\_\+is\+\_\+intelligent\+\_\+mode\+\_\+enabled}} (void)
+\begin{DoxyCompactList}\small\item\em Checks if intelligent mode is enabled. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_aa910ef0f118f8be53c0df1daaddd1c19}{lua\+H\+\_\+set\+\_\+filter\+\_\+jnienv}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Sets the filter for JNIEnv access logging. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ltable_8c_a99a9dad87265c1e3e5cf8f5cfe56c238}{lua\+H\+\_\+is\+\_\+filter\+\_\+jnienv\+\_\+enabled}} (void)
+\begin{DoxyCompactList}\small\item\em Checks if JNIEnv filtering is enabled. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_a1f39a8cc5693a0547134c4125ad81870}{lua\+H\+\_\+set\+\_\+filter\+\_\+userdata}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Sets the filter for Userdata access logging. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{ltable_8c_a083263bcd7c07834602ef330e75ab8cd}{lua\+H\+\_\+is\+\_\+filter\+\_\+userdata\+\_\+enabled}} (void)
+\begin{DoxyCompactList}\small\item\em Checks if Userdata filtering is enabled. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_a9cde330ee8d686afa00fa56c52a693aa}\label{ltable_8c_a9cde330ee8d686afa00fa56c52a693aa} 
+LUA\+\_\+\+API void {\bfseries lua\+H\+\_\+clear\+\_\+access\+\_\+filters} (void)
+\begin{DoxyCompactList}\small\item\em Clears all table access logging filters. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_a6a1742b3baf212ecb05ee09c777d91f7}{lua\+H\+\_\+set\+\_\+dedup\+\_\+enabled}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Enables or disables de-\/duplication for table access logging. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_a848fd65c57e691c9f757c9c3891f9bcb}{lua\+H\+\_\+set\+\_\+show\+\_\+unique\+\_\+only}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Sets the "{}show only unique"{} mode for table access logging. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_adc35d8ab892a908604656360b3eea8e5}\label{ltable_8c_adc35d8ab892a908604656360b3eea8e5} 
+LUA\+\_\+\+API void {\bfseries lua\+H\+\_\+reset\+\_\+dedup\+\_\+cache} (void)
+\begin{DoxyCompactList}\small\item\em Resets the de-\/duplication cache. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_a104b2aaecbb8a2959c882e4e4fc3bbb1}\label{ltable_8c_a104b2aaecbb8a2959c882e4e4fc3bbb1} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+include\+\_\+key\+\_\+type\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}type)
+\item 
+\Hypertarget{ltable_8c_a4da58828747e554d250b26377bccf5d5}\label{ltable_8c_a4da58828747e554d250b26377bccf5d5} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+exclude\+\_\+key\+\_\+type\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}type)
+\item 
+\Hypertarget{ltable_8c_ab8156f65a60c3a556e027b79265c1c6f}\label{ltable_8c_ab8156f65a60c3a556e027b79265c1c6f} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+include\+\_\+value\+\_\+type\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}type)
+\item 
+\Hypertarget{ltable_8c_a01e1790e47e2885aecee0b339f695c29}\label{ltable_8c_a01e1790e47e2885aecee0b339f695c29} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+exclude\+\_\+value\+\_\+type\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}type)
+\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{ltable_8c_aec627b3a00a2cb4f4f295ed2aac28d84}{lua\+H\+\_\+set\+\_\+access\+\_\+filter\+\_\+enabled}} (int enabled)
+\begin{DoxyCompactList}\small\item\em Enables or disables table access logging filters globally. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_ad877872fc8905d92cdeef55cabd4c687}\label{ltable_8c_ad877872fc8905d92cdeef55cabd4c687} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+include\+\_\+key\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_aa36db49dab868b90f8f4ce93f49781f0}\label{ltable_8c_aa36db49dab868b90f8f4ce93f49781f0} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+exclude\+\_\+key\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_ab9c1ade52ffd563b074d2976e59b0837}\label{ltable_8c_ab9c1ade52ffd563b074d2976e59b0837} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+include\+\_\+value\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_ac727d177422c66e88da9e884e604433f}\label{ltable_8c_ac727d177422c66e88da9e884e604433f} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+exclude\+\_\+value\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_afd5d6920864234eea551f6f8971dbf6e}\label{ltable_8c_afd5d6920864234eea551f6f8971dbf6e} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+include\+\_\+op\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_a431c70190083eb340ef858421ba91743}\label{ltable_8c_a431c70190083eb340ef858421ba91743} 
+LUA\+\_\+\+API int {\bfseries lua\+H\+\_\+add\+\_\+exclude\+\_\+op\+\_\+filter} (const char \texorpdfstring{$\ast$}{*}pattern)
+\item 
+\Hypertarget{ltable_8c_ada47eaf8430dbf8993409bd1ef418eba}\label{ltable_8c_ada47eaf8430dbf8993409bd1ef418eba} 
+LUA\+\_\+\+API void {\bfseries lua\+H\+\_\+set\+\_\+key\+\_\+int\+\_\+range} (int min\+\_\+val, int max\+\_\+val)
+\item 
+\Hypertarget{ltable_8c_acfe1120abeaf70ad29668e47ac8e5963}\label{ltable_8c_acfe1120abeaf70ad29668e47ac8e5963} 
+LUA\+\_\+\+API void {\bfseries lua\+H\+\_\+set\+\_\+value\+\_\+int\+\_\+range} (int min\+\_\+val, int max\+\_\+val)
+\item 
+\Hypertarget{ltable_8c_a1e97ed4dc894738c8a76cd5221d0f88e}\label{ltable_8c_a1e97ed4dc894738c8a76cd5221d0f88e} 
+l\+\_\+sinline \doxymbox{\hyperlink{union_node}{Node}} \texorpdfstring{$\ast$}{*} {\bfseries mainpositionfromnode} (const \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, \doxymbox{\hyperlink{union_node}{Node}} \texorpdfstring{$\ast$}{*}nd)
+\item 
+LUAI\+\_\+\+FUNC unsigned int \doxymbox{\hyperlink{ltable_8c_a8f20a204b7a78780847939086b847781}{lua\+H\+\_\+realasize}} (const \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t)
+\begin{DoxyCompactList}\small\item\em Returns the real size of the \textquotesingle{}array\textquotesingle{} array. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{ltable_8c_a3c4370ade14fcc86ede5ca90271d0f30}{lua\+H\+\_\+next}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, Stk\+Id key)
+\begin{DoxyCompactList}\small\item\em Returns the next key-\/value pair in a table traversal. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_a81f0bdcbfda0fe0faf36629adf36a5c1}\label{ltable_8c_a81f0bdcbfda0fe0faf36629adf36a5c1} 
+l\+\_\+sinline int {\bfseries arraykeyisempty} (const \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, unsigned key)
+\item 
+void \doxymbox{\hyperlink{ltable_8c_aad3b771962cc13884bf7b45480e8f4e9}{lua\+H\+\_\+resize}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, unsigned int newasize, unsigned int nhsize)
+\begin{DoxyCompactList}\small\item\em Resizes a table for new array and hash sizes. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ltable_8c_aeb5ce72fe8d43709093264d6522a27d4}{lua\+H\+\_\+resizearray}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, unsigned int nasize)
+\begin{DoxyCompactList}\small\item\em Resizes the array part of a table. \end{DoxyCompactList}\item 
+\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ltable_8c_a47b1a680f251e08074df2b9a5a7c028e}{lua\+H\+\_\+new}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Creates a new table. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ltable_8c_ac6d94de2e83b5b0865b4aca30dec5c8c}{lua\+H\+\_\+free}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t)
+\begin{DoxyCompactList}\small\item\em Frees a table. \end{DoxyCompactList}\item 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ltable_8c_abdca99a946a28b2a8569ebfbc9f0e4a7}{lua\+H\+\_\+getint}} (\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, lua\+\_\+\+Integer key)
+\begin{DoxyCompactList}\small\item\em Retrieves a value from a table with an integer key. \end{DoxyCompactList}\item 
+\Hypertarget{ltable_8c_ad6a01d300fa2f1748c8e7bf4803740ce}\label{ltable_8c_ad6a01d300fa2f1748c8e7bf4803740ce} 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} {\bfseries lua\+H\+\_\+getshortstr} (\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, \doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}key)
+\item 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ltable_8c_a372fd115a27f33297497ea9b9ea4618a}{lua\+H\+\_\+getstr}} (\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, \doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}key)
+\begin{DoxyCompactList}\small\item\em Retrieves a value from a table with a string key. \end{DoxyCompactList}\item 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ltable_8c_a18a6f1b00c04ce1043c3286bac09f050}{lua\+H\+\_\+get}} (\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}key)
+\begin{DoxyCompactList}\small\item\em Main search function for retrieving a value from a table. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ltable_8c_a72e6b8ad422b01d0b34197134cec1f7a}{lua\+H\+\_\+finishset}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}key, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}slot, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}value)
+\begin{DoxyCompactList}\small\item\em Finishes a raw "{}set table"{} operation. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ltable_8c_a2ea4f5ea50911a03375ba4d22ef72419}{lua\+H\+\_\+set}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}key, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}value)
+\begin{DoxyCompactList}\small\item\em Inserts or updates a value in a table. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{ltable_8c_a9eefa8191c63f55cffb6b7b58217467c}{lua\+H\+\_\+setint}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t, lua\+\_\+\+Integer key, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}value)
+\begin{DoxyCompactList}\small\item\em Inserts or updates a value in a table with an integer key. \end{DoxyCompactList}\item 
+lua\+\_\+\+Unsigned \doxymbox{\hyperlink{ltable_8c_a94d8f30941967078b44e2e21c4dd9a75}{lua\+H\+\_\+getn}} (\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}t)
+\begin{DoxyCompactList}\small\item\em Returns the length of the table (the \textquotesingle{}n\textquotesingle{} in t\+[1]\+..t\+[n]\+). \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{ltable_8c_a9bb10ae3999670e8536dd0ce9d212c40}{lua\+H\+\_\+enable\+\_\+access\+\_\+log}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int enable)
+\begin{DoxyCompactList}\small\item\em Enables or disables table access logging. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{ltable_8c_ae1f08fee2fd5e2578908a12a2d4f2c86}{lua\+H\+\_\+get\+\_\+log\+\_\+path}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Returns the path to the current table access log file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lua tables (hash) implementation. 
+
+This file contains the implementation of Lua tables, including hash part, array part, and custom access logging features. 
+
+\label{doc-define-members}
+\Hypertarget{ltable_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{ltable_8c_a33c5741d68932e3bc34b5d9ce99fc13d}\index{ltable.c@{ltable.c}!arrayXhash@{arrayXhash}}
+\index{arrayXhash@{arrayXhash}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{arrayXhash}{arrayXhash}}
+{\footnotesize\ttfamily \label{ltable_8c_a33c5741d68932e3bc34b5d9ce99fc13d} 
+\+\#define array\+Xhash(\begin{DoxyParamCaption}\item[{}]{na}{, }\item[{}]{nh}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(cast\_sizet(na)\ <=\ cast\_sizet(nh)\ *\ 3)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a58043193a9cd519fc1d5349d510a66fb}\index{ltable.c@{ltable.c}!extraLastfree@{extraLastfree}}
+\index{extraLastfree@{extraLastfree}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{extraLastfree}{extraLastfree}}
+{\footnotesize\ttfamily \label{ltable_8c_a58043193a9cd519fc1d5349d510a66fb} 
+\+\#define extra\+Lastfree(\begin{DoxyParamCaption}\item[{}]{t}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(haslastfree(t)\ ?\ \textcolor{keyword}{sizeof}(\doxymbox{\hyperlink{union_limbox}{Limbox}})\ :\ 0)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a29df0ed1da77d46cb39d37827cf2d269}\index{ltable.c@{ltable.c}!getlastfree@{getlastfree}}
+\index{getlastfree@{getlastfree}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{getlastfree}{getlastfree}}
+{\footnotesize\ttfamily \label{ltable_8c_a29df0ed1da77d46cb39d37827cf2d269} 
+\+\#define getlastfree(\begin{DoxyParamCaption}\item[{}]{t}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((cast(\doxymbox{\hyperlink{union_limbox}{Limbox}}\ *,\ (t)-\/>node)\ -\/\ 1)-\/>lastfree)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a97178f1176950bb9830839b579d7ac1a}\index{ltable.c@{ltable.c}!hashboolean@{hashboolean}}
+\index{hashboolean@{hashboolean}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{hashboolean}{hashboolean}}
+{\footnotesize\ttfamily \label{ltable_8c_a97178f1176950bb9830839b579d7ac1a} 
+\+\#define hashboolean(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{p}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{hashpow2(t,\ p)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a70c9da7c141750e8e7c69bad3c0e4f20}\index{ltable.c@{ltable.c}!hashmod@{hashmod}}
+\index{hashmod@{hashmod}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{hashmod}{hashmod}}
+{\footnotesize\ttfamily \label{ltable_8c_a70c9da7c141750e8e7c69bad3c0e4f20} 
+\+\#define hashmod(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{n}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(gnode(t,\ ((n)\ \%\ ((sizenode(t)-\/1u)|1u))))}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_abe268656b5851fdac88c13241391f41c}\index{ltable.c@{ltable.c}!hashpointer@{hashpointer}}
+\index{hashpointer@{hashpointer}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{hashpointer}{hashpointer}}
+{\footnotesize\ttfamily \label{ltable_8c_abe268656b5851fdac88c13241391f41c} 
+\+\#define hashpointer(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{p}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{hashmod(t,\ point2uint(p))}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a7797860730de6e3edbcc2916a0f7f166}\index{ltable.c@{ltable.c}!hashpow2@{hashpow2}}
+\index{hashpow2@{hashpow2}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{hashpow2}{hashpow2}}
+{\footnotesize\ttfamily \label{ltable_8c_a7797860730de6e3edbcc2916a0f7f166} 
+\+\#define hashpow2(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{n}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(gnode(t,\ lmod((n),\ sizenode(t))))}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a6dc1377ebc2524e79284729ad0e1b838}\index{ltable.c@{ltable.c}!hashstr@{hashstr}}
+\index{hashstr@{hashstr}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{hashstr}{hashstr}}
+{\footnotesize\ttfamily \label{ltable_8c_a6dc1377ebc2524e79284729ad0e1b838} 
+\+\#define hashstr(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{str}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{hashpow2(t,\ (str)-\/>\doxymbox{\hyperlink{sha256_8c_a456db2b809c4bfa6046c7289d96e8592}{hash}})}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_ace8c6ee943854ac9af451e42d3bed52d}\index{ltable.c@{ltable.c}!haslastfree@{haslastfree}}
+\index{haslastfree@{haslastfree}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{haslastfree}{haslastfree}}
+{\footnotesize\ttfamily \label{ltable_8c_ace8c6ee943854ac9af451e42d3bed52d} 
+\+\#define haslastfree(\begin{DoxyParamCaption}\item[{}]{t}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((t)-\/>lsizenode\ >=\ LIMFORLAST)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_aedd9a50828535d8b0e8ada1a74d2db1a}\index{ltable.c@{ltable.c}!ikeyinarray@{ikeyinarray}}
+\index{ikeyinarray@{ikeyinarray}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{ikeyinarray}{ikeyinarray}}
+{\footnotesize\ttfamily \label{ltable_8c_aedd9a50828535d8b0e8ada1a74d2db1a} 
+\+\#define ikeyinarray(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{k}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{checkrange(k,\ t-\/>alimit)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_a1604d4518b18a2e39ad7030ed2495caf}\index{ltable.c@{ltable.c}!limitasasize@{limitasasize}}
+\index{limitasasize@{limitasasize}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{limitasasize}{limitasasize}}
+{\footnotesize\ttfamily \label{ltable_8c_a1604d4518b18a2e39ad7030ed2495caf} 
+\+\#define limitasasize(\begin{DoxyParamCaption}\item[{}]{t}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{check\_exp(isrealasize(t),\ t-\/>alimit)}
+
+\end{DoxyCode}
+\Hypertarget{ltable_8c_ac96d62bf47745d24f9a426d5c6656acf}\index{ltable.c@{ltable.c}!limitequalsasize@{limitequalsasize}}
+\index{limitequalsasize@{limitequalsasize}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{limitequalsasize}{limitequalsasize}}
+{\footnotesize\ttfamily \label{ltable_8c_ac96d62bf47745d24f9a426d5c6656acf} 
+\+\#define limitequalsasize(\begin{DoxyParamCaption}\item[{}]{t}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(isrealasize(t)\ ||\ ispow2((t)-\/>alimit))}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{ltable_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{ltable_8c_a9bb10ae3999670e8536dd0ce9d212c40}\index{ltable.c@{ltable.c}!luaH\_enable\_access\_log@{luaH\_enable\_access\_log}}
+\index{luaH\_enable\_access\_log@{luaH\_enable\_access\_log}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_enable\_access\_log()}{luaH\_enable\_access\_log()}}
+{\footnotesize\ttfamily \label{ltable_8c_a9bb10ae3999670e8536dd0ce9d212c40} 
+int lua\+H\+\_\+enable\+\_\+access\+\_\+log (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Enables or disables table access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em enable} & 1 to enable, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a72e6b8ad422b01d0b34197134cec1f7a}\index{ltable.c@{ltable.c}!luaH\_finishset@{luaH\_finishset}}
+\index{luaH\_finishset@{luaH\_finishset}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_finishset()}{luaH\_finishset()}}
+{\footnotesize\ttfamily \label{ltable_8c_a72e6b8ad422b01d0b34197134cec1f7a} 
+void lua\+H\+\_\+finishset (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{key}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{slot}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{value}{}\end{DoxyParamCaption})}
+
+
+
+Finishes a raw "{}set table"{} operation. 
+
+\textquotesingle{}slot\textquotesingle{} is where the value should have been (the result of a previous "{}get table"{}).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table. \\
+\hline
+{\em key} & The key. \\
+\hline
+{\em slot} & The slot where the value should be. \\
+\hline
+{\em value} & The value to set. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_ac6d94de2e83b5b0865b4aca30dec5c8c}\index{ltable.c@{ltable.c}!luaH\_free@{luaH\_free}}
+\index{luaH\_free@{luaH\_free}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_free()}{luaH\_free()}}
+{\footnotesize\ttfamily \label{ltable_8c_ac6d94de2e83b5b0865b4aca30dec5c8c} 
+void lua\+H\+\_\+free (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{}\end{DoxyParamCaption})}
+
+
+
+Frees a table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table to free. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a18a6f1b00c04ce1043c3286bac09f050}\index{ltable.c@{ltable.c}!luaH\_get@{luaH\_get}}
+\index{luaH\_get@{luaH\_get}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_get()}{luaH\_get()}}
+{\footnotesize\ttfamily \label{ltable_8c_a18a6f1b00c04ce1043c3286bac09f050} 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} lua\+H\+\_\+get (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{key}{}\end{DoxyParamCaption})}
+
+
+
+Main search function for retrieving a value from a table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em t} & The table. \\
+\hline
+{\em key} & The key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The value associated with the key, or absentkey if not found. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_ae1f08fee2fd5e2578908a12a2d4f2c86}\index{ltable.c@{ltable.c}!luaH\_get\_log\_path@{luaH\_get\_log\_path}}
+\index{luaH\_get\_log\_path@{luaH\_get\_log\_path}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_get\_log\_path()}{luaH\_get\_log\_path()}}
+{\footnotesize\ttfamily \label{ltable_8c_ae1f08fee2fd5e2578908a12a2d4f2c86} 
+const char \texorpdfstring{$\ast$}{*} lua\+H\+\_\+get\+\_\+log\+\_\+path (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Returns the path to the current table access log file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The log file path. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_abdca99a946a28b2a8569ebfbc9f0e4a7}\index{ltable.c@{ltable.c}!luaH\_getint@{luaH\_getint}}
+\index{luaH\_getint@{luaH\_getint}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_getint()}{luaH\_getint()}}
+{\footnotesize\ttfamily \label{ltable_8c_abdca99a946a28b2a8569ebfbc9f0e4a7} 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} lua\+H\+\_\+getint (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{lua\+\_\+\+Integer}]{key}{}\end{DoxyParamCaption})}
+
+
+
+Retrieves a value from a table with an integer key. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em t} & The table. \\
+\hline
+{\em key} & The integer key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The value associated with the key, or absentkey if not found. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a94d8f30941967078b44e2e21c4dd9a75}\index{ltable.c@{ltable.c}!luaH\_getn@{luaH\_getn}}
+\index{luaH\_getn@{luaH\_getn}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_getn()}{luaH\_getn()}}
+{\footnotesize\ttfamily \label{ltable_8c_a94d8f30941967078b44e2e21c4dd9a75} 
+lua\+\_\+\+Unsigned lua\+H\+\_\+getn (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{}\end{DoxyParamCaption})}
+
+
+
+Returns the length of the table (the \textquotesingle{}n\textquotesingle{} in t\+[1]\+..t\+[n]\+). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em t} & The table. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The length of the table. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a372fd115a27f33297497ea9b9ea4618a}\index{ltable.c@{ltable.c}!luaH\_getstr@{luaH\_getstr}}
+\index{luaH\_getstr@{luaH\_getstr}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_getstr()}{luaH\_getstr()}}
+{\footnotesize\ttfamily \label{ltable_8c_a372fd115a27f33297497ea9b9ea4618a} 
+const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*} lua\+H\+\_\+getstr (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{\doxymbox{\hyperlink{struct_t_string}{TString}} \texorpdfstring{$\ast$}{*}}]{key}{}\end{DoxyParamCaption})}
+
+
+
+Retrieves a value from a table with a string key. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em t} & The table. \\
+\hline
+{\em key} & The string key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The value associated with the key, or absentkey if not found. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a99a9dad87265c1e3e5cf8f5cfe56c238}\index{ltable.c@{ltable.c}!luaH\_is\_filter\_jnienv\_enabled@{luaH\_is\_filter\_jnienv\_enabled}}
+\index{luaH\_is\_filter\_jnienv\_enabled@{luaH\_is\_filter\_jnienv\_enabled}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_is\_filter\_jnienv\_enabled()}{luaH\_is\_filter\_jnienv\_enabled()}}
+{\footnotesize\ttfamily \label{ltable_8c_a99a9dad87265c1e3e5cf8f5cfe56c238} 
+LUA\+\_\+\+API int lua\+H\+\_\+is\+\_\+filter\+\_\+jnienv\+\_\+enabled (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Checks if JNIEnv filtering is enabled. 
+
+\begin{DoxyReturn}{Returns}
+1 if enabled, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a083263bcd7c07834602ef330e75ab8cd}\index{ltable.c@{ltable.c}!luaH\_is\_filter\_userdata\_enabled@{luaH\_is\_filter\_userdata\_enabled}}
+\index{luaH\_is\_filter\_userdata\_enabled@{luaH\_is\_filter\_userdata\_enabled}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_is\_filter\_userdata\_enabled()}{luaH\_is\_filter\_userdata\_enabled()}}
+{\footnotesize\ttfamily \label{ltable_8c_a083263bcd7c07834602ef330e75ab8cd} 
+LUA\+\_\+\+API int lua\+H\+\_\+is\+\_\+filter\+\_\+userdata\+\_\+enabled (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Checks if Userdata filtering is enabled. 
+
+\begin{DoxyReturn}{Returns}
+1 if enabled, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a224ce4a8650b6fb4ecdcee5fe210164a}\index{ltable.c@{ltable.c}!luaH\_is\_intelligent\_mode\_enabled@{luaH\_is\_intelligent\_mode\_enabled}}
+\index{luaH\_is\_intelligent\_mode\_enabled@{luaH\_is\_intelligent\_mode\_enabled}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_is\_intelligent\_mode\_enabled()}{luaH\_is\_intelligent\_mode\_enabled()}}
+{\footnotesize\ttfamily \label{ltable_8c_a224ce4a8650b6fb4ecdcee5fe210164a} 
+LUA\+\_\+\+API int lua\+H\+\_\+is\+\_\+intelligent\+\_\+mode\+\_\+enabled (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Checks if intelligent mode is enabled. 
+
+\begin{DoxyReturn}{Returns}
+1 if enabled, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a47b1a680f251e08074df2b9a5a7c028e}\index{ltable.c@{ltable.c}!luaH\_new@{luaH\_new}}
+\index{luaH\_new@{luaH\_new}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_new()}{luaH\_new()}}
+{\footnotesize\ttfamily \label{ltable_8c_a47b1a680f251e08074df2b9a5a7c028e} 
+\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*} lua\+H\+\_\+new (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The new table. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a3c4370ade14fcc86ede5ca90271d0f30}\index{ltable.c@{ltable.c}!luaH\_next@{luaH\_next}}
+\index{luaH\_next@{luaH\_next}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_next()}{luaH\_next()}}
+{\footnotesize\ttfamily \label{ltable_8c_a3c4370ade14fcc86ede5ca90271d0f30} 
+int lua\+H\+\_\+next (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{Stk\+Id}]{key}{}\end{DoxyParamCaption})}
+
+
+
+Returns the next key-\/value pair in a table traversal. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table. \\
+\hline
+{\em key} & The key of the current element (or nil for the beginning). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if next element is found, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_a8f20a204b7a78780847939086b847781}\index{ltable.c@{ltable.c}!luaH\_realasize@{luaH\_realasize}}
+\index{luaH\_realasize@{luaH\_realasize}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_realasize()}{luaH\_realasize()}}
+{\footnotesize\ttfamily \label{ltable_8c_a8f20a204b7a78780847939086b847781} 
+LUAI\+\_\+\+FUNC unsigned int lua\+H\+\_\+realasize (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{}\end{DoxyParamCaption})}
+
+
+
+Returns the real size of the \textquotesingle{}array\textquotesingle{} array. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em t} & The table. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The real size of the array part. 
+\end{DoxyReturn}
+\Hypertarget{ltable_8c_aad3b771962cc13884bf7b45480e8f4e9}\index{ltable.c@{ltable.c}!luaH\_resize@{luaH\_resize}}
+\index{luaH\_resize@{luaH\_resize}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_resize()}{luaH\_resize()}}
+{\footnotesize\ttfamily \label{ltable_8c_aad3b771962cc13884bf7b45480e8f4e9} 
+void lua\+H\+\_\+resize (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{unsigned int}]{newasize}{, }\item[{unsigned int}]{nhsize}{}\end{DoxyParamCaption})}
+
+
+
+Resizes a table for new array and hash sizes. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table to resize. \\
+\hline
+{\em newasize} & The new array size. \\
+\hline
+{\em nhsize} & The new hash size. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_aeb5ce72fe8d43709093264d6522a27d4}\index{ltable.c@{ltable.c}!luaH\_resizearray@{luaH\_resizearray}}
+\index{luaH\_resizearray@{luaH\_resizearray}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_resizearray()}{luaH\_resizearray()}}
+{\footnotesize\ttfamily \label{ltable_8c_aeb5ce72fe8d43709093264d6522a27d4} 
+void lua\+H\+\_\+resizearray (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{unsigned int}]{nasize}{}\end{DoxyParamCaption})}
+
+
+
+Resizes the array part of a table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table to resize. \\
+\hline
+{\em nasize} & The new array size. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a2ea4f5ea50911a03375ba4d22ef72419}\index{ltable.c@{ltable.c}!luaH\_set@{luaH\_set}}
+\index{luaH\_set@{luaH\_set}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set()}{luaH\_set()}}
+{\footnotesize\ttfamily \label{ltable_8c_a2ea4f5ea50911a03375ba4d22ef72419} 
+void lua\+H\+\_\+set (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{key}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{value}{}\end{DoxyParamCaption})}
+
+
+
+Inserts or updates a value in a table. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table. \\
+\hline
+{\em key} & The key. \\
+\hline
+{\em value} & The value. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_aec627b3a00a2cb4f4f295ed2aac28d84}\index{ltable.c@{ltable.c}!luaH\_set\_access\_filter\_enabled@{luaH\_set\_access\_filter\_enabled}}
+\index{luaH\_set\_access\_filter\_enabled@{luaH\_set\_access\_filter\_enabled}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_access\_filter\_enabled()}{luaH\_set\_access\_filter\_enabled()}}
+{\footnotesize\ttfamily \label{ltable_8c_aec627b3a00a2cb4f4f295ed2aac28d84} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+access\+\_\+filter\+\_\+enabled (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Enables or disables table access logging filters globally. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a6a1742b3baf212ecb05ee09c777d91f7}\index{ltable.c@{ltable.c}!luaH\_set\_dedup\_enabled@{luaH\_set\_dedup\_enabled}}
+\index{luaH\_set\_dedup\_enabled@{luaH\_set\_dedup\_enabled}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_dedup\_enabled()}{luaH\_set\_dedup\_enabled()}}
+{\footnotesize\ttfamily \label{ltable_8c_a6a1742b3baf212ecb05ee09c777d91f7} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+dedup\+\_\+enabled (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Enables or disables de-\/duplication for table access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_aa910ef0f118f8be53c0df1daaddd1c19}\index{ltable.c@{ltable.c}!luaH\_set\_filter\_jnienv@{luaH\_set\_filter\_jnienv}}
+\index{luaH\_set\_filter\_jnienv@{luaH\_set\_filter\_jnienv}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_filter\_jnienv()}{luaH\_set\_filter\_jnienv()}}
+{\footnotesize\ttfamily \label{ltable_8c_aa910ef0f118f8be53c0df1daaddd1c19} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+filter\+\_\+jnienv (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Sets the filter for JNIEnv access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable filtering, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a1f39a8cc5693a0547134c4125ad81870}\index{ltable.c@{ltable.c}!luaH\_set\_filter\_userdata@{luaH\_set\_filter\_userdata}}
+\index{luaH\_set\_filter\_userdata@{luaH\_set\_filter\_userdata}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_filter\_userdata()}{luaH\_set\_filter\_userdata()}}
+{\footnotesize\ttfamily \label{ltable_8c_a1f39a8cc5693a0547134c4125ad81870} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+filter\+\_\+userdata (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Sets the filter for Userdata access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable filtering, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_acb298c7f93fd608d79f374f4d13a131c}\index{ltable.c@{ltable.c}!luaH\_set\_intelligent\_mode@{luaH\_set\_intelligent\_mode}}
+\index{luaH\_set\_intelligent\_mode@{luaH\_set\_intelligent\_mode}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_intelligent\_mode()}{luaH\_set\_intelligent\_mode()}}
+{\footnotesize\ttfamily \label{ltable_8c_acb298c7f93fd608d79f374f4d13a131c} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+intelligent\+\_\+mode (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Sets the intelligent mode for table access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a848fd65c57e691c9f757c9c3891f9bcb}\index{ltable.c@{ltable.c}!luaH\_set\_show\_unique\_only@{luaH\_set\_show\_unique\_only}}
+\index{luaH\_set\_show\_unique\_only@{luaH\_set\_show\_unique\_only}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_set\_show\_unique\_only()}{luaH\_set\_show\_unique\_only()}}
+{\footnotesize\ttfamily \label{ltable_8c_a848fd65c57e691c9f757c9c3891f9bcb} 
+LUA\+\_\+\+API void lua\+H\+\_\+set\+\_\+show\+\_\+unique\+\_\+only (\begin{DoxyParamCaption}\item[{int}]{enabled}{}\end{DoxyParamCaption})}
+
+
+
+Sets the "{}show only unique"{} mode for table access logging. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enabled} & 1 to enable, 0 to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{ltable_8c_a9eefa8191c63f55cffb6b7b58217467c}\index{ltable.c@{ltable.c}!luaH\_setint@{luaH\_setint}}
+\index{luaH\_setint@{luaH\_setint}!ltable.c@{ltable.c}}
+\doxysubsubsection{\texorpdfstring{luaH\_setint()}{luaH\_setint()}}
+{\footnotesize\ttfamily \label{ltable_8c_a9eefa8191c63f55cffb6b7b58217467c} 
+void lua\+H\+\_\+setint (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{lua\+\_\+\+Integer}]{key}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{value}{}\end{DoxyParamCaption})}
+
+
+
+Inserts or updates a value in a table with an integer key. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table. \\
+\hline
+{\em key} & The integer key. \\
+\hline
+{\em value} & The value. \\
+\hline
+\end{DoxyParams}

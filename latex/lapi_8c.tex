@@ -1,0 +1,2289 @@
+\doxysection{lapi.\+c File Reference}
+\hypertarget{lapi_8c}{}\label{lapi_8c}\index{lapi.c@{lapi.c}}
+
+
+Lua API implementation.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$limits.\+h$>$}\newline
+{\ttfamily \+\#include $<$stdarg.\+h$>$}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}lapi.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldebug.\+h"{}}\newline
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lfunc.\+h"{}}\newline
+{\ttfamily \+\#include "{}lgc.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstring.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltable.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltm.\+h"{}}\newline
+{\ttfamily \+\#include "{}lundump.\+h"{}}\newline
+{\ttfamily \+\#include "{}lvm.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobfuscate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lthread.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \doxymbox{\hyperlink{struct_call_s}{CallS}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lapi_8c_a6f4862161259fd87002d41735b0ccfa8}\label{lapi_8c_a6f4862161259fd87002d41735b0ccfa8} 
+\+\#define {\bfseries lapi\+\_\+c}
+\item 
+\Hypertarget{lapi_8c_abf0b3947b59218777a8e928a10be205b}\label{lapi_8c_abf0b3947b59218777a8e928a10be205b} 
+\+\#define {\bfseries LUA\+\_\+\+CORE}
+\item 
+\+\#define \doxymbox{\hyperlink{lapi_8c_aa414c9c792a81e37b5380c323b107194}{isvalid}}(L,  o)
+\item 
+\+\#define \doxymbox{\hyperlink{lapi_8c_a23aaf36182310f7e0108a065732710a2}{ispseudo}}(i)
+\item 
+\+\#define \doxymbox{\hyperlink{lapi_8c_aa8693ff1ffbbabc73472cd938dbd8086}{isupvalue}}(i)
+\item 
+\+\#define \doxymbox{\hyperlink{lapi_8c_a14981442f9f70617ab8d821bfc5b8794}{get\+Gtable}}(L)
+\item 
+\+\#define \doxymbox{\hyperlink{lapi_8c_a6b76ec051caca9db7e44638873044e98}{checkresults}}(L,  na,  nr)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lapi_8c_a57d4b3a9992d307092c1895e12876217}\label{lapi_8c_a57d4b3a9992d307092c1895e12876217} 
+l\+\_\+sinline Stk\+Id {\bfseries index2stack} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a1d762b92d5d82d6fa9f54ccf5c89d6a2}{lua\+\_\+checkstack}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int n)
+\begin{DoxyCompactList}\small\item\em Ensures that the stack has space for at least {\ttfamily n} extra slots. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_ae27bb8d0218710bbbfefc1f573839d6d}{lua\+\_\+xmove}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}from, \doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}to, int n)
+\begin{DoxyCompactList}\small\item\em Moves values from one thread to another. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+CFunction \doxymbox{\hyperlink{lapi_8c_a90bf785da77985164dbe2eb0d64bf82e}{lua\+\_\+atpanic}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+CFunction panicf)
+\begin{DoxyCompactList}\small\item\em Sets a new panic function. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Number \doxymbox{\hyperlink{lapi_8c_a173602b148e6a610676e866fb7874ff1}{lua\+\_\+version}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Returns the version number of this Lua core. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a32821b04960f1c1223132349d04911c1}{lua\+\_\+absindex}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Converts an acceptable stack index into an absolute index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_afbb08ecb69421875494105d4de68e5bf}{lua\+\_\+gettop}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Returns the index of the top element in the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_adaa30f0d34786144c94644039d1d1b6e}{lua\+\_\+settop}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Sets the stack top to the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a6b258ccd1dc16b90aa17eed183f283e3}{lua\+\_\+closeslot}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Closes the slot at the given index. \end{DoxyCompactList}\item 
+\Hypertarget{lapi_8c_af628ea556fe99e3ced3fad099e117844}\label{lapi_8c_af628ea556fe99e3ced3fad099e117844} 
+l\+\_\+sinline void {\bfseries reverse} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id from, Stk\+Id to)
+\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_af680e24129c0e021b4fbb7700cf185dc}{lua\+\_\+rotate}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int n)
+\begin{DoxyCompactList}\small\item\em Rotates the stack elements between the valid index {\ttfamily idx} and the top of the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a077411bcaa998886d2dfd569a89622c6}{lua\+\_\+rotate\+\_\+multi}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int n)
+\begin{DoxyCompactList}\small\item\em Rotates stack elements between a given index and the top. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a111bd3fa34fe656f415edae5e343e13e}{lua\+\_\+copy}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int fromidx, int toidx)
+\begin{DoxyCompactList}\small\item\em Copies the element at index {\ttfamily fromidx} into the valid index {\ttfamily toidx}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a602f61a9b583d69dc1c72c8970bd65e8}{lua\+\_\+pushvalue}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Pushes a copy of the element at the given index onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a652b273947f0656686f998d8e90cd3ea}{lua\+\_\+type}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns the type of the value at the given stack index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_ade1fd7b7ed1bd88ecdffbc025a1eaebd}{lua\+\_\+typename}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int t)
+\begin{DoxyCompactList}\small\item\em Returns the name of the type encoded by the value {\ttfamily t}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a3b922032c9fe2930399186a3647cc3ad}{lua\+\_\+iscfunction}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns true if the value at the given index is a C function. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aba53e83eb1fff94b5ed96203bb52d8ae}{lua\+\_\+isinteger}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns true if the value at the given index is an integer. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a99451f234bf085c9c46c3d17a5aef905}{lua\+\_\+isnumber}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns true if the value at the given index is a number. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a9f20233199a414b04c1c4b43f5d040f3}{lua\+\_\+isstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns true if the value at the given index is a string. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aa8a1dab86cfb4e0f9a4d1f699af0041b}{lua\+\_\+isuserdata}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns true if the value at the given index is a userdata. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_ace66ea78ced7fda0b367f45d09d10d83}{lua\+\_\+rawequal}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int index1, int index2)
+\begin{DoxyCompactList}\small\item\em Returns true if the two values in indices {\ttfamily index1} and {\ttfamily index2} are primitively equal. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a08501a34884feca01759dec174d69c88}{lua\+\_\+arith}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int op)
+\begin{DoxyCompactList}\small\item\em Performs an arithmetic or bitwise operation over the two values (or one) at the top of the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a5fbae51f515549d4657d0efc676defee}{lua\+\_\+compare}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int index1, int index2, int op)
+\begin{DoxyCompactList}\small\item\em Compares two Lua values. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API unsigned \doxymbox{\hyperlink{lapi_8c_ad6cf56b58b2a6359cd495f89d3a2c75f}{lua\+\_\+numbertocstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, char \texorpdfstring{$\ast$}{*}buff)
+\begin{DoxyCompactList}\small\item\em Converts the number at the given index to a string. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API size\+\_\+t \doxymbox{\hyperlink{lapi_8c_ab9c2fb9e2b2c7dad7474dd4b6f1bbcd0}{lua\+\_\+stringtonumber}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}s)
+\begin{DoxyCompactList}\small\item\em Converts a string to a number. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Number \doxymbox{\hyperlink{lapi_8c_a375da41304604b0cba0b8c798499e673}{lua\+\_\+tonumberx}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int \texorpdfstring{$\ast$}{*}pisnum)
+\begin{DoxyCompactList}\small\item\em Converts the Lua value at the given index to a C lua\+\_\+\+Number. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Integer \doxymbox{\hyperlink{lapi_8c_af81c9a68425546e1f8c6354728c95170}{lua\+\_\+tointegerx}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int \texorpdfstring{$\ast$}{*}pisnum)
+\begin{DoxyCompactList}\small\item\em Converts the Lua value at the given index to a C lua\+\_\+\+Integer. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Integer \doxymbox{\hyperlink{lapi_8c_a70f2c2db185002293eea25a36f17f94f}{lua\+\_\+tointeger\+\_\+safe}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int \texorpdfstring{$\ast$}{*}isnum, int \texorpdfstring{$\ast$}{*}overflow)
+\begin{DoxyCompactList}\small\item\em Safely converts a value at a given stack index to an integer. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a444aee9aa56b0b06175ee3c7bcf7927c}{lua\+\_\+toboolean}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Converts the Lua value at the given index to a C boolean value. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a5fbc943e3486fad9672f9a74d7cb49b4}{lua\+\_\+tolstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, size\+\_\+t \texorpdfstring{$\ast$}{*}len)
+\begin{DoxyCompactList}\small\item\em Converts the Lua value at the given index to a C string. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Unsigned \doxymbox{\hyperlink{lapi_8c_a161e2baf3d7a6a84499f6a9010cf12c8}{lua\+\_\+rawlen}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns the raw "{}length"{} of the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+CFunction \doxymbox{\hyperlink{lapi_8c_ae790897a3311d599299895612986d850}{lua\+\_\+tocfunction}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Converts a value at the given index to a C function. \end{DoxyCompactList}\item 
+\Hypertarget{lapi_8c_a29e2ecc9035b89e024bbc7bea185c91c}\label{lapi_8c_a29e2ecc9035b89e024bbc7bea185c91c} 
+l\+\_\+sinline void \texorpdfstring{$\ast$}{*} {\bfseries touserdata} (const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}o)
+\item 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_ac3856ea479475afddd0b2b85c6da116d}{lua\+\_\+touserdata}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns the address of the full userdata or the pointer of the light userdata. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API \doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a97794d731a3c99bbb3e46715a5746414}{lua\+\_\+tothread}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Converts the value at the given index to a Lua thread. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_aa483452c9dfdce8ca4b5d211772abec7}{lua\+\_\+topointer}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Converts the value at the given index to a generic C pointer. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a1b4cd0d80f51e5545a97ca6c28c03c50}{lua\+\_\+pushnil}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Pushes a nil value onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a328625a03fbb5548f27b1af10f109f6a}{lua\+\_\+pushnumber}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Number n)
+\begin{DoxyCompactList}\small\item\em Pushes a float with value {\ttfamily n} onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_adcec46ff05dfee9a3c4c05828b40c213}{lua\+\_\+pushinteger}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Integer n)
+\begin{DoxyCompactList}\small\item\em Pushes an integer with value {\ttfamily n} onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a01ac82fa494af5e7c3e10c87a8052cf7}{lua\+\_\+pushlstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}s, size\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Pushes the string pointed to by s with size len onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a5a6198638e01544060fb7edb3f77ac0b}{lua\+\_\+pushexternalstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}s, size\+\_\+t len, lua\+\_\+\+Alloc falloc, void \texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Pushes an external string onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a6dd1a745d08c2dd96916ff0f2f1ca9ad}{lua\+\_\+pushstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}s)
+\begin{DoxyCompactList}\small\item\em Pushes a zero-\/terminated string onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a7f9a9ebb64369312e088d83cc5e3ec05}{lua\+\_\+pushvfstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}fmt, va\+\_\+list argp)
+\begin{DoxyCompactList}\small\item\em Pushes a formatted string onto the stack (va\+\_\+list version). \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a35a21b17f4d19eeaf59630d1dc873b1a}{lua\+\_\+pushfstring}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}fmt,...)
+\begin{DoxyCompactList}\small\item\em Pushes a formatted string onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a142802b91cdd22516b54599f51e101e4}{lua\+\_\+pushcclosure}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+CFunction fn, int n)
+\begin{DoxyCompactList}\small\item\em Pushes a new C closure onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a56bbb7479265e38da2e2596e6ec25faa}{lua\+\_\+pushboolean}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int b)
+\begin{DoxyCompactList}\small\item\em Pushes a boolean value onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a85e3e3d32b068aef62426828a104b561}{lua\+\_\+pushlightuserdata}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, void \texorpdfstring{$\ast$}{*}p)
+\begin{DoxyCompactList}\small\item\em Pushes a light userdata onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a4175aeea9aa6dbf096ecfca7b190fa4a}{lua\+\_\+pushthread}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Pushes the thread represented by {\ttfamily L} onto the stack. \end{DoxyCompactList}\item 
+\Hypertarget{lapi_8c_a1b5746598f4bc03f763853ebe914f75f}\label{lapi_8c_a1b5746598f4bc03f763853ebe914f75f} 
+l\+\_\+sinline int {\bfseries auxgetstr} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}t, const char \texorpdfstring{$\ast$}{*}k)
+\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a8185a9c46d5930205f95beee4991e9f0}{lua\+\_\+getglobal}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}name)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the value of the global {\ttfamily name}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aa572dbc6e86f796a3e82ffcae4478aeb}{lua\+\_\+gettable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a8b47f1b5685c3f8018ba926abb99af24}{lua\+\_\+getfield}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, const char \texorpdfstring{$\ast$}{*}k)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a631ebda324b6a0f382ab6b9314917384}{lua\+\_\+geti}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, lua\+\_\+\+Integer n)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the value {\ttfamily t\+[n]\+}, where {\ttfamily t} is the value at the given index. \end{DoxyCompactList}\item 
+\Hypertarget{lapi_8c_a30ad1f34eb3fb703c0473a8e0d7f60f2}\label{lapi_8c_a30ad1f34eb3fb703c0473a8e0d7f60f2} 
+l\+\_\+sinline int {\bfseries finishrawget} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}val)
+\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a52944e714d1c64bda7b83f511c14b2d3}{lua\+\_\+rawget}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Similar to {\ttfamily \doxylink{lapi_8c_aa572dbc6e86f796a3e82ffcae4478aeb}{lua\+\_\+gettable}}, but does a raw access (i.\+e., without metamethods). \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_af8e4dc545cc83927d901d2f242489320}{lua\+\_\+rawgeti}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, lua\+\_\+\+Integer n)
+\begin{DoxyCompactList}\small\item\em Similar to {\ttfamily \doxylink{lapi_8c_a631ebda324b6a0f382ab6b9314917384}{lua\+\_\+geti}}, but does a raw access. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_acf10870c7165e0e440eb14827a52de93}{lua\+\_\+rawgetp}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, const void \texorpdfstring{$\ast$}{*}p)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index and {\ttfamily k} is the pointer {\ttfamily p}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a7f93e3baf3101cad59ec61b7744a55d8}{lua\+\_\+createtable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int narray, int nrec)
+\begin{DoxyCompactList}\small\item\em Creates a new empty table and pushes it onto the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a4caa9ca5e47a30bd45e33d83bf2d6d6e}{lua\+\_\+getmetatable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int objindex)
+\begin{DoxyCompactList}\small\item\em If the object at the given index has a metatable, pushes that metatable onto the stack and returns 1. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a57c21a629f94ee0acc21a25d83bfaeba}{lua\+\_\+getiuservalue}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int n)
+\begin{DoxyCompactList}\small\item\em Pushes onto the stack the n-\/th user value associated with the full userdata at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_aecf388efaede9d97581335998dfa243b}{lua\+\_\+setglobal}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}name)
+\begin{DoxyCompactList}\small\item\em Sets the value of a global variable. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a4ca492cf3d2194aec9a6292708bf66c8}{lua\+\_\+settable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Does the equivalent to {\ttfamily t\+[k]\+ = v}, where {\ttfamily t} is the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a3f2f542ee6728d82e51b1c302f9606df}{lua\+\_\+setfield}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, const char \texorpdfstring{$\ast$}{*}k)
+\begin{DoxyCompactList}\small\item\em Does the equivalent to {\ttfamily t\+[k]\+ = v}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a3f995c6cbc03d4cdebb2a6fc6fa11e59}{lua\+\_\+seti}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, lua\+\_\+\+Integer n)
+\begin{DoxyCompactList}\small\item\em Does the equivalent to {\ttfamily t\+[n]\+ = v}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_afb2d27f421677ef40425f9054ae216a7}{lua\+\_\+rawset}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Similar to {\ttfamily \doxylink{lapi_8c_a4ca492cf3d2194aec9a6292708bf66c8}{lua\+\_\+settable}}, but does a raw assignment. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_ae05a957ddaecb01392a55d59f31d0154}{lua\+\_\+const}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Sets a table to be constant or read-\/only. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_aef5ff7d32a6e275fa0b8305f013bee9d}{lua\+\_\+rawsetp}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, const void \texorpdfstring{$\ast$}{*}p)
+\begin{DoxyCompactList}\small\item\em Similar to {\ttfamily \doxylink{lapi_8c_afb2d27f421677ef40425f9054ae216a7}{lua\+\_\+rawset}}, but uses a pointer as key. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a757fd16e7e09280e2d4e4f9f77ba1099}{lua\+\_\+rawseti}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, lua\+\_\+\+Integer n)
+\begin{DoxyCompactList}\small\item\em Similar to {\ttfamily \doxylink{lapi_8c_afb2d27f421677ef40425f9054ae216a7}{lua\+\_\+rawset}}, but uses an integer as key. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a6a547c772c470239dccdb64586f67836}{lua\+\_\+table\+\_\+iextend}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int n)
+\begin{DoxyCompactList}\small\item\em Extends the array part of the table, adding n nil elements at the end. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a15719ea4119bdf5b3f2a406534431a7e}{lua\+\_\+setmetatable}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int objindex)
+\begin{DoxyCompactList}\small\item\em Sets the metatable for the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a7383d0f43ccf69b414217a32d3947a49}{lua\+\_\+setiuservalue}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx, int n)
+\begin{DoxyCompactList}\small\item\em Sets the n-\/th user value associated with the full userdata. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_ac5fef99e413a94e396b70b8263704ad3}{lua\+\_\+callk}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int nargs, int nresults, lua\+\_\+\+KContext ctx, lua\+\_\+\+KFunction k)
+\begin{DoxyCompactList}\small\item\em Calls a function in protected mode (continuation version). \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a624df4cb2312b762c4fb528ecc889385}{lua\+\_\+pcallk}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int nargs, int nresults, int errfunc, lua\+\_\+\+KContext ctx, lua\+\_\+\+KFunction k)
+\begin{DoxyCompactList}\small\item\em Calls a function in protected mode. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aa7a94c45f3eec251e5b258d7482ffe87}{lua\+\_\+load}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Reader reader, void \texorpdfstring{$\ast$}{*}data, const char \texorpdfstring{$\ast$}{*}chunkname, const char \texorpdfstring{$\ast$}{*}mode)
+\begin{DoxyCompactList}\small\item\em Loads a Lua chunk. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a68295f56f04fd0d5c0adfb1793a04b4c}{lua\+\_\+dump}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Writer writer, void \texorpdfstring{$\ast$}{*}data, int strip)
+\begin{DoxyCompactList}\small\item\em Dumps a function as a binary chunk. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_af21240068c79dc6da233cf687f63fff4}{lua\+\_\+dump\+\_\+obfuscated}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Writer writer, void \texorpdfstring{$\ast$}{*}data, int strip, int obfuscate\+\_\+flags, unsigned int seed, const char \texorpdfstring{$\ast$}{*}log\+\_\+path)
+\begin{DoxyCompactList}\small\item\em Dumps a function with obfuscation options. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aadea4b6f60174a1334ebde560968a615}{lua\+\_\+status}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Returns the status of the thread {\ttfamily L}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aa93573057f708d826613186a9d40c87d}{lua\+\_\+gc}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int what,...)
+\begin{DoxyCompactList}\small\item\em Controls the garbage collector. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API size\+\_\+t \doxymbox{\hyperlink{lapi_8c_a53bcfcfd60db600d84c4bab7e68fb33f}{lua\+\_\+getmemoryusage}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Returns the memory usage of the Lua state. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_aadb4c1063104541dcdb481197bc059a1}{lua\+\_\+gc\+\_\+force}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Forces a full garbage collection cycle. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_a6ba7b91143fe8a03910420d800de8e97}{lua\+\_\+error}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\begin{DoxyCompactList}\small\item\em Raises a Lua error. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API int \doxymbox{\hyperlink{lapi_8c_aa8bf464b98335a075732200ad91ce1de}{lua\+\_\+next}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Pops a key from the stack and pushes a key-\/value pair from the table at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a5101545bcd4222abe101836b7931bdf9}{lua\+\_\+toclose}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Marks the given index as a to-\/be-\/closed slot. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a1de3afee1daece63d455f23818c883d9}{lua\+\_\+concat}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int n)
+\begin{DoxyCompactList}\small\item\em Concatenates the {\ttfamily n} values at the top of the stack. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a28bdc8c01771ec2524b329a409a08040}{lua\+\_\+len}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int idx)
+\begin{DoxyCompactList}\small\item\em Returns the length of the value at the given index. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API lua\+\_\+\+Alloc \doxymbox{\hyperlink{lapi_8c_a3dbff8747b32b799cf63603c46da06cc}{lua\+\_\+getallocf}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, void \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Returns the memory allocator function of the given state. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_ac890276f9590df6a4d6aabdad9c558f0}{lua\+\_\+setallocf}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Alloc f, void \texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Sets the memory allocator function of the given state. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lapi_8c_a708d3ea569d1e7174f06281ecba5a091}{lua\+\_\+setwarnf}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Warn\+Function f, void \texorpdfstring{$\ast$}{*}ud)
+\begin{DoxyCompactList}\small\item\em Sets the warning function to be used by Lua. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lapi_8c_a383441029934d459d9b7cd89d3c851e8}{lua\+\_\+warning}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const char \texorpdfstring{$\ast$}{*}msg, int tocont)
+\begin{DoxyCompactList}\small\item\em Emits a warning. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a5782ce3bf3156b814716650f110530a3}{lua\+\_\+newuserdatauv}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, size\+\_\+t size, int nuvalue)
+\begin{DoxyCompactList}\small\item\em Creates a new full userdata with user values. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_a38b2185b6db1dcaf18fc2d240ee1b749}{lua\+\_\+getupvalue}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int funcindex, int n)
+\begin{DoxyCompactList}\small\item\em Gets information about a closure\textquotesingle{}s upvalue. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_ad7873a64b0cf88bb0c22a158bd787007}{lua\+\_\+setupvalue}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int funcindex, int n)
+\begin{DoxyCompactList}\small\item\em Sets the value of a closure\textquotesingle{}s upvalue. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lapi_8c_ab4051dd78d060726b49988a7b2238f16}{lua\+\_\+upvalueid}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int fidx, int n)
+\begin{DoxyCompactList}\small\item\em Returns a unique identifier for the upvalue numbered {\ttfamily n} from the closure at index {\ttfamily fidx}. \end{DoxyCompactList}\item 
+LUA\+\_\+\+API void \doxymbox{\hyperlink{lapi_8c_a9ce27da3bd8232ac4a0d383e924a0c7a}{lua\+\_\+upvaluejoin}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int fidx1, int n1, int fidx2, int n2)
+\begin{DoxyCompactList}\small\item\em Makes the n1-\/th upvalue of the Lua closure at index fidx1 refer to the n2-\/th upvalue of the Lua closure at index fidx2. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const char \doxymbox{\hyperlink{lapi_8c_acbf4dc2e5f80547c7f54f41a179258b2}{lua\+\_\+ident}} \+[$\,$]\+
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lua API implementation. 
+
+
+
+\label{doc-define-members}
+\Hypertarget{lapi_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{lapi_8c_a6b76ec051caca9db7e44638873044e98}\index{lapi.c@{lapi.c}!checkresults@{checkresults}}
+\index{checkresults@{checkresults}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{checkresults}{checkresults}}
+{\footnotesize\ttfamily \label{lapi_8c_a6b76ec051caca9db7e44638873044e98} 
+\+\#define checkresults(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{na}{, }\item[{}]{nr}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\ api\_check(L,\ (nr)\ ==\ LUA\_MULTRET\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ ||\ (L-\/>ci-\/>top.p\ -\/\ L-\/>top.p\ >=\ (nr)\ -\/\ (na)),\ \(\backslash\)}
+\DoxyCodeLine{\textcolor{stringliteral}{"{}results\ from\ function\ overflow\ current\ stack\ size"{}})}
+
+\end{DoxyCode}
+\Hypertarget{lapi_8c_a14981442f9f70617ab8d821bfc5b8794}\index{lapi.c@{lapi.c}!getGtable@{getGtable}}
+\index{getGtable@{getGtable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{getGtable}{getGtable}}
+{\footnotesize\ttfamily \label{lapi_8c_a14981442f9f70617ab8d821bfc5b8794} 
+\+\#define get\+Gtable(\begin{DoxyParamCaption}\item[{}]{L}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(\&hvalue(\&G(L)-\/>l\_registry)-\/>array[LUA\_RIDX\_GLOBALS\ -\/\ 1])}
+
+\end{DoxyCode}
+\Hypertarget{lapi_8c_a23aaf36182310f7e0108a065732710a2}\index{lapi.c@{lapi.c}!ispseudo@{ispseudo}}
+\index{ispseudo@{ispseudo}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{ispseudo}{ispseudo}}
+{\footnotesize\ttfamily \label{lapi_8c_a23aaf36182310f7e0108a065732710a2} 
+\+\#define ispseudo(\begin{DoxyParamCaption}\item[{}]{i}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((i)\ <=\ LUA\_REGISTRYINDEX)}
+
+\end{DoxyCode}
+\Hypertarget{lapi_8c_aa8693ff1ffbbabc73472cd938dbd8086}\index{lapi.c@{lapi.c}!isupvalue@{isupvalue}}
+\index{isupvalue@{isupvalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{isupvalue}{isupvalue}}
+{\footnotesize\ttfamily \label{lapi_8c_aa8693ff1ffbbabc73472cd938dbd8086} 
+\+\#define isupvalue(\begin{DoxyParamCaption}\item[{}]{i}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{((i)\ <\ LUA\_REGISTRYINDEX)}
+
+\end{DoxyCode}
+\Hypertarget{lapi_8c_aa414c9c792a81e37b5380c323b107194}\index{lapi.c@{lapi.c}!isvalid@{isvalid}}
+\index{isvalid@{isvalid}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{isvalid}{isvalid}}
+{\footnotesize\ttfamily \label{lapi_8c_aa414c9c792a81e37b5380c323b107194} 
+\+\#define isvalid(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{o}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(!ttisnil(o)\ ||\ o\ !=\ \&G(L)-\/>nilvalue)}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{lapi_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{lapi_8c_a32821b04960f1c1223132349d04911c1}\index{lapi.c@{lapi.c}!lua\_absindex@{lua\_absindex}}
+\index{lua\_absindex@{lua\_absindex}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_absindex()}{lua\_absindex()}}
+{\footnotesize\ttfamily \label{lapi_8c_a32821b04960f1c1223132349d04911c1} 
+LUA\+\_\+\+API int lua\+\_\+absindex (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Converts an acceptable stack index into an absolute index. 
+
+Converts the acceptable index idx into an equivalent absolute index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index to convert. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The absolute index. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a08501a34884feca01759dec174d69c88}\index{lapi.c@{lapi.c}!lua\_arith@{lua\_arith}}
+\index{lua\_arith@{lua\_arith}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_arith()}{lua\_arith()}}
+{\footnotesize\ttfamily \label{lapi_8c_a08501a34884feca01759dec174d69c88} 
+LUA\+\_\+\+API void lua\+\_\+arith (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{op}{}\end{DoxyParamCaption})}
+
+
+
+Performs an arithmetic or bitwise operation over the two values (or one) at the top of the stack. 
+
+Performs an arithmetic or bitwise operation over the two values (or one, in the case of negations) at the top of the stack, with the value at the top being the second operand, pops these values, and pushes the result of the operation.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em op} & The operation code. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a90bf785da77985164dbe2eb0d64bf82e}\index{lapi.c@{lapi.c}!lua\_atpanic@{lua\_atpanic}}
+\index{lua\_atpanic@{lua\_atpanic}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_atpanic()}{lua\_atpanic()}}
+{\footnotesize\ttfamily \label{lapi_8c_a90bf785da77985164dbe2eb0d64bf82e} 
+LUA\+\_\+\+API lua\+\_\+\+CFunction lua\+\_\+atpanic (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+CFunction}]{panicf}{}\end{DoxyParamCaption})}
+
+
+
+Sets a new panic function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em panicf} & The new panic function. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The old panic function. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ac5fef99e413a94e396b70b8263704ad3}\index{lapi.c@{lapi.c}!lua\_callk@{lua\_callk}}
+\index{lua\_callk@{lua\_callk}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_callk()}{lua\_callk()}}
+{\footnotesize\ttfamily \label{lapi_8c_ac5fef99e413a94e396b70b8263704ad3} 
+LUA\+\_\+\+API void lua\+\_\+callk (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{nargs}{, }\item[{int}]{nresults}{, }\item[{lua\+\_\+\+KContext}]{ctx}{, }\item[{lua\+\_\+\+KFunction}]{k}{}\end{DoxyParamCaption})}
+
+
+
+Calls a function in protected mode (continuation version). 
+
+Calls a function in protected mode.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em nargs} & Number of arguments. \\
+\hline
+{\em nresults} & Number of results. \\
+\hline
+{\em ctx} & Continuation context. \\
+\hline
+{\em k} & Continuation function. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a1d762b92d5d82d6fa9f54ccf5c89d6a2}\index{lapi.c@{lapi.c}!lua\_checkstack@{lua\_checkstack}}
+\index{lua\_checkstack@{lua\_checkstack}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_checkstack()}{lua\_checkstack()}}
+{\footnotesize\ttfamily \label{lapi_8c_a1d762b92d5d82d6fa9f54ccf5c89d6a2} 
+LUA\+\_\+\+API int lua\+\_\+checkstack (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Ensures that the stack has space for at least {\ttfamily n} extra slots. 
+
+Ensures that the stack has space for at least n extra slots.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em n} & Number of extra slots needed. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if the stack was grown or already had space, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a6b258ccd1dc16b90aa17eed183f283e3}\index{lapi.c@{lapi.c}!lua\_closeslot@{lua\_closeslot}}
+\index{lua\_closeslot@{lua\_closeslot}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_closeslot()}{lua\_closeslot()}}
+{\footnotesize\ttfamily \label{lapi_8c_a6b258ccd1dc16b90aa17eed183f283e3} 
+LUA\+\_\+\+API void lua\+\_\+closeslot (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Closes the slot at the given index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the slot to close. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a5fbae51f515549d4657d0efc676defee}\index{lapi.c@{lapi.c}!lua\_compare@{lua\_compare}}
+\index{lua\_compare@{lua\_compare}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_compare()}{lua\_compare()}}
+{\footnotesize\ttfamily \label{lapi_8c_a5fbae51f515549d4657d0efc676defee} 
+LUA\+\_\+\+API int lua\+\_\+compare (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{index1}{, }\item[{int}]{index2}{, }\item[{int}]{op}{}\end{DoxyParamCaption})}
+
+
+
+Compares two Lua values. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em index1} & First index. \\
+\hline
+{\em index2} & Second index. \\
+\hline
+{\em op} & Comparison operator (LUA\+\_\+\+OPEQ, LUA\+\_\+\+OPLT, LUA\+\_\+\+OPLE). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if condition is true, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a1de3afee1daece63d455f23818c883d9}\index{lapi.c@{lapi.c}!lua\_concat@{lua\_concat}}
+\index{lua\_concat@{lua\_concat}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_concat()}{lua\_concat()}}
+{\footnotesize\ttfamily \label{lapi_8c_a1de3afee1daece63d455f23818c883d9} 
+LUA\+\_\+\+API void lua\+\_\+concat (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Concatenates the {\ttfamily n} values at the top of the stack. 
+
+Concatenates the n values at the top of the stack, pops them, and leaves the result at the top.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em n} & Number of values. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_ae05a957ddaecb01392a55d59f31d0154}\index{lapi.c@{lapi.c}!lua\_const@{lua\_const}}
+\index{lua\_const@{lua\_const}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_const()}{lua\_const()}}
+{\footnotesize\ttfamily \label{lapi_8c_ae05a957ddaecb01392a55d59f31d0154} 
+LUA\+\_\+\+API void lua\+\_\+const (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Sets a table to be constant or read-\/only. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a111bd3fa34fe656f415edae5e343e13e}\index{lapi.c@{lapi.c}!lua\_copy@{lua\_copy}}
+\index{lua\_copy@{lua\_copy}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_copy()}{lua\_copy()}}
+{\footnotesize\ttfamily \label{lapi_8c_a111bd3fa34fe656f415edae5e343e13e} 
+LUA\+\_\+\+API void lua\+\_\+copy (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{fromidx}{, }\item[{int}]{toidx}{}\end{DoxyParamCaption})}
+
+
+
+Copies the element at index {\ttfamily fromidx} into the valid index {\ttfamily toidx}. 
+
+Copies the element at index fromidx into the valid index toidx, replacing the value at that position.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fromidx} & The source index. \\
+\hline
+{\em toidx} & The destination index. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a7f93e3baf3101cad59ec61b7744a55d8}\index{lapi.c@{lapi.c}!lua\_createtable@{lua\_createtable}}
+\index{lua\_createtable@{lua\_createtable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_createtable()}{lua\_createtable()}}
+{\footnotesize\ttfamily \label{lapi_8c_a7f93e3baf3101cad59ec61b7744a55d8} 
+LUA\+\_\+\+API void lua\+\_\+createtable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{narray}{, }\item[{int}]{nrec}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new empty table and pushes it onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em narray} & Expected number of elements in the array part. \\
+\hline
+{\em nrec} & Expected number of elements in the hash part. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a68295f56f04fd0d5c0adfb1793a04b4c}\index{lapi.c@{lapi.c}!lua\_dump@{lua\_dump}}
+\index{lua\_dump@{lua\_dump}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_dump()}{lua\_dump()}}
+{\footnotesize\ttfamily \label{lapi_8c_a68295f56f04fd0d5c0adfb1793a04b4c} 
+LUA\+\_\+\+API int lua\+\_\+dump (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Writer}]{writer}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{int}]{strip}{}\end{DoxyParamCaption})}
+
+
+
+Dumps a function as a binary chunk. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em writer} & Writer function. \\
+\hline
+{\em data} & User data for writer. \\
+\hline
+{\em strip} & Whether to strip debug information. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Status code. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_af21240068c79dc6da233cf687f63fff4}\index{lapi.c@{lapi.c}!lua\_dump\_obfuscated@{lua\_dump\_obfuscated}}
+\index{lua\_dump\_obfuscated@{lua\_dump\_obfuscated}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_dump\_obfuscated()}{lua\_dump\_obfuscated()}}
+{\footnotesize\ttfamily \label{lapi_8c_af21240068c79dc6da233cf687f63fff4} 
+LUA\+\_\+\+API int lua\+\_\+dump\+\_\+obfuscated (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Writer}]{writer}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{int}]{strip}{, }\item[{int}]{obfuscate\+\_\+flags}{, }\item[{unsigned int}]{seed}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{log\+\_\+path}{}\end{DoxyParamCaption})}
+
+
+
+Dumps a function with obfuscation options. 
+
+Dumps a function with obfuscation.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & Lua state. \\
+\hline
+{\em writer} & Writer function. \\
+\hline
+{\em data} & Writer data. \\
+\hline
+{\em strip} & Whether to strip debug info. \\
+\hline
+{\em obfuscate\+\_\+flags} & Obfuscation flags. \\
+\hline
+{\em seed} & Random seed (0 for time-\/based). \\
+\hline
+{\em log\+\_\+path} & Path to log debug info (NULL for no log). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 on success, non-\/zero on failure.
+\end{DoxyReturn}
+Obfuscation flags (combinable):\+
+\begin{DoxyItemize}
+\item 0:\+ No obfuscation
+\item 1:\+ Control Flow Flattening (OBFUSCATE\+\_\+\+CFF)
+\item 2:\+ Basic Block Shuffle (OBFUSCATE\+\_\+\+BLOCK\+\_\+\+SHUFFLE)
+\item 4:\+ Bogus Blocks (OBFUSCATE\+\_\+\+BOGUS\+\_\+\+BLOCKS)
+\item 8:\+ State Encoding (OBFUSCATE\+\_\+\+STATE\+\_\+\+ENCODE) 
+\end{DoxyItemize}\Hypertarget{lapi_8c_a6ba7b91143fe8a03910420d800de8e97}\index{lapi.c@{lapi.c}!lua\_error@{lua\_error}}
+\index{lua\_error@{lua\_error}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_error()}{lua\_error()}}
+{\footnotesize\ttfamily \label{lapi_8c_a6ba7b91143fe8a03910420d800de8e97} 
+LUA\+\_\+\+API int lua\+\_\+error (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Raises a Lua error. 
+
+Generates a Lua error, using the value at the top of the stack as the error object.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Never returns. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aa93573057f708d826613186a9d40c87d}\index{lapi.c@{lapi.c}!lua\_gc@{lua\_gc}}
+\index{lua\_gc@{lua\_gc}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_gc()}{lua\_gc()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa93573057f708d826613186a9d40c87d} 
+LUA\+\_\+\+API int lua\+\_\+gc (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{what}{, }\item[{}]{...}{}\end{DoxyParamCaption})}
+
+
+
+Controls the garbage collector. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em what} & What operation to perform. \\
+\hline
+{\em ...} & Additional arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Dependent on \textquotesingle{}what\textquotesingle{}. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aadb4c1063104541dcdb481197bc059a1}\index{lapi.c@{lapi.c}!lua\_gc\_force@{lua\_gc\_force}}
+\index{lua\_gc\_force@{lua\_gc\_force}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_gc\_force()}{lua\_gc\_force()}}
+{\footnotesize\ttfamily \label{lapi_8c_aadb4c1063104541dcdb481197bc059a1} 
+LUA\+\_\+\+API void lua\+\_\+gc\+\_\+force (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Forces a full garbage collection cycle. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+This function immediately triggers a full garbage collection cycle. It is equivalent to {\ttfamily lua\+\_\+gc(\+L, LUA\+\_\+\+GCCOLLECT, 0)}, but more explicit. 
+\end{DoxyNote}
+\Hypertarget{lapi_8c_a3dbff8747b32b799cf63603c46da06cc}\index{lapi.c@{lapi.c}!lua\_getallocf@{lua\_getallocf}}
+\index{lua\_getallocf@{lua\_getallocf}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getallocf()}{lua\_getallocf()}}
+{\footnotesize\ttfamily \label{lapi_8c_a3dbff8747b32b799cf63603c46da06cc} 
+LUA\+\_\+\+API lua\+\_\+\+Alloc lua\+\_\+getallocf (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{void \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Returns the memory allocator function of the given state. 
+
+Returns the memory allocation function of a given state.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ud} & User data pointer output. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The allocator function. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a8b47f1b5685c3f8018ba926abb99af24}\index{lapi.c@{lapi.c}!lua\_getfield@{lua\_getfield}}
+\index{lua\_getfield@{lua\_getfield}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getfield()}{lua\_getfield()}}
+{\footnotesize\ttfamily \label{lapi_8c_a8b47f1b5685c3f8018ba926abb99af24} 
+LUA\+\_\+\+API int lua\+\_\+getfield (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{k}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index. 
+
+Pushes onto the stack the value t\+[k]\+, where t is the value at the given index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em k} & The key string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a8185a9c46d5930205f95beee4991e9f0}\index{lapi.c@{lapi.c}!lua\_getglobal@{lua\_getglobal}}
+\index{lua\_getglobal@{lua\_getglobal}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getglobal()}{lua\_getglobal()}}
+{\footnotesize\ttfamily \label{lapi_8c_a8185a9c46d5930205f95beee4991e9f0} 
+LUA\+\_\+\+API int lua\+\_\+getglobal (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the value of the global {\ttfamily name}. 
+
+Pushes onto the stack the value of the global name.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em name} & The global name. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a631ebda324b6a0f382ab6b9314917384}\index{lapi.c@{lapi.c}!lua\_geti@{lua\_geti}}
+\index{lua\_geti@{lua\_geti}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_geti()}{lua\_geti()}}
+{\footnotesize\ttfamily \label{lapi_8c_a631ebda324b6a0f382ab6b9314917384} 
+LUA\+\_\+\+API int lua\+\_\+geti (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the value {\ttfamily t\+[n]\+}, where {\ttfamily t} is the value at the given index. 
+
+Pushes onto the stack the value t\+[n]\+, where t is the value at the given index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em n} & The integer key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a57c21a629f94ee0acc21a25d83bfaeba}\index{lapi.c@{lapi.c}!lua\_getiuservalue@{lua\_getiuservalue}}
+\index{lua\_getiuservalue@{lua\_getiuservalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getiuservalue()}{lua\_getiuservalue()}}
+{\footnotesize\ttfamily \label{lapi_8c_a57c21a629f94ee0acc21a25d83bfaeba} 
+LUA\+\_\+\+API int lua\+\_\+getiuservalue (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the n-\/th user value associated with the full userdata at the given index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the userdata. \\
+\hline
+{\em n} & The user value index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a53bcfcfd60db600d84c4bab7e68fb33f}\index{lapi.c@{lapi.c}!lua\_getmemoryusage@{lua\_getmemoryusage}}
+\index{lua\_getmemoryusage@{lua\_getmemoryusage}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getmemoryusage()}{lua\_getmemoryusage()}}
+{\footnotesize\ttfamily \label{lapi_8c_a53bcfcfd60db600d84c4bab7e68fb33f} 
+LUA\+\_\+\+API size\+\_\+t lua\+\_\+getmemoryusage (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Returns the memory usage of the Lua state. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Current memory usage in bytes. 
+\end{DoxyReturn}
+\begin{DoxyNote}{Note}
+Returns the total Lua heap memory usage, including all GC objects and internal data structures. 
+\end{DoxyNote}
+\Hypertarget{lapi_8c_a4caa9ca5e47a30bd45e33d83bf2d6d6e}\index{lapi.c@{lapi.c}!lua\_getmetatable@{lua\_getmetatable}}
+\index{lua\_getmetatable@{lua\_getmetatable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getmetatable()}{lua\_getmetatable()}}
+{\footnotesize\ttfamily \label{lapi_8c_a4caa9ca5e47a30bd45e33d83bf2d6d6e} 
+LUA\+\_\+\+API int lua\+\_\+getmetatable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{objindex}{}\end{DoxyParamCaption})}
+
+
+
+If the object at the given index has a metatable, pushes that metatable onto the stack and returns 1. 
+
+If the object at the given index has a metatable, pushes that metatable onto the stack and returns 1. Otherwise, returns 0 and pushes nothing.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em objindex} & The index of the object. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if metatable exists, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aa572dbc6e86f796a3e82ffcae4478aeb}\index{lapi.c@{lapi.c}!lua\_gettable@{lua\_gettable}}
+\index{lua\_gettable@{lua\_gettable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_gettable()}{lua\_gettable()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa572dbc6e86f796a3e82ffcae4478aeb} 
+LUA\+\_\+\+API int lua\+\_\+gettable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index. 
+
+Pushes onto the stack the value t\+[k]\+, where t is the value at the given index and k is the value at the top of the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_afbb08ecb69421875494105d4de68e5bf}\index{lapi.c@{lapi.c}!lua\_gettop@{lua\_gettop}}
+\index{lua\_gettop@{lua\_gettop}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_gettop()}{lua\_gettop()}}
+{\footnotesize\ttfamily \label{lapi_8c_afbb08ecb69421875494105d4de68e5bf} 
+LUA\+\_\+\+API int lua\+\_\+gettop (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Returns the index of the top element in the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The index of the top element. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a38b2185b6db1dcaf18fc2d240ee1b749}\index{lapi.c@{lapi.c}!lua\_getupvalue@{lua\_getupvalue}}
+\index{lua\_getupvalue@{lua\_getupvalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_getupvalue()}{lua\_getupvalue()}}
+{\footnotesize\ttfamily \label{lapi_8c_a38b2185b6db1dcaf18fc2d240ee1b749} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+getupvalue (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{funcindex}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Gets information about a closure\textquotesingle{}s upvalue. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em funcindex} & Index of the function. \\
+\hline
+{\em n} & Index of the upvalue. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Name of the upvalue. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a3b922032c9fe2930399186a3647cc3ad}\index{lapi.c@{lapi.c}!lua\_iscfunction@{lua\_iscfunction}}
+\index{lua\_iscfunction@{lua\_iscfunction}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_iscfunction()}{lua\_iscfunction()}}
+{\footnotesize\ttfamily \label{lapi_8c_a3b922032c9fe2930399186a3647cc3ad} 
+LUA\+\_\+\+API int lua\+\_\+iscfunction (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the value at the given index is a C function. 
+
+Returns 1 if the value at the given index is a C function, and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if C function, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aba53e83eb1fff94b5ed96203bb52d8ae}\index{lapi.c@{lapi.c}!lua\_isinteger@{lua\_isinteger}}
+\index{lua\_isinteger@{lua\_isinteger}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_isinteger()}{lua\_isinteger()}}
+{\footnotesize\ttfamily \label{lapi_8c_aba53e83eb1fff94b5ed96203bb52d8ae} 
+LUA\+\_\+\+API int lua\+\_\+isinteger (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the value at the given index is an integer. 
+
+Returns 1 if the value at the given index is an integer (or convertible to one), and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if integer, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a99451f234bf085c9c46c3d17a5aef905}\index{lapi.c@{lapi.c}!lua\_isnumber@{lua\_isnumber}}
+\index{lua\_isnumber@{lua\_isnumber}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_isnumber()}{lua\_isnumber()}}
+{\footnotesize\ttfamily \label{lapi_8c_a99451f234bf085c9c46c3d17a5aef905} 
+LUA\+\_\+\+API int lua\+\_\+isnumber (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the value at the given index is a number. 
+
+Returns 1 if the value at the given index is a number or a string convertible to a number, and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if number, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a9f20233199a414b04c1c4b43f5d040f3}\index{lapi.c@{lapi.c}!lua\_isstring@{lua\_isstring}}
+\index{lua\_isstring@{lua\_isstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_isstring()}{lua\_isstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a9f20233199a414b04c1c4b43f5d040f3} 
+LUA\+\_\+\+API int lua\+\_\+isstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the value at the given index is a string. 
+
+Returns 1 if the value at the given index is a string or a number (which is always convertible to a string), and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if string, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aa8a1dab86cfb4e0f9a4d1f699af0041b}\index{lapi.c@{lapi.c}!lua\_isuserdata@{lua\_isuserdata}}
+\index{lua\_isuserdata@{lua\_isuserdata}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_isuserdata()}{lua\_isuserdata()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa8a1dab86cfb4e0f9a4d1f699af0041b} 
+LUA\+\_\+\+API int lua\+\_\+isuserdata (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the value at the given index is a userdata. 
+
+Returns 1 if the value at the given index is a userdata (either full or light), and 0 otherwise.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if userdata, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a28bdc8c01771ec2524b329a409a08040}\index{lapi.c@{lapi.c}!lua\_len@{lua\_len}}
+\index{lua\_len@{lua\_len}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_len()}{lua\_len()}}
+{\footnotesize\ttfamily \label{lapi_8c_a28bdc8c01771ec2524b329a409a08040} 
+LUA\+\_\+\+API void lua\+\_\+len (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns the length of the value at the given index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_aa7a94c45f3eec251e5b258d7482ffe87}\index{lapi.c@{lapi.c}!lua\_load@{lua\_load}}
+\index{lua\_load@{lua\_load}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_load()}{lua\_load()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa7a94c45f3eec251e5b258d7482ffe87} 
+LUA\+\_\+\+API int lua\+\_\+load (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Reader}]{reader}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{chunkname}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{mode}{}\end{DoxyParamCaption})}
+
+
+
+Loads a Lua chunk. 
+
+Loads a Lua chunk without running it.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em reader} & Reader function. \\
+\hline
+{\em data} & User data for reader. \\
+\hline
+{\em chunkname} & Chunk name. \\
+\hline
+{\em mode} & Loading mode. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Status code. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a5782ce3bf3156b814716650f110530a3}\index{lapi.c@{lapi.c}!lua\_newuserdatauv@{lua\_newuserdatauv}}
+\index{lua\_newuserdatauv@{lua\_newuserdatauv}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_newuserdatauv()}{lua\_newuserdatauv()}}
+{\footnotesize\ttfamily \label{lapi_8c_a5782ce3bf3156b814716650f110530a3} 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} lua\+\_\+newuserdatauv (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{size\+\_\+t}]{size}{, }\item[{int}]{nuvalue}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new full userdata with user values. 
+
+Creates and pushes on the stack a new full userdata.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em size} & The size of the userdata. \\
+\hline
+{\em nuvalue} & Number of user values. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the userdata memory. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aa8bf464b98335a075732200ad91ce1de}\index{lapi.c@{lapi.c}!lua\_next@{lua\_next}}
+\index{lua\_next@{lua\_next}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_next()}{lua\_next()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa8bf464b98335a075732200ad91ce1de} 
+LUA\+\_\+\+API int lua\+\_\+next (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Pops a key from the stack and pushes a key-\/value pair from the table at the given index. 
+
+Pops a key from the stack, and pushes a key-\/value pair from the table at the given index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if next element exists, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ad6cf56b58b2a6359cd495f89d3a2c75f}\index{lapi.c@{lapi.c}!lua\_numbertocstring@{lua\_numbertocstring}}
+\index{lua\_numbertocstring@{lua\_numbertocstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_numbertocstring()}{lua\_numbertocstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_ad6cf56b58b2a6359cd495f89d3a2c75f} 
+LUA\+\_\+\+API unsigned lua\+\_\+numbertocstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{buff}{}\end{DoxyParamCaption})}
+
+
+
+Converts the number at the given index to a string. 
+
+Converts the number at the given index to a string in the buffer.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+{\em buff} & The buffer to store the string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The length of the string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a624df4cb2312b762c4fb528ecc889385}\index{lapi.c@{lapi.c}!lua\_pcallk@{lua\_pcallk}}
+\index{lua\_pcallk@{lua\_pcallk}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pcallk()}{lua\_pcallk()}}
+{\footnotesize\ttfamily \label{lapi_8c_a624df4cb2312b762c4fb528ecc889385} 
+LUA\+\_\+\+API int lua\+\_\+pcallk (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{nargs}{, }\item[{int}]{nresults}{, }\item[{int}]{errfunc}{, }\item[{lua\+\_\+\+KContext}]{ctx}{, }\item[{lua\+\_\+\+KFunction}]{k}{}\end{DoxyParamCaption})}
+
+
+
+Calls a function in protected mode. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em nargs} & Number of arguments. \\
+\hline
+{\em nresults} & Number of results. \\
+\hline
+{\em errfunc} & Index of error handling function. \\
+\hline
+{\em ctx} & Continuation context. \\
+\hline
+{\em k} & Continuation function. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Status code (LUA\+\_\+\+OK, LUA\+\_\+\+ERRRUN, etc.). 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a56bbb7479265e38da2e2596e6ec25faa}\index{lapi.c@{lapi.c}!lua\_pushboolean@{lua\_pushboolean}}
+\index{lua\_pushboolean@{lua\_pushboolean}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushboolean()}{lua\_pushboolean()}}
+{\footnotesize\ttfamily \label{lapi_8c_a56bbb7479265e38da2e2596e6ec25faa} 
+LUA\+\_\+\+API void lua\+\_\+pushboolean (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{b}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a boolean value onto the stack. 
+
+Pushes a boolean value with value b onto the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em b} & The boolean value. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a142802b91cdd22516b54599f51e101e4}\index{lapi.c@{lapi.c}!lua\_pushcclosure@{lua\_pushcclosure}}
+\index{lua\_pushcclosure@{lua\_pushcclosure}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushcclosure()}{lua\_pushcclosure()}}
+{\footnotesize\ttfamily \label{lapi_8c_a142802b91cdd22516b54599f51e101e4} 
+LUA\+\_\+\+API void lua\+\_\+pushcclosure (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+CFunction}]{fn}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a new C closure onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fn} & The C function. \\
+\hline
+{\em n} & The number of upvalues. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a5a6198638e01544060fb7edb3f77ac0b}\index{lapi.c@{lapi.c}!lua\_pushexternalstring@{lua\_pushexternalstring}}
+\index{lua\_pushexternalstring@{lua\_pushexternalstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushexternalstring()}{lua\_pushexternalstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a5a6198638e01544060fb7edb3f77ac0b} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+pushexternalstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{, }\item[{size\+\_\+t}]{len}{, }\item[{lua\+\_\+\+Alloc}]{falloc}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Pushes an external string onto the stack. 
+
+Pushes an external string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & String buffer. \\
+\hline
+{\em len} & String length. \\
+\hline
+{\em falloc} & Allocation function for deallocation. \\
+\hline
+{\em ud} & User data for allocator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a35a21b17f4d19eeaf59630d1dc873b1a}\index{lapi.c@{lapi.c}!lua\_pushfstring@{lua\_pushfstring}}
+\index{lua\_pushfstring@{lua\_pushfstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushfstring()}{lua\_pushfstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a35a21b17f4d19eeaf59630d1dc873b1a} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+pushfstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{fmt}{, }\item[{}]{...}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a formatted string onto the stack. 
+
+Pushes onto the stack a formatted string and returns a pointer to this string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fmt} & Format string. \\
+\hline
+{\em ...} & Arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_adcec46ff05dfee9a3c4c05828b40c213}\index{lapi.c@{lapi.c}!lua\_pushinteger@{lua\_pushinteger}}
+\index{lua\_pushinteger@{lua\_pushinteger}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushinteger()}{lua\_pushinteger()}}
+{\footnotesize\ttfamily \label{lapi_8c_adcec46ff05dfee9a3c4c05828b40c213} 
+LUA\+\_\+\+API void lua\+\_\+pushinteger (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Pushes an integer with value {\ttfamily n} onto the stack. 
+
+Pushes an integer with value n onto the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em n} & The integer. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a85e3e3d32b068aef62426828a104b561}\index{lapi.c@{lapi.c}!lua\_pushlightuserdata@{lua\_pushlightuserdata}}
+\index{lua\_pushlightuserdata@{lua\_pushlightuserdata}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushlightuserdata()}{lua\_pushlightuserdata()}}
+{\footnotesize\ttfamily \label{lapi_8c_a85e3e3d32b068aef62426828a104b561} 
+LUA\+\_\+\+API void lua\+\_\+pushlightuserdata (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{p}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a light userdata onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em p} & The pointer. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a01ac82fa494af5e7c3e10c87a8052cf7}\index{lapi.c@{lapi.c}!lua\_pushlstring@{lua\_pushlstring}}
+\index{lua\_pushlstring@{lua\_pushlstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushlstring()}{lua\_pushlstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a01ac82fa494af5e7c3e10c87a8052cf7} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+pushlstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{, }\item[{size\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Pushes the string pointed to by s with size len onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & The string buffer. \\
+\hline
+{\em len} & The string length. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the internal copy of the string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a1b4cd0d80f51e5545a97ca6c28c03c50}\index{lapi.c@{lapi.c}!lua\_pushnil@{lua\_pushnil}}
+\index{lua\_pushnil@{lua\_pushnil}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushnil()}{lua\_pushnil()}}
+{\footnotesize\ttfamily \label{lapi_8c_a1b4cd0d80f51e5545a97ca6c28c03c50} 
+LUA\+\_\+\+API void lua\+\_\+pushnil (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a nil value onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a328625a03fbb5548f27b1af10f109f6a}\index{lapi.c@{lapi.c}!lua\_pushnumber@{lua\_pushnumber}}
+\index{lua\_pushnumber@{lua\_pushnumber}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushnumber()}{lua\_pushnumber()}}
+{\footnotesize\ttfamily \label{lapi_8c_a328625a03fbb5548f27b1af10f109f6a} 
+LUA\+\_\+\+API void lua\+\_\+pushnumber (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Number}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a float with value {\ttfamily n} onto the stack. 
+
+Pushes a float with value n onto the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em n} & The number. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a6dd1a745d08c2dd96916ff0f2f1ca9ad}\index{lapi.c@{lapi.c}!lua\_pushstring@{lua\_pushstring}}
+\index{lua\_pushstring@{lua\_pushstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushstring()}{lua\_pushstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a6dd1a745d08c2dd96916ff0f2f1ca9ad} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+pushstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a zero-\/terminated string onto the stack. 
+
+Pushes the zero-\/terminated string pointed to by s onto the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & The string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a4175aeea9aa6dbf096ecfca7b190fa4a}\index{lapi.c@{lapi.c}!lua\_pushthread@{lua\_pushthread}}
+\index{lua\_pushthread@{lua\_pushthread}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushthread()}{lua\_pushthread()}}
+{\footnotesize\ttfamily \label{lapi_8c_a4175aeea9aa6dbf096ecfca7b190fa4a} 
+LUA\+\_\+\+API int lua\+\_\+pushthread (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Pushes the thread represented by {\ttfamily L} onto the stack. 
+
+Pushes the thread represented by L onto the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if this thread is the main thread of its state. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a602f61a9b583d69dc1c72c8970bd65e8}\index{lapi.c@{lapi.c}!lua\_pushvalue@{lua\_pushvalue}}
+\index{lua\_pushvalue@{lua\_pushvalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushvalue()}{lua\_pushvalue()}}
+{\footnotesize\ttfamily \label{lapi_8c_a602f61a9b583d69dc1c72c8970bd65e8} 
+LUA\+\_\+\+API void lua\+\_\+pushvalue (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a copy of the element at the given index onto the stack. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the element to copy. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a7f9a9ebb64369312e088d83cc5e3ec05}\index{lapi.c@{lapi.c}!lua\_pushvfstring@{lua\_pushvfstring}}
+\index{lua\_pushvfstring@{lua\_pushvfstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_pushvfstring()}{lua\_pushvfstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a7f9a9ebb64369312e088d83cc5e3ec05} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+pushvfstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{fmt}{, }\item[{va\+\_\+list}]{argp}{}\end{DoxyParamCaption})}
+
+
+
+Pushes a formatted string onto the stack (va\+\_\+list version). 
+
+Pushes onto the stack a formatted string and returns a pointer to this string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fmt} & Format string. \\
+\hline
+{\em argp} & Variable arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ace66ea78ced7fda0b367f45d09d10d83}\index{lapi.c@{lapi.c}!lua\_rawequal@{lua\_rawequal}}
+\index{lua\_rawequal@{lua\_rawequal}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawequal()}{lua\_rawequal()}}
+{\footnotesize\ttfamily \label{lapi_8c_ace66ea78ced7fda0b367f45d09d10d83} 
+LUA\+\_\+\+API int lua\+\_\+rawequal (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{index1}{, }\item[{int}]{index2}{}\end{DoxyParamCaption})}
+
+
+
+Returns true if the two values in indices {\ttfamily index1} and {\ttfamily index2} are primitively equal. 
+
+Returns 1 if the two values in indices idx1 and idx2 are primitively equal (that is, without calling the \+\_\+\+\_\+eq metamethod).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em index1} & First index. \\
+\hline
+{\em index2} & Second index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if equal, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a52944e714d1c64bda7b83f511c14b2d3}\index{lapi.c@{lapi.c}!lua\_rawget@{lua\_rawget}}
+\index{lua\_rawget@{lua\_rawget}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawget()}{lua\_rawget()}}
+{\footnotesize\ttfamily \label{lapi_8c_a52944e714d1c64bda7b83f511c14b2d3} 
+LUA\+\_\+\+API int lua\+\_\+rawget (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Similar to {\ttfamily \doxylink{lapi_8c_aa572dbc6e86f796a3e82ffcae4478aeb}{lua\+\_\+gettable}}, but does a raw access (i.\+e., without metamethods). 
+
+Similar to lua\+\_\+gettable, but does a raw access (i.\+e., without metamethods).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_af8e4dc545cc83927d901d2f242489320}\index{lapi.c@{lapi.c}!lua\_rawgeti@{lua\_rawgeti}}
+\index{lua\_rawgeti@{lua\_rawgeti}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawgeti()}{lua\_rawgeti()}}
+{\footnotesize\ttfamily \label{lapi_8c_af8e4dc545cc83927d901d2f242489320} 
+LUA\+\_\+\+API int lua\+\_\+rawgeti (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Similar to {\ttfamily \doxylink{lapi_8c_a631ebda324b6a0f382ab6b9314917384}{lua\+\_\+geti}}, but does a raw access. 
+
+Similar to lua\+\_\+geti, but does a raw access.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em n} & The integer key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_acf10870c7165e0e440eb14827a52de93}\index{lapi.c@{lapi.c}!lua\_rawgetp@{lua\_rawgetp}}
+\index{lua\_rawgetp@{lua\_rawgetp}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawgetp()}{lua\_rawgetp()}}
+{\footnotesize\ttfamily \label{lapi_8c_acf10870c7165e0e440eb14827a52de93} 
+LUA\+\_\+\+API int lua\+\_\+rawgetp (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{const void \texorpdfstring{$\ast$}{*}}]{p}{}\end{DoxyParamCaption})}
+
+
+
+Pushes onto the stack the value {\ttfamily t\+[k]\+}, where {\ttfamily t} is the value at the given index and {\ttfamily k} is the pointer {\ttfamily p}. 
+
+Pushes onto the stack the value t\+[k]\+, where t is the value at the given index and k is the pointer p.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em p} & The pointer key. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type of the pushed value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a161e2baf3d7a6a84499f6a9010cf12c8}\index{lapi.c@{lapi.c}!lua\_rawlen@{lua\_rawlen}}
+\index{lua\_rawlen@{lua\_rawlen}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawlen()}{lua\_rawlen()}}
+{\footnotesize\ttfamily \label{lapi_8c_a161e2baf3d7a6a84499f6a9010cf12c8} 
+LUA\+\_\+\+API lua\+\_\+\+Unsigned lua\+\_\+rawlen (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns the raw "{}length"{} of the value at the given index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The length. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_afb2d27f421677ef40425f9054ae216a7}\index{lapi.c@{lapi.c}!lua\_rawset@{lua\_rawset}}
+\index{lua\_rawset@{lua\_rawset}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawset()}{lua\_rawset()}}
+{\footnotesize\ttfamily \label{lapi_8c_afb2d27f421677ef40425f9054ae216a7} 
+LUA\+\_\+\+API void lua\+\_\+rawset (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Similar to {\ttfamily \doxylink{lapi_8c_a4ca492cf3d2194aec9a6292708bf66c8}{lua\+\_\+settable}}, but does a raw assignment. 
+
+Similar to lua\+\_\+settable, but does a raw assignment (i.\+e., without metamethods).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a757fd16e7e09280e2d4e4f9f77ba1099}\index{lapi.c@{lapi.c}!lua\_rawseti@{lua\_rawseti}}
+\index{lua\_rawseti@{lua\_rawseti}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawseti()}{lua\_rawseti()}}
+{\footnotesize\ttfamily \label{lapi_8c_a757fd16e7e09280e2d4e4f9f77ba1099} 
+LUA\+\_\+\+API void lua\+\_\+rawseti (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Similar to {\ttfamily \doxylink{lapi_8c_afb2d27f421677ef40425f9054ae216a7}{lua\+\_\+rawset}}, but uses an integer as key. 
+
+Similar to lua\+\_\+seti, but does a raw assignment.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em n} & The integer key. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_aef5ff7d32a6e275fa0b8305f013bee9d}\index{lapi.c@{lapi.c}!lua\_rawsetp@{lua\_rawsetp}}
+\index{lua\_rawsetp@{lua\_rawsetp}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rawsetp()}{lua\_rawsetp()}}
+{\footnotesize\ttfamily \label{lapi_8c_aef5ff7d32a6e275fa0b8305f013bee9d} 
+LUA\+\_\+\+API void lua\+\_\+rawsetp (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{const void \texorpdfstring{$\ast$}{*}}]{p}{}\end{DoxyParamCaption})}
+
+
+
+Similar to {\ttfamily \doxylink{lapi_8c_afb2d27f421677ef40425f9054ae216a7}{lua\+\_\+rawset}}, but uses a pointer as key. 
+
+Similar to lua\+\_\+settable, but does a raw assignment with a pointer key.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em p} & The pointer key. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_af680e24129c0e021b4fbb7700cf185dc}\index{lapi.c@{lapi.c}!lua\_rotate@{lua\_rotate}}
+\index{lua\_rotate@{lua\_rotate}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rotate()}{lua\_rotate()}}
+{\footnotesize\ttfamily \label{lapi_8c_af680e24129c0e021b4fbb7700cf185dc} 
+LUA\+\_\+\+API void lua\+\_\+rotate (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Rotates the stack elements between the valid index {\ttfamily idx} and the top of the stack. 
+
+Rotates the stack elements between the valid index idx and the top of the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The starting index. \\
+\hline
+{\em n} & The number of positions to rotate. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a077411bcaa998886d2dfd569a89622c6}\index{lapi.c@{lapi.c}!lua\_rotate\_multi@{lua\_rotate\_multi}}
+\index{lua\_rotate\_multi@{lua\_rotate\_multi}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_rotate\_multi()}{lua\_rotate\_multi()}}
+{\footnotesize\ttfamily \label{lapi_8c_a077411bcaa998886d2dfd569a89622c6} 
+LUA\+\_\+\+API void lua\+\_\+rotate\+\_\+multi (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Rotates stack elements between a given index and the top. 
+
+Performs a multi-\/rotation on the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & Lua state. \\
+\hline
+{\em idx} & Stack index (start of the segment to rotate). \\
+\hline
+{\em n} & Number of positions to rotate. Positive for right, negative for left. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+This function rotates all values from {\ttfamily idx} to the top of the stack. 
+\end{DoxyNote}
+\Hypertarget{lapi_8c_ac890276f9590df6a4d6aabdad9c558f0}\index{lapi.c@{lapi.c}!lua\_setallocf@{lua\_setallocf}}
+\index{lua\_setallocf@{lua\_setallocf}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setallocf()}{lua\_setallocf()}}
+{\footnotesize\ttfamily \label{lapi_8c_ac890276f9590df6a4d6aabdad9c558f0} 
+LUA\+\_\+\+API void lua\+\_\+setallocf (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Alloc}]{f}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Sets the memory allocator function of the given state. 
+
+Changes the collector function of a given state to f with user data ud.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em f} & The allocator function. \\
+\hline
+{\em ud} & User data. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a3f2f542ee6728d82e51b1c302f9606df}\index{lapi.c@{lapi.c}!lua\_setfield@{lua\_setfield}}
+\index{lua\_setfield@{lua\_setfield}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setfield()}{lua\_setfield()}}
+{\footnotesize\ttfamily \label{lapi_8c_a3f2f542ee6728d82e51b1c302f9606df} 
+LUA\+\_\+\+API void lua\+\_\+setfield (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{k}{}\end{DoxyParamCaption})}
+
+
+
+Does the equivalent to {\ttfamily t\+[k]\+ = v}. 
+
+Does the equivalent to t\+[k]\+ = v, where t is the value at the given index and v is the value at the top of the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em k} & The key string. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_aecf388efaede9d97581335998dfa243b}\index{lapi.c@{lapi.c}!lua\_setglobal@{lua\_setglobal}}
+\index{lua\_setglobal@{lua\_setglobal}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setglobal()}{lua\_setglobal()}}
+{\footnotesize\ttfamily \label{lapi_8c_aecf388efaede9d97581335998dfa243b} 
+LUA\+\_\+\+API void lua\+\_\+setglobal (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+
+Sets the value of a global variable. 
+
+Pops a value from the stack and sets it as the new value of global name.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em name} & The global name. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a3f995c6cbc03d4cdebb2a6fc6fa11e59}\index{lapi.c@{lapi.c}!lua\_seti@{lua\_seti}}
+\index{lua\_seti@{lua\_seti}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_seti()}{lua\_seti()}}
+{\footnotesize\ttfamily \label{lapi_8c_a3f995c6cbc03d4cdebb2a6fc6fa11e59} 
+LUA\+\_\+\+API void lua\+\_\+seti (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Does the equivalent to {\ttfamily t\+[n]\+ = v}. 
+
+Does the equivalent to t\+[n]\+ = v, where t is the value at the given index and v is the value at the top of the stack.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+{\em n} & The integer key. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a7383d0f43ccf69b414217a32d3947a49}\index{lapi.c@{lapi.c}!lua\_setiuservalue@{lua\_setiuservalue}}
+\index{lua\_setiuservalue@{lua\_setiuservalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setiuservalue()}{lua\_setiuservalue()}}
+{\footnotesize\ttfamily \label{lapi_8c_a7383d0f43ccf69b414217a32d3947a49} 
+LUA\+\_\+\+API int lua\+\_\+setiuservalue (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Sets the n-\/th user value associated with the full userdata. 
+
+Pops a value from the stack and sets it as the new n-\/th user value associated with the full userdata at the given index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the userdata. \\
+\hline
+{\em n} & The user value index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a15719ea4119bdf5b3f2a406534431a7e}\index{lapi.c@{lapi.c}!lua\_setmetatable@{lua\_setmetatable}}
+\index{lua\_setmetatable@{lua\_setmetatable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setmetatable()}{lua\_setmetatable()}}
+{\footnotesize\ttfamily \label{lapi_8c_a15719ea4119bdf5b3f2a406534431a7e} 
+LUA\+\_\+\+API int lua\+\_\+setmetatable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{objindex}{}\end{DoxyParamCaption})}
+
+
+
+Sets the metatable for the value at the given index. 
+
+Pops a table from the stack and sets it as the new metatable for the value at the given index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em objindex} & The index of the object. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a4ca492cf3d2194aec9a6292708bf66c8}\index{lapi.c@{lapi.c}!lua\_settable@{lua\_settable}}
+\index{lua\_settable@{lua\_settable}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_settable()}{lua\_settable()}}
+{\footnotesize\ttfamily \label{lapi_8c_a4ca492cf3d2194aec9a6292708bf66c8} 
+LUA\+\_\+\+API void lua\+\_\+settable (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Does the equivalent to {\ttfamily t\+[k]\+ = v}, where {\ttfamily t} is the value at the given index. 
+
+Does the equivalent to t\+[k]\+ = v, where t is the value at the given index, v is the value at the top of the stack, and k is the value just below the top.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index of the table. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_adaa30f0d34786144c94644039d1d1b6e}\index{lapi.c@{lapi.c}!lua\_settop@{lua\_settop}}
+\index{lua\_settop@{lua\_settop}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_settop()}{lua\_settop()}}
+{\footnotesize\ttfamily \label{lapi_8c_adaa30f0d34786144c94644039d1d1b6e} 
+LUA\+\_\+\+API void lua\+\_\+settop (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Sets the stack top to the given index. 
+
+Accepts any index, or 0, and sets the stack top to this index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The new top index. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_ad7873a64b0cf88bb0c22a158bd787007}\index{lapi.c@{lapi.c}!lua\_setupvalue@{lua\_setupvalue}}
+\index{lua\_setupvalue@{lua\_setupvalue}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setupvalue()}{lua\_setupvalue()}}
+{\footnotesize\ttfamily \label{lapi_8c_ad7873a64b0cf88bb0c22a158bd787007} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+setupvalue (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{funcindex}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Sets the value of a closure\textquotesingle{}s upvalue. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em funcindex} & Index of the function. \\
+\hline
+{\em n} & Index of the upvalue. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Name of the upvalue. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a708d3ea569d1e7174f06281ecba5a091}\index{lapi.c@{lapi.c}!lua\_setwarnf@{lua\_setwarnf}}
+\index{lua\_setwarnf@{lua\_setwarnf}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_setwarnf()}{lua\_setwarnf()}}
+{\footnotesize\ttfamily \label{lapi_8c_a708d3ea569d1e7174f06281ecba5a091} 
+void lua\+\_\+setwarnf (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Warn\+Function}]{f}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{ud}{}\end{DoxyParamCaption})}
+
+
+
+Sets the warning function to be used by Lua. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em f} & The warning function. \\
+\hline
+{\em ud} & User data. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_aadea4b6f60174a1334ebde560968a615}\index{lapi.c@{lapi.c}!lua\_status@{lua\_status}}
+\index{lua\_status@{lua\_status}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_status()}{lua\_status()}}
+{\footnotesize\ttfamily \label{lapi_8c_aadea4b6f60174a1334ebde560968a615} 
+LUA\+\_\+\+API int lua\+\_\+status (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Returns the status of the thread {\ttfamily L}. 
+
+Returns the status of the thread L.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The status code. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ab9c2fb9e2b2c7dad7474dd4b6f1bbcd0}\index{lapi.c@{lapi.c}!lua\_stringtonumber@{lua\_stringtonumber}}
+\index{lua\_stringtonumber@{lua\_stringtonumber}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_stringtonumber()}{lua\_stringtonumber()}}
+{\footnotesize\ttfamily \label{lapi_8c_ab9c2fb9e2b2c7dad7474dd4b6f1bbcd0} 
+LUA\+\_\+\+API size\+\_\+t lua\+\_\+stringtonumber (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{s}{}\end{DoxyParamCaption})}
+
+
+
+Converts a string to a number. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em s} & The string. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The length of the string converted. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a6a547c772c470239dccdb64586f67836}\index{lapi.c@{lapi.c}!lua\_table\_iextend@{lua\_table\_iextend}}
+\index{lua\_table\_iextend@{lua\_table\_iextend}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_table\_iextend()}{lua\_table\_iextend()}}
+{\footnotesize\ttfamily \label{lapi_8c_a6a547c772c470239dccdb64586f67836} 
+LUA\+\_\+\+API void lua\+\_\+table\+\_\+iextend (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Extends the array part of the table, adding n nil elements at the end. 
+
+Pre-\/extends the table at the given index to accommodate n elements.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & Stack index (position of the table). \\
+\hline
+{\em n} & Number of elements to add.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+This function pops 1 value from the top (as the table), and then pushes n nil elements. Or, if there is a value at the top, sets it as the last element of the table, then adds nils. (Note:\+ Internal implementation details might vary, but effectively it manages table size) 
+\end{DoxyNote}
+\Hypertarget{lapi_8c_a444aee9aa56b0b06175ee3c7bcf7927c}\index{lapi.c@{lapi.c}!lua\_toboolean@{lua\_toboolean}}
+\index{lua\_toboolean@{lua\_toboolean}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_toboolean()}{lua\_toboolean()}}
+{\footnotesize\ttfamily \label{lapi_8c_a444aee9aa56b0b06175ee3c7bcf7927c} 
+LUA\+\_\+\+API int lua\+\_\+toboolean (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Converts the Lua value at the given index to a C boolean value. 
+
+Converts the Lua value at the given index to a C boolean value (0 or 1).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 for true, 0 for false. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ae790897a3311d599299895612986d850}\index{lapi.c@{lapi.c}!lua\_tocfunction@{lua\_tocfunction}}
+\index{lua\_tocfunction@{lua\_tocfunction}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tocfunction()}{lua\_tocfunction()}}
+{\footnotesize\ttfamily \label{lapi_8c_ae790897a3311d599299895612986d850} 
+LUA\+\_\+\+API lua\+\_\+\+CFunction lua\+\_\+tocfunction (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Converts a value at the given index to a C function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The C function, or NULL. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a5101545bcd4222abe101836b7931bdf9}\index{lapi.c@{lapi.c}!lua\_toclose@{lua\_toclose}}
+\index{lua\_toclose@{lua\_toclose}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_toclose()}{lua\_toclose()}}
+{\footnotesize\ttfamily \label{lapi_8c_a5101545bcd4222abe101836b7931bdf9} 
+LUA\+\_\+\+API void lua\+\_\+toclose (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Marks the given index as a to-\/be-\/closed slot. 
+
+Marks the value at the given index as to-\/be-\/closed.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a70f2c2db185002293eea25a36f17f94f}\index{lapi.c@{lapi.c}!lua\_tointeger\_safe@{lua\_tointeger\_safe}}
+\index{lua\_tointeger\_safe@{lua\_tointeger\_safe}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tointeger\_safe()}{lua\_tointeger\_safe()}}
+{\footnotesize\ttfamily \label{lapi_8c_a70f2c2db185002293eea25a36f17f94f} 
+LUA\+\_\+\+API lua\+\_\+\+Integer lua\+\_\+tointeger\+\_\+safe (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{isnum}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{overflow}{}\end{DoxyParamCaption})}
+
+
+
+Safely converts a value at a given stack index to an integer. 
+
+Converts the value at the given index to an integer, with safety checks.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & Lua state. \\
+\hline
+{\em idx} & Stack index. \\
+\hline
+{\em isnum} & Optional output flag:\+ 1 if conversion succeeded, 0 otherwise. \\
+\hline
+{\em overflow} & Optional output flag:\+ 1 if conversion failed due to overflow or incompatible number. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The converted integer value, or 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_af81c9a68425546e1f8c6354728c95170}\index{lapi.c@{lapi.c}!lua\_tointegerx@{lua\_tointegerx}}
+\index{lua\_tointegerx@{lua\_tointegerx}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tointegerx()}{lua\_tointegerx()}}
+{\footnotesize\ttfamily \label{lapi_8c_af81c9a68425546e1f8c6354728c95170} 
+LUA\+\_\+\+API lua\+\_\+\+Integer lua\+\_\+tointegerx (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{pisnum}{}\end{DoxyParamCaption})}
+
+
+
+Converts the Lua value at the given index to a C lua\+\_\+\+Integer. 
+
+Converts the Lua value at the given index to the C type lua\+\_\+\+Integer.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+{\em pisnum} & Optional output for success status. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The integer value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a5fbc943e3486fad9672f9a74d7cb49b4}\index{lapi.c@{lapi.c}!lua\_tolstring@{lua\_tolstring}}
+\index{lua\_tolstring@{lua\_tolstring}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tolstring()}{lua\_tolstring()}}
+{\footnotesize\ttfamily \label{lapi_8c_a5fbc943e3486fad9672f9a74d7cb49b4} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+tolstring (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{size\+\_\+t \texorpdfstring{$\ast$}{*}}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Converts the Lua value at the given index to a C string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+{\em len} & Optional output for string length. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The string. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a375da41304604b0cba0b8c798499e673}\index{lapi.c@{lapi.c}!lua\_tonumberx@{lua\_tonumberx}}
+\index{lua\_tonumberx@{lua\_tonumberx}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tonumberx()}{lua\_tonumberx()}}
+{\footnotesize\ttfamily \label{lapi_8c_a375da41304604b0cba0b8c798499e673} 
+LUA\+\_\+\+API lua\+\_\+\+Number lua\+\_\+tonumberx (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{pisnum}{}\end{DoxyParamCaption})}
+
+
+
+Converts the Lua value at the given index to a C lua\+\_\+\+Number. 
+
+Converts the Lua value at the given index to the C type lua\+\_\+\+Number.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+{\em pisnum} & Optional output for success status. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The number value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_aa483452c9dfdce8ca4b5d211772abec7}\index{lapi.c@{lapi.c}!lua\_topointer@{lua\_topointer}}
+\index{lua\_topointer@{lua\_topointer}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_topointer()}{lua\_topointer()}}
+{\footnotesize\ttfamily \label{lapi_8c_aa483452c9dfdce8ca4b5d211772abec7} 
+LUA\+\_\+\+API const void \texorpdfstring{$\ast$}{*} lua\+\_\+topointer (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Converts the value at the given index to a generic C pointer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The pointer value. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a97794d731a3c99bbb3e46715a5746414}\index{lapi.c@{lapi.c}!lua\_tothread@{lua\_tothread}}
+\index{lua\_tothread@{lua\_tothread}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_tothread()}{lua\_tothread()}}
+{\footnotesize\ttfamily \label{lapi_8c_a97794d731a3c99bbb3e46715a5746414} 
+LUA\+\_\+\+API \doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} lua\+\_\+tothread (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Converts the value at the given index to a Lua thread. 
+
+Converts the value at the given index to a Lua thread (represented as lua\+\_\+\+State\texorpdfstring{$\ast$}{*}).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The thread state (lua\+\_\+\+State\texorpdfstring{$\ast$}{*}). 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ac3856ea479475afddd0b2b85c6da116d}\index{lapi.c@{lapi.c}!lua\_touserdata@{lua\_touserdata}}
+\index{lua\_touserdata@{lua\_touserdata}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_touserdata()}{lua\_touserdata()}}
+{\footnotesize\ttfamily \label{lapi_8c_ac3856ea479475afddd0b2b85c6da116d} 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} lua\+\_\+touserdata (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns the address of the full userdata or the pointer of the light userdata. 
+
+If the value at the given index is a full userdata, returns its block address. If it is a light userdata, returns its pointer. Otherwise, returns NULL.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The userdata address/\+pointer. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a652b273947f0656686f998d8e90cd3ea}\index{lapi.c@{lapi.c}!lua\_type@{lua\_type}}
+\index{lua\_type@{lua\_type}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_type()}{lua\_type()}}
+{\footnotesize\ttfamily \label{lapi_8c_a652b273947f0656686f998d8e90cd3ea} 
+LUA\+\_\+\+API int lua\+\_\+type (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{idx}{}\end{DoxyParamCaption})}
+
+
+
+Returns the type of the value at the given stack index. 
+
+Returns the type of the value in the given valid index, or LUA\+\_\+\+TNONE for a non-\/valid index.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em idx} & The stack index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The type constant (e.\+g., LUA\+\_\+\+TNIL, LUA\+\_\+\+TNUMBER). 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ade1fd7b7ed1bd88ecdffbc025a1eaebd}\index{lapi.c@{lapi.c}!lua\_typename@{lua\_typename}}
+\index{lua\_typename@{lua\_typename}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_typename()}{lua\_typename()}}
+{\footnotesize\ttfamily \label{lapi_8c_ade1fd7b7ed1bd88ecdffbc025a1eaebd} 
+LUA\+\_\+\+API const char \texorpdfstring{$\ast$}{*} lua\+\_\+typename (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{t}{}\end{DoxyParamCaption})}
+
+
+
+Returns the name of the type encoded by the value {\ttfamily t}. 
+
+Returns the name of the type encoded by the value tp.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The type constant. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The name of the type. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_ab4051dd78d060726b49988a7b2238f16}\index{lapi.c@{lapi.c}!lua\_upvalueid@{lua\_upvalueid}}
+\index{lua\_upvalueid@{lua\_upvalueid}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_upvalueid()}{lua\_upvalueid()}}
+{\footnotesize\ttfamily \label{lapi_8c_ab4051dd78d060726b49988a7b2238f16} 
+LUA\+\_\+\+API void \texorpdfstring{$\ast$}{*} lua\+\_\+upvalueid (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{fidx}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Returns a unique identifier for the upvalue numbered {\ttfamily n} from the closure at index {\ttfamily fidx}. 
+
+Returns a unique identifier for the upvalue numbered n from the closure at index fidx.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fidx} & Index of the function. \\
+\hline
+{\em n} & Index of the upvalue. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Unique identifier. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a9ce27da3bd8232ac4a0d383e924a0c7a}\index{lapi.c@{lapi.c}!lua\_upvaluejoin@{lua\_upvaluejoin}}
+\index{lua\_upvaluejoin@{lua\_upvaluejoin}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_upvaluejoin()}{lua\_upvaluejoin()}}
+{\footnotesize\ttfamily \label{lapi_8c_a9ce27da3bd8232ac4a0d383e924a0c7a} 
+LUA\+\_\+\+API void lua\+\_\+upvaluejoin (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{fidx1}{, }\item[{int}]{n1}{, }\item[{int}]{fidx2}{, }\item[{int}]{n2}{}\end{DoxyParamCaption})}
+
+
+
+Makes the n1-\/th upvalue of the Lua closure at index fidx1 refer to the n2-\/th upvalue of the Lua closure at index fidx2. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em fidx1} & Index of the first function. \\
+\hline
+{\em n1} & Index of the first upvalue. \\
+\hline
+{\em fidx2} & Index of the second function. \\
+\hline
+{\em n2} & Index of the second upvalue. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_a173602b148e6a610676e866fb7874ff1}\index{lapi.c@{lapi.c}!lua\_version@{lua\_version}}
+\index{lua\_version@{lua\_version}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_version()}{lua\_version()}}
+{\footnotesize\ttfamily \label{lapi_8c_a173602b148e6a610676e866fb7874ff1} 
+LUA\+\_\+\+API lua\+\_\+\+Number lua\+\_\+version (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{}\end{DoxyParamCaption})}
+
+
+
+Returns the version number of this Lua core. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The version number. 
+\end{DoxyReturn}
+\Hypertarget{lapi_8c_a383441029934d459d9b7cd89d3c851e8}\index{lapi.c@{lapi.c}!lua\_warning@{lua\_warning}}
+\index{lua\_warning@{lua\_warning}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_warning()}{lua\_warning()}}
+{\footnotesize\ttfamily \label{lapi_8c_a383441029934d459d9b7cd89d3c851e8} 
+void lua\+\_\+warning (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{msg}{, }\item[{int}]{tocont}{}\end{DoxyParamCaption})}
+
+
+
+Emits a warning. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em msg} & The warning message. \\
+\hline
+{\em tocont} & Continuation flag. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lapi_8c_ae27bb8d0218710bbbfefc1f573839d6d}\index{lapi.c@{lapi.c}!lua\_xmove@{lua\_xmove}}
+\index{lua\_xmove@{lua\_xmove}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_xmove()}{lua\_xmove()}}
+{\footnotesize\ttfamily \label{lapi_8c_ae27bb8d0218710bbbfefc1f573839d6d} 
+LUA\+\_\+\+API void lua\+\_\+xmove (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{from}{, }\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{to}{, }\item[{int}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Moves values from one thread to another. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em from} & Source thread. \\
+\hline
+{\em to} & Destination thread. \\
+\hline
+{\em n} & Number of elements to move. \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-var-members}
+\Hypertarget{lapi_8c_doc-var-members}
+\doxysubsection{Variable Documentation}
+\Hypertarget{lapi_8c_acbf4dc2e5f80547c7f54f41a179258b2}\index{lapi.c@{lapi.c}!lua\_ident@{lua\_ident}}
+\index{lua\_ident@{lua\_ident}!lapi.c@{lapi.c}}
+\doxysubsubsection{\texorpdfstring{lua\_ident}{lua\_ident}}
+{\footnotesize\ttfamily \label{lapi_8c_acbf4dc2e5f80547c7f54f41a179258b2} 
+const char lua\+\_\+ident\+[$\,$]\+}
+
+{\bfseries Initial value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =}
+\DoxyCodeLine{\textcolor{stringliteral}{"{}\$LuaVersion:\ "{}}\ LUA\_COPYRIGHT\ \textcolor{stringliteral}{"{}\ \$"{}}}
+\DoxyCodeLine{\textcolor{stringliteral}{"{}\$LuaAuthors:\ "{}}\ LUA\_AUTHORS\ \textcolor{stringliteral}{"{}\ \$"{}}}
+
+\end{DoxyCode}
+RCS ident string 

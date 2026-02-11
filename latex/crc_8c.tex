@@ -1,0 +1,105 @@
+\doxysection{crc.\+c File Reference}
+\hypertarget{crc_8c}{}\label{crc_8c}\index{crc.c@{crc.c}}
+
+
+CRC32 calculation implementation.  
+
+
+{\ttfamily \+\#include "{}crc.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{crc_8c_a00f8a4545f76a194c5c236fddc89447a}\label{crc_8c_a00f8a4545f76a194c5c236fddc89447a} 
+\+\#define {\bfseries \+\_\+\+\_\+\+CRC\+\_\+\+SELFTEST\+\_\+\+\_\+}~0x6fcf9e13
+\begin{DoxyCompactList}\small\item\em Expected CRC value for self-\/tests (little-\/endian). \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+unsigned int \doxymbox{\hyperlink{crc_8c_a64baec22d621fcff19500457f7f0a7d3}{naga\+\_\+crc32}} (unsigned char \texorpdfstring{$\ast$}{*}data, unsigned int length)
+\begin{DoxyCompactList}\small\item\em Calculates the CRC32 checksum of a buffer. \end{DoxyCompactList}\item 
+unsigned int \doxymbox{\hyperlink{crc_8c_a52e4c8e7a2f5636b266c701224223016}{naga\+\_\+crc32int}} (unsigned int \texorpdfstring{$\ast$}{*}data)
+\begin{DoxyCompactList}\small\item\em Calculates the CRC32 checksum of four integers. \end{DoxyCompactList}\item 
+unsigned char \doxymbox{\hyperlink{crc_8c_a6a0f6bcf6949275f4dca15095ddf2fdd}{naga\+\_\+crc32\+\_\+selftests}} ()
+\begin{DoxyCompactList}\small\item\em Runs self-\/tests for the CRC32 implementation. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+unsigned int \doxymbox{\hyperlink{crc_8c_a85b71ff794c9a0bb2b39cccafb76ed47}{crc\+\_\+32\+\_\+tab}} \+[$\,$]\+
+\begin{DoxyCompactList}\small\item\em CRC polynomial 0x04c11db7. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+CRC32 calculation implementation. 
+
+
+
+\label{doc-func-members}
+\Hypertarget{crc_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{crc_8c_a64baec22d621fcff19500457f7f0a7d3}\index{crc.c@{crc.c}!naga\_crc32@{naga\_crc32}}
+\index{naga\_crc32@{naga\_crc32}!crc.c@{crc.c}}
+\doxysubsubsection{\texorpdfstring{naga\_crc32()}{naga\_crc32()}}
+{\footnotesize\ttfamily \label{crc_8c_a64baec22d621fcff19500457f7f0a7d3} 
+unsigned int naga\+\_\+crc32 (\begin{DoxyParamCaption}\item[{unsigned char \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{unsigned int}]{length}{}\end{DoxyParamCaption})}
+
+
+
+Calculates the CRC32 checksum of a buffer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em data} & Pointer to the data buffer. \\
+\hline
+{\em length} & Length of the data buffer in bytes. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The calculated CRC32 checksum. 
+\end{DoxyReturn}
+\Hypertarget{crc_8c_a6a0f6bcf6949275f4dca15095ddf2fdd}\index{crc.c@{crc.c}!naga\_crc32\_selftests@{naga\_crc32\_selftests}}
+\index{naga\_crc32\_selftests@{naga\_crc32\_selftests}!crc.c@{crc.c}}
+\doxysubsubsection{\texorpdfstring{naga\_crc32\_selftests()}{naga\_crc32\_selftests()}}
+{\footnotesize\ttfamily \label{crc_8c_a6a0f6bcf6949275f4dca15095ddf2fdd} 
+unsigned char naga\+\_\+crc32\+\_\+selftests (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Runs self-\/tests for the CRC32 implementation. 
+
+\begin{DoxyReturn}{Returns}
+1 if tests pass, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{crc_8c_a52e4c8e7a2f5636b266c701224223016}\index{crc.c@{crc.c}!naga\_crc32int@{naga\_crc32int}}
+\index{naga\_crc32int@{naga\_crc32int}!crc.c@{crc.c}}
+\doxysubsubsection{\texorpdfstring{naga\_crc32int()}{naga\_crc32int()}}
+{\footnotesize\ttfamily \label{crc_8c_a52e4c8e7a2f5636b266c701224223016} 
+unsigned int naga\+\_\+crc32int (\begin{DoxyParamCaption}\item[{unsigned int \texorpdfstring{$\ast$}{*}}]{data}{}\end{DoxyParamCaption})}
+
+
+
+Calculates the CRC32 checksum of four integers. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em data} & Pointer to an array of at least 4 unsigned integers. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The calculated CRC32 checksum. 
+\end{DoxyReturn}
+
+
+\label{doc-var-members}
+\Hypertarget{crc_8c_doc-var-members}
+\doxysubsection{Variable Documentation}
+\Hypertarget{crc_8c_a85b71ff794c9a0bb2b39cccafb76ed47}\index{crc.c@{crc.c}!crc\_32\_tab@{crc\_32\_tab}}
+\index{crc\_32\_tab@{crc\_32\_tab}!crc.c@{crc.c}}
+\doxysubsubsection{\texorpdfstring{crc\_32\_tab}{crc\_32\_tab}}
+{\footnotesize\ttfamily \label{crc_8c_a85b71ff794c9a0bb2b39cccafb76ed47} 
+unsigned int crc\+\_\+32\+\_\+tab\+[$\,$]\+}
+
+
+
+CRC polynomial 0x04c11db7. 
+
+The CRC32 lookup table. 

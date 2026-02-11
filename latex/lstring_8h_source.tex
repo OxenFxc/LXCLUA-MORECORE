@@ -1,0 +1,77 @@
+\doxysection{lstring.\+h}
+\hypertarget{lstring_8h_source}{}\label{lstring_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00002\ \textcolor{comment}{**\ \$Id:\ lstring.h\ \$}}
+\DoxyCodeLine{00003\ \textcolor{comment}{**\ String\ table\ (keep\ all\ strings\ handled\ by\ Lua)}}
+\DoxyCodeLine{00004\ \textcolor{comment}{**\ See\ Copyright\ Notice\ in\ lua.h}}
+\DoxyCodeLine{00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#ifndef\ lstring\_h}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ lstring\_h}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}lgc.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}lobject.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}lstate.h"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00016\ \textcolor{comment}{**\ Memory-\/allocation\ error\ message\ must\ be\ preallocated\ (it\ cannot}}
+\DoxyCodeLine{00017\ \textcolor{comment}{**\ be\ created\ after\ memory\ is\ exhausted)}}
+\DoxyCodeLine{00018\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#define\ MEMERRMSG\ \ \ \ \ \ \ "{}not\ enough\ memory"{}}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00023\ \textcolor{comment}{**\ Maximum\ length\ for\ short\ strings,\ that\ is,\ strings\ that\ are}}
+\DoxyCodeLine{00024\ \textcolor{comment}{**\ internalized.\ (Cannot\ be\ smaller\ than\ reserved\ words\ or\ tags\ for}}
+\DoxyCodeLine{00025\ \textcolor{comment}{**\ metamethods,\ as\ these\ strings\ must\ be\ internalized;}}
+\DoxyCodeLine{00026\ \textcolor{comment}{**\ \#("{}function"{})\ =\ 8,\ \#("{}\_\_newindex"{})\ =\ 10.)}}
+\DoxyCodeLine{00027\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#if\ !defined(LUAI\_MAXSHORTLEN)}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\#define\ LUAI\_MAXSHORTLEN\ \ \ \ 40}}
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00033\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00034\ \textcolor{comment}{**\ Size\ of\ a\ short\ TString:\ Size\ of\ the\ header\ plus\ space\ for\ the\ string}}
+\DoxyCodeLine{00035\ \textcolor{comment}{**\ itself\ (including\ final\ '\(\backslash\)0').}}
+\DoxyCodeLine{00036\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00037\ \textcolor{preprocessor}{\#define\ sizelstring(l)\ \ (offsetof(TString,\ contents)\ +\ ((l)\ +\ 1)\ *\ sizeof(char))}}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ \textcolor{preprocessor}{\#define\ luaS\_newliteral(L,\ s)\ \ \ (luaS\_newlstr(L,\ "{}"{}\ s,\ \(\backslash\)}}
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (sizeof(s)/sizeof(char))-\/1))}}
+\DoxyCodeLine{00041\ }
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00044\ \textcolor{comment}{**\ test\ whether\ a\ string\ is\ a\ reserved\ word}}
+\DoxyCodeLine{00045\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00046\ \textcolor{preprocessor}{\#define\ isreserved(s)\ \ \ ((s)-\/>tt\ ==\ LUA\_VSHRSTR\ \&\&\ (s)-\/>extra\ >\ 0)}}
+\DoxyCodeLine{00047\ }
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00050\ \textcolor{comment}{**\ equality\ for\ short\ strings,\ which\ are\ always\ internalized}}
+\DoxyCodeLine{00051\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#define\ eqshrstr(a,b)\ \ \ check\_exp((a)-\/>tt\ ==\ LUA\_VSHRSTR,\ (a)\ ==\ (b))}}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00056\ LUAI\_FUNC\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lstring_8c_a9e77842c15be869c9cec4582016e4478}{luaS\_hashlongstr}}\ (\doxymbox{\hyperlink{struct_t_string}{TString}}\ *ts);}
+\DoxyCodeLine{00057\ LUAI\_FUNC\ \textcolor{keywordtype}{int}\ \doxymbox{\hyperlink{lstring_8c_a99b8eea92097f11885050ff629ff0f83}{luaS\_eqlngstr}}\ (\doxymbox{\hyperlink{struct_t_string}{TString}}\ *a,\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *b);}
+\DoxyCodeLine{00058\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lstring_8c_ad47f5961683a728dd3f6d80040d1dd92}{luaS\_resize}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{int}\ newsize);}
+\DoxyCodeLine{00059\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lstring_8c_a10917db68b530e7756e2e1fc6ed4d172}{luaS\_clearcache}}\ (\doxymbox{\hyperlink{structglobal___state}{global\_State}}\ *g);}
+\DoxyCodeLine{00060\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lstring_8c_abd0b9071d1e81b7bf749f4a2723bc403}{luaS\_init}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L);}
+\DoxyCodeLine{00061\ LUAI\_FUNC\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{lstring_8c_a7cac97a1c8f2564c7f0669119dd776fe}{luaS\_remove}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *ts);}
+\DoxyCodeLine{00062\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_udata}{Udata}}\ *\doxymbox{\hyperlink{lstring_8c_a8211dbbff64e757d2fb96586e17063ac}{luaS\_newudata}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{size\_t}\ s,}
+\DoxyCodeLine{00063\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{short}\ nuvalue);}
+\DoxyCodeLine{00064\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *\doxymbox{\hyperlink{lstring_8c_af922b364943afbe71e4da82a0c50188c}{luaS\_newlstr}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *str,\ \textcolor{keywordtype}{size\_t}\ l);}
+\DoxyCodeLine{00065\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *\doxymbox{\hyperlink{lstring_8c_ac9397504696e5cbc6c4cec7649c497ec}{luaS\_new}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *str);}
+\DoxyCodeLine{00066\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *\doxymbox{\hyperlink{lstring_8c_afe48506ed76e04857cca7e0851f92737}{luaS\_createlngstrobj}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \textcolor{keywordtype}{size\_t}\ l);}
+\DoxyCodeLine{00067\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *\doxymbox{\hyperlink{lstring_8c_a19076f7c0ad6a3dab477ed89d323e95a}{luaS\_newextlstr}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *s,\ \textcolor{keywordtype}{size\_t}\ len,\ lua\_Alloc\ falloc,\ \textcolor{keywordtype}{void}\ *ud);}
+\DoxyCodeLine{00069\ LUAI\_FUNC\ \textcolor{keywordtype}{size\_t}\ luaS\_sizelngstr\ (\textcolor{keywordtype}{size\_t}\ len,\ \textcolor{keywordtype}{int}\ kind);}
+\DoxyCodeLine{00070\ LUAI\_FUNC\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *\doxymbox{\hyperlink{lstring_8c_a40fd3122f7e40f78b247b8366adc1906}{luaS\_normstr}}\ (\doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L,\ \doxymbox{\hyperlink{struct_t_string}{TString}}\ *ts);}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

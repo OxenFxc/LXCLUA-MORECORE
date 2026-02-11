@@ -1,0 +1,136 @@
+\doxysection{lzio.\+c File Reference}
+\hypertarget{lzio_8c}{}\label{lzio_8c}\index{lzio.c@{lzio.c}}
+
+
+Buffered streams implementation.  
+
+
+{\ttfamily \+\#include "{}lprefix.\+h"{}}\newline
+{\ttfamily \+\#include $<$string.\+h$>$}\newline
+{\ttfamily \+\#include "{}lua.\+h"{}}\newline
+{\ttfamily \+\#include "{}lapi.\+h"{}}\newline
+{\ttfamily \+\#include "{}llimits.\+h"{}}\newline
+{\ttfamily \+\#include "{}lmem.\+h"{}}\newline
+{\ttfamily \+\#include "{}lstate.\+h"{}}\newline
+{\ttfamily \+\#include "{}lzio.\+h"{}}\newline
+{\ttfamily \+\#include "{}sha256.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{lzio_8c_a6035f0cc0dcbff48a58f814d021ece58}\label{lzio_8c_a6035f0cc0dcbff48a58f814d021ece58} 
+void {\bfseries lua\+Z\+\_\+init\+\_\+decrypt} (ZIO \texorpdfstring{$\ast$}{*}z, uint64\+\_\+t timestamp, const uint8\+\_\+t \texorpdfstring{$\ast$}{*}iv)
+\begin{DoxyCompactList}\small\item\em Initializes decryption state for ZIO. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{lzio_8c_a5ff6530cf6ca4baf2c883713d01d9f00}{lua\+Z\+\_\+read\+\_\+decrypt}} (ZIO \texorpdfstring{$\ast$}{*}z)
+\begin{DoxyCompactList}\small\item\em Reads and decrypts a byte from the stream. \end{DoxyCompactList}\item 
+int \doxymbox{\hyperlink{lzio_8c_a7d496b76e161e81d07f9200af4784cb2}{lua\+Z\+\_\+fill}} (ZIO \texorpdfstring{$\ast$}{*}z)
+\begin{DoxyCompactList}\small\item\em Fills the buffer of the input stream. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{lzio_8c_aeac95715238190000a710e2c304133a2}{lua\+Z\+\_\+init}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, ZIO \texorpdfstring{$\ast$}{*}z, lua\+\_\+\+Reader reader, void \texorpdfstring{$\ast$}{*}data)
+\begin{DoxyCompactList}\small\item\em Initializes a buffered input stream. \end{DoxyCompactList}\item 
+size\+\_\+t \doxymbox{\hyperlink{lzio_8c_a8f724436a986edc42726b43aded0759a}{lua\+Z\+\_\+read}} (ZIO \texorpdfstring{$\ast$}{*}z, void \texorpdfstring{$\ast$}{*}b, size\+\_\+t n)
+\begin{DoxyCompactList}\small\item\em Reads {\ttfamily n} bytes from the input stream. \end{DoxyCompactList}\item 
+const void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{lzio_8c_ab054e6d137f5b771cae0768766499ed4}{lua\+Z\+\_\+getaddr}} (ZIO \texorpdfstring{$\ast$}{*}z, size\+\_\+t n)
+\begin{DoxyCompactList}\small\item\em Returns the address of the current buffer and ensures it has at least {\ttfamily n} bytes. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Buffered streams implementation. 
+
+This file contains functions for buffered input, used by the parser. 
+
+\label{doc-func-members}
+\Hypertarget{lzio_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{lzio_8c_a7d496b76e161e81d07f9200af4784cb2}\index{lzio.c@{lzio.c}!luaZ\_fill@{luaZ\_fill}}
+\index{luaZ\_fill@{luaZ\_fill}!lzio.c@{lzio.c}}
+\doxysubsubsection{\texorpdfstring{luaZ\_fill()}{luaZ\_fill()}}
+{\footnotesize\ttfamily \label{lzio_8c_a7d496b76e161e81d07f9200af4784cb2} 
+int lua\+Z\+\_\+fill (\begin{DoxyParamCaption}\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{}\end{DoxyParamCaption})}
+
+
+
+Fills the buffer of the input stream. 
+
+Calls the reader function to get more data.
+
+
+\begin{DoxyParams}{Parameters}
+{\em z} & The input stream. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The first character of the new buffer, or EOZ if end of stream. 
+\end{DoxyReturn}
+\Hypertarget{lzio_8c_ab054e6d137f5b771cae0768766499ed4}\index{lzio.c@{lzio.c}!luaZ\_getaddr@{luaZ\_getaddr}}
+\index{luaZ\_getaddr@{luaZ\_getaddr}!lzio.c@{lzio.c}}
+\doxysubsubsection{\texorpdfstring{luaZ\_getaddr()}{luaZ\_getaddr()}}
+{\footnotesize\ttfamily \label{lzio_8c_ab054e6d137f5b771cae0768766499ed4} 
+const void \texorpdfstring{$\ast$}{*} lua\+Z\+\_\+getaddr (\begin{DoxyParamCaption}\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{, }\item[{size\+\_\+t}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Returns the address of the current buffer and ensures it has at least {\ttfamily n} bytes. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em z} & The input stream. \\
+\hline
+{\em n} & The required number of bytes. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the buffer, or NULL if there are not enough bytes. 
+\end{DoxyReturn}
+\Hypertarget{lzio_8c_aeac95715238190000a710e2c304133a2}\index{lzio.c@{lzio.c}!luaZ\_init@{luaZ\_init}}
+\index{luaZ\_init@{luaZ\_init}!lzio.c@{lzio.c}}
+\doxysubsubsection{\texorpdfstring{luaZ\_init()}{luaZ\_init()}}
+{\footnotesize\ttfamily \label{lzio_8c_aeac95715238190000a710e2c304133a2} 
+void lua\+Z\+\_\+init (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{, }\item[{lua\+\_\+\+Reader}]{reader}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{data}{}\end{DoxyParamCaption})}
+
+
+
+Initializes a buffered input stream. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em z} & The input stream to initialize. \\
+\hline
+{\em reader} & The reader function. \\
+\hline
+{\em data} & User data for the reader. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lzio_8c_a8f724436a986edc42726b43aded0759a}\index{lzio.c@{lzio.c}!luaZ\_read@{luaZ\_read}}
+\index{luaZ\_read@{luaZ\_read}!lzio.c@{lzio.c}}
+\doxysubsubsection{\texorpdfstring{luaZ\_read()}{luaZ\_read()}}
+{\footnotesize\ttfamily \label{lzio_8c_a8f724436a986edc42726b43aded0759a} 
+size\+\_\+t lua\+Z\+\_\+read (\begin{DoxyParamCaption}\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{b}{, }\item[{size\+\_\+t}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Reads {\ttfamily n} bytes from the input stream. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em z} & The input stream. \\
+\hline
+{\em b} & Buffer to store the read bytes. \\
+\hline
+{\em n} & Number of bytes to read. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The number of bytes read (0 if successful, non-\/zero if EOF). 
+\end{DoxyReturn}
+\Hypertarget{lzio_8c_a5ff6530cf6ca4baf2c883713d01d9f00}\index{lzio.c@{lzio.c}!luaZ\_read\_decrypt@{luaZ\_read\_decrypt}}
+\index{luaZ\_read\_decrypt@{luaZ\_read\_decrypt}!lzio.c@{lzio.c}}
+\doxysubsubsection{\texorpdfstring{luaZ\_read\_decrypt()}{luaZ\_read\_decrypt()}}
+{\footnotesize\ttfamily \label{lzio_8c_a5ff6530cf6ca4baf2c883713d01d9f00} 
+int lua\+Z\+\_\+read\+\_\+decrypt (\begin{DoxyParamCaption}\item[{ZIO \texorpdfstring{$\ast$}{*}}]{z}{}\end{DoxyParamCaption})}
+
+
+
+Reads and decrypts a byte from the stream. 
+
+Should only be called via zgetc macro when z-\/\texorpdfstring{$>$}{>}encrypted is true. Assumes z-\/\texorpdfstring{$>$}{>}n \texorpdfstring{$>$}{>} 0. 

@@ -1,0 +1,80 @@
+\doxysection{Load\+State Struct Reference}
+\hypertarget{struct_load_state}{}\label{struct_load_state}\index{LoadState@{LoadState}}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{struct_load_state_a9ef580a7312a7635b947485100188692}\label{struct_load_state_a9ef580a7312a7635b947485100188692} 
+unsigned char \texorpdfstring{$\ast$}{*} {\bfseries data}
+\item 
+\Hypertarget{struct_load_state_a1a1d2a3ec6980036f9c7853c9688b085}\label{struct_load_state_a1a1d2a3ec6980036f9c7853c9688b085} 
+size\+\_\+t {\bfseries size}
+\item 
+\Hypertarget{struct_load_state_a82b9cbf6fb39eb37ff99045c13462057}\label{struct_load_state_a82b9cbf6fb39eb37ff99045c13462057} 
+int {\bfseries pos}
+\item 
+\Hypertarget{struct_load_state_a1a54aee9e5cc2dc21c8a99bf1266279e}\label{struct_load_state_a1a54aee9e5cc2dc21c8a99bf1266279e} 
+int {\bfseries is\+\_\+string}
+\item 
+\Hypertarget{struct_load_state_a6ed6969635bba66208d45255bdf63311}\label{struct_load_state_a6ed6969635bba66208d45255bdf63311} 
+\begin{tabbing}
+xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=\kill
+union \{\\
+\>struct \{\\
+\>\>int {\bfseries n}\\
+\>\>FILE \texorpdfstring{$\ast$}{*} {\bfseries f}\\
+\>\>char {\bfseries buff} \+[1024]\+\\
+\>\} {\bfseries f}\\
+\>struct \{\\
+\>\>const char \texorpdfstring{$\ast$}{*} {\bfseries s}\\
+\>\>size\_t {\bfseries size}\\
+\>\>char \texorpdfstring{$\ast$}{*} {\bfseries to\_free}\\
+\>\} {\bfseries s}\\
+\} {\bfseries u}\\
+
+\end{tabbing}\item 
+\Hypertarget{struct_load_state_a8eabd10510332ab5eaf5244bb347bac2}\label{struct_load_state_a8eabd10510332ab5eaf5244bb347bac2} 
+\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*} {\bfseries L}
+\item 
+\Hypertarget{struct_load_state_a53f2d5fa2c176bdf96701c983afb8182}\label{struct_load_state_a53f2d5fa2c176bdf96701c983afb8182} 
+ZIO \texorpdfstring{$\ast$}{*} {\bfseries Z}
+\item 
+\Hypertarget{struct_load_state_a0cd70a73d5f61472258ebb5256abbaef}\label{struct_load_state_a0cd70a73d5f61472258ebb5256abbaef} 
+const char \texorpdfstring{$\ast$}{*} {\bfseries name}
+\item 
+\Hypertarget{struct_load_state_a3779490575a692a99761d5de017749a9}\label{struct_load_state_a3779490575a692a99761d5de017749a9} 
+int64\+\_\+t {\bfseries timestamp}
+\item 
+\Hypertarget{struct_load_state_a6a82078cac5fd222a0d001fbb1fb456a}\label{struct_load_state_a6a82078cac5fd222a0d001fbb1fb456a} 
+int {\bfseries opcode\+\_\+map} \+[NUM\+\_\+\+OPCODES]\+
+\item 
+\Hypertarget{struct_load_state_a8b4e86d3737b59007cb74526d52c69cf}\label{struct_load_state_a8b4e86d3737b59007cb74526d52c69cf} 
+int {\bfseries third\+\_\+opcode\+\_\+map} \+[NUM\+\_\+\+OPCODES]\+
+\item 
+\Hypertarget{struct_load_state_a55ebbf4584f5ab26f440eaeb7c8b68f6}\label{struct_load_state_a55ebbf4584f5ab26f440eaeb7c8b68f6} 
+int {\bfseries string\+\_\+map} \+[256]\+
+\item 
+\Hypertarget{struct_load_state_a3db1e21c4eb6791e4660915b8590d5bd}\label{struct_load_state_a3db1e21c4eb6791e4660915b8590d5bd} 
+\doxymbox{\hyperlink{struct_table}{Table}} \texorpdfstring{$\ast$}{*} {\bfseries h}
+\item 
+\Hypertarget{struct_load_state_ade5f6d2738be5ef6a2c372f75d74d9ba}\label{struct_load_state_ade5f6d2738be5ef6a2c372f75d74d9ba} 
+size\+\_\+t {\bfseries offset}
+\item 
+\Hypertarget{struct_load_state_a1026b355ed4e6dc3964d871bed93499d}\label{struct_load_state_a1026b355ed4e6dc3964d871bed93499d} 
+lua\+\_\+\+Unsigned {\bfseries nstr}
+\item 
+\Hypertarget{struct_load_state_a0b5e45fc200ee82d1a8224db13717b7a}\label{struct_load_state_a0b5e45fc200ee82d1a8224db13717b7a} 
+lu\+\_\+byte {\bfseries fixed}
+\item 
+\Hypertarget{struct_load_state_a0fdf24e717596038e5aa74985a1aa09b}\label{struct_load_state_a0fdf24e717596038e5aa74985a1aa09b} 
+int {\bfseries is\+\_\+standard}
+\item 
+\Hypertarget{struct_load_state_a8eabb5763a18b51615c4ce6f02fcf5c6}\label{struct_load_state_a8eabb5763a18b51615c4ce6f02fcf5c6} 
+int {\bfseries force\+\_\+standard}
+\end{DoxyCompactItemize}
+
+
+The documentation for this struct was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+lbcdump.\+c\item 
+llex.\+c\item 
+lundump.\+c\end{DoxyCompactItemize}

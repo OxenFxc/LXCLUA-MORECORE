@@ -1,0 +1,161 @@
+\chapter{LXCLUA-\/\+NCore }
+\hypertarget{md__r_e_a_d_m_e___e_n}{}\label{md__r_e_a_d_m_e___e_n}\index{LXCLUA-\/NCore@{LXCLUA-\/NCore}}
+\label{md__r_e_a_d_m_e___e_n_autotoc_md65}%
+\Hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md65}%
+
+
+\+[]\+(LICENSE) \+[]\+() \+[]\+()
+
+English \texorpdfstring{$\vert$}{|} \doxysectlink{md__r_e_a_d_m_e}{中文}{0}
+
+A high-\/performance embedded scripting engine based on {\bfseries{Lua 5.\+5 (Custom)}} with enhanced security features, extended libraries, and optimized bytecode compilation.\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md66}{}\doxysection{\texorpdfstring{Tested Platforms}{Tested Platforms}}\label{md__r_e_a_d_m_e___e_n_autotoc_md66}
+
+\begin{DoxyTable}{3}{}{}{1}
+\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Platform  &\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Status  &\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Bytecode Interop  \\
+Windows (Min\+GW)  &✅ Passed  &✅  \\
+Arch Linux  &✅ Passed  &✅  \\
+Ubuntu  &✅ Passed  &✅  \\
+Android (Termux)  &✅ Passed  &✅  \\
+Android (LXCLUA JNI)  &✅ Passed  &✅  \\
+\end{DoxyTable}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md67}{}\doxysection{\texorpdfstring{Features}{Features}}\label{md__r_e_a_d_m_e___e_n_autotoc_md67}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md68}{}\doxysubsection{\texorpdfstring{Core Enhancements}{Core Enhancements}}\label{md__r_e_a_d_m_e___e_n_autotoc_md68}
+
+\begin{DoxyItemize}
+\item {\bfseries{Secure Compilation}} -\/ Bytecode uses dynamic OPcode mapping, timestamp encryption, and SHA-\/256 integrity verification
+\item {\bfseries{PNG Encapsulation}} -\/ Compiled bytecode embedded in PNG image format for enhanced obfuscation
+\item {\bfseries{Anti-\/\+Reverse Protection}} -\/ Multi-\/layer encryption mechanisms effectively prevent decompilation and tampering
+\end{DoxyItemize}\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md69}{}\doxysubsection{\texorpdfstring{Extension Modules}{Extension Modules}}\label{md__r_e_a_d_m_e___e_n_autotoc_md69}
+
+\begin{DoxyTable}{2}{}{}{1}
+\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Module  &\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Description  \\
+{\ttfamily json}  &Built-\/in JSON parsing and serialization  \\
+{\ttfamily sha256}  &SHA-\/256 hash computation  \\
+{\ttfamily lclass}  &Object-\/oriented programming support (classes, inheritance, polymorphism)  \\
+{\ttfamily lbitlib}  &Bitwise operations library  \\
+{\ttfamily lboolib}  &Boolean type enhancements  \\
+{\ttfamily ludatalib}  &Binary data serialization  \\
+{\ttfamily lsmgrlib}  &Memory management utilities  \\
+{\ttfamily ltranslator}  &Code translator  \\
+{\ttfamily logtable}  &Log table support  \\
+{\ttfamily lptrlib}  &Pointer operations library  \\
+{\ttfamily lvmlib}  &Virtual machine extension interface  \\
+\end{DoxyTable}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md70}{}\doxysubsection{\texorpdfstring{Compilation Optimizations}{Compilation Optimizations}}\label{md__r_e_a_d_m_e___e_n_autotoc_md70}
+
+\begin{DoxyItemize}
+\item Compiled with C23 standard
+\item LTO (Link-\/\+Time Optimization)
+\item Loop unrolling and strict aliasing analysis
+\item Debug symbols stripped for minimal binary size
+\end{DoxyItemize}\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md71}{}\doxysection{\texorpdfstring{System Requirements}{System Requirements}}\label{md__r_e_a_d_m_e___e_n_autotoc_md71}
+
+\begin{DoxyItemize}
+\item {\bfseries{Compiler}}:\+ GCC (with C11/\+\+C23 standard support)
+\item {\bfseries{Platform}}:\+ Windows /\+ Linux /\+ Android (Termux)
+\end{DoxyItemize}\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md72}{}\doxysection{\texorpdfstring{Quick Start}{Quick Start}}\label{md__r_e_a_d_m_e___e_n_autotoc_md72}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md73}{}\doxysubsection{\texorpdfstring{Build}{Build}}\label{md__r_e_a_d_m_e___e_n_autotoc_md73}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\#\ Windows\ (MinGW)}
+\DoxyCodeLine{make\ mingw}
+\DoxyCodeLine{}
+\DoxyCodeLine{\#\ Linux}
+\DoxyCodeLine{make\ linux}
+\DoxyCodeLine{}
+\DoxyCodeLine{\#\ Android\ (Termux)}
+\DoxyCodeLine{make\ termux}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md74}{}\doxysubsection{\texorpdfstring{Verify Installation}{Verify Installation}}\label{md__r_e_a_d_m_e___e_n_autotoc_md74}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{make\ test}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md75}{}\doxysubsection{\texorpdfstring{Clean Build}{Clean Build}}\label{md__r_e_a_d_m_e___e_n_autotoc_md75}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{make\ clean}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md76}{}\doxysection{\texorpdfstring{Build Outputs}{Build Outputs}}\label{md__r_e_a_d_m_e___e_n_autotoc_md76}
+
+\begin{DoxyTable}{2}{}{}{1}
+\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}File  &\SetCell{c,bg=\tableheadbgcolor,font=\bfseries}Description  \\
+{\ttfamily liblua.\+a} /\+ {\ttfamily lua55.\+dll}  &Lua static library /\+ dynamic library  \\
+{\ttfamily lua} /\+ {\ttfamily lua.\+exe}  &Lua interpreter  \\
+{\ttfamily luac} /\+ {\ttfamily luac.\+exe}  &Lua bytecode compiler  \\
+\end{DoxyTable}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md77}{}\doxysection{\texorpdfstring{Usage Examples}{Usage Examples}}\label{md__r_e_a_d_m_e___e_n_autotoc_md77}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md78}{}\doxysubsection{\texorpdfstring{Run Lua Script}{Run Lua Script}}\label{md__r_e_a_d_m_e___e_n_autotoc_md78}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{./lua\ script.lua}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md79}{}\doxysubsection{\texorpdfstring{Compile to Bytecode}{Compile to Bytecode}}\label{md__r_e_a_d_m_e___e_n_autotoc_md79}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{./luac\ -\/o\ output.luac\ script.lua}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md80}{}\doxysubsection{\texorpdfstring{Embed in C/\+\+C++ Project}{Embed in C/\+\+C++ Project}}\label{md__r_e_a_d_m_e___e_n_autotoc_md80}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ "{}lua.h"{}}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ "{}lauxlib.h"{}}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ "{}lualib.h"{}}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{keywordtype}{int}\ main()\ \{}
+\DoxyCodeLine{\ \ \ \ \doxymbox{\hyperlink{structlua___state}{lua\_State}}\ *L\ =\ luaL\_newstate();}
+\DoxyCodeLine{\ \ \ \ luaL\_openlibs(L);}
+\DoxyCodeLine{\ \ \ \ }
+\DoxyCodeLine{\ \ \ \ luaL\_dofile(L,\ \textcolor{stringliteral}{"{}script.lua"{}});}
+\DoxyCodeLine{\ \ \ \ }
+\DoxyCodeLine{\ \ \ \ \doxymbox{\hyperlink{lstate_8c_a5d903983f1497b2fc58fba9df09e354d}{lua\_close}}(L);}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md81}{}\doxysection{\texorpdfstring{Project Structure}{Project Structure}}\label{md__r_e_a_d_m_e___e_n_autotoc_md81}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{.}
+\DoxyCodeLine{├──\ l*.c\ /\ l*.h\ \ \ \ \ \ \#\ Lua\ core\ source\ files}
+\DoxyCodeLine{├──\ json\_parser.*\ \ \ \ \#\ JSON\ parsing\ module}
+\DoxyCodeLine{├──\ sha256.*\ \ \ \ \ \ \ \ \ \#\ SHA-\/256\ hash\ module}
+\DoxyCodeLine{├──\ lclass.*\ \ \ \ \ \ \ \ \ \#\ Object-\/oriented\ class\ system}
+\DoxyCodeLine{├──\ stb\_image*.h\ \ \ \ \ \#\ Image\ processing\ (stb\ library)}
+\DoxyCodeLine{├──\ Makefile\ \ \ \ \ \ \ \ \ \#\ Build\ script}
+\DoxyCodeLine{└──\ lua/\ \ \ \ \ \ \ \ \ \ \ \ \ \#\ Sub-\/version\ (secondary\ logic)}
+
+\end{DoxyCode}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md82}{}\doxysection{\texorpdfstring{Security Notes}{Security Notes}}\label{md__r_e_a_d_m_e___e_n_autotoc_md82}
+The bytecode compilation in this project employs multiple security mechanisms:\+
+
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Dynamic OPcode Mapping}} -\/ Generates unique instruction mapping table for each compilation
+\item {\bfseries{Timestamp Encryption}} -\/ Uses compilation time as encryption key
+\item {\bfseries{SHA-\/256 Verification}} -\/ Ensures bytecode integrity
+\item {\bfseries{PNG Image Encapsulation}} -\/ Embeds encrypted data in image format
+\end{DoxyEnumerate}
+
+\begin{quote}
+Note:\+ These protective measures are designed to increase reverse engineering difficulty but cannot guarantee absolute security. \end{quote}
+\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md83}{}\doxysection{\texorpdfstring{License}{License}}\label{md__r_e_a_d_m_e___e_n_autotoc_md83}
+This project is open-\/sourced under the \+[MIT License]\+(LICENSE).
+
+Original Lua code is copyrighted by PUC-\/\+Rio. See \href{https://www.lua.org/license.html}{\texttt{Lua License}}.\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md84}{}\doxysection{\texorpdfstring{Contributing}{Contributing}}\label{md__r_e_a_d_m_e___e_n_autotoc_md84}
+Issues and Pull Requests are welcome. Please refer to the \doxysectlink{md__c_o_n_t_r_i_b_u_t_i_n_g}{Contributing Guidelines}{0}.\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md85}{}\doxysection{\texorpdfstring{Contact}{Contact}}\label{md__r_e_a_d_m_e___e_n_autotoc_md85}
+
+\begin{DoxyItemize}
+\item {\bfseries{Email}}:\+ \href{mailto:difierline@yeah.net}{\texttt{difierline@yeah.\+net}}
+\item {\bfseries{Git\+Hub}}:\+ \href{https://github.com/OxenFxc/LXCLUA-NCORE}{\texttt{https:\+/\+/\+github.\+com/\+\+Oxen\+Fxc/\+\+LXCLUA-\/\+NCORE}}
+\end{DoxyItemize}\hypertarget{md__r_e_a_d_m_e___e_n_autotoc_md86}{}\doxysection{\texorpdfstring{Acknowledgments}{Acknowledgments}}\label{md__r_e_a_d_m_e___e_n_autotoc_md86}
+
+\begin{DoxyItemize}
+\item \href{https://www.lua.org/}{\texttt{Lua}} -\/ Original Lua language
+\item \href{https://github.com/nothings/stb}{\texttt{stb}} -\/ Single-\/header image processing library 
+\end{DoxyItemize}

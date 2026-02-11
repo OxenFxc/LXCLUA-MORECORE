@@ -1,0 +1,83 @@
+\doxysection{Mem\+Pool\+Arena Struct Reference}
+\hypertarget{struct_mem_pool_arena}{}\label{struct_mem_pool_arena}\index{MemPoolArena@{MemPoolArena}}
+
+
+Memory pool arena.  
+
+
+
+
+{\ttfamily \+\#include $<$lstate.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\doxymbox{\hyperlink{struct_mem_pool}{Mem\+Pool}} \doxymbox{\hyperlink{struct_mem_pool_arena_a4cba33c232a8e48a1194c6e3ef833f01}{pools}} \+[NUM\+\_\+\+SIZE\+\_\+\+CLASSES]\+
+\item 
+size\+\_\+t \doxymbox{\hyperlink{struct_mem_pool_arena_a292a1bed1ad452d8716d93d4afc5c270}{threshold}}
+\item 
+lua\+\_\+\+Alloc \doxymbox{\hyperlink{struct_mem_pool_arena_a71ad9a284189e42837d2da03e02dad4b}{fallback\+\_\+alloc}}
+\item 
+void \texorpdfstring{$\ast$}{*} \doxymbox{\hyperlink{struct_mem_pool_arena_a15d88d5eedf96d9fe7fc977efc90d39e}{fallback\+\_\+ud}}
+\item 
+int \doxymbox{\hyperlink{struct_mem_pool_arena_aef0aa007dd7aced53f37d52eba248bba}{enabled}}
+\item 
+size\+\_\+t \doxymbox{\hyperlink{struct_mem_pool_arena_a7e9da507d97a5c4ca88abb96846d91f2}{small\+\_\+limit}}
+\item 
+\doxymbox{\hyperlink{structl__mutex__t}{l\+\_\+mutex\+\_\+t}} \doxymbox{\hyperlink{struct_mem_pool_arena_a74636f89aeae385410aaf65cb501c121}{lock}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Memory pool arena. 
+
+\label{doc-variable-members}
+\Hypertarget{struct_mem_pool_arena_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{struct_mem_pool_arena_aef0aa007dd7aced53f37d52eba248bba}\index{MemPoolArena@{MemPoolArena}!enabled@{enabled}}
+\index{enabled@{enabled}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{enabled}{enabled}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_aef0aa007dd7aced53f37d52eba248bba} 
+int Mem\+Pool\+Arena::\+enabled}
+
+Whether memory pool is enabled \Hypertarget{struct_mem_pool_arena_a71ad9a284189e42837d2da03e02dad4b}\index{MemPoolArena@{MemPoolArena}!fallback\_alloc@{fallback\_alloc}}
+\index{fallback\_alloc@{fallback\_alloc}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{fallback\_alloc}{fallback\_alloc}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a71ad9a284189e42837d2da03e02dad4b} 
+lua\+\_\+\+Alloc Mem\+Pool\+Arena::\+fallback\+\_\+alloc}
+
+Fallback system allocator \Hypertarget{struct_mem_pool_arena_a15d88d5eedf96d9fe7fc977efc90d39e}\index{MemPoolArena@{MemPoolArena}!fallback\_ud@{fallback\_ud}}
+\index{fallback\_ud@{fallback\_ud}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{fallback\_ud}{fallback\_ud}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a15d88d5eedf96d9fe7fc977efc90d39e} 
+void\texorpdfstring{$\ast$}{*} Mem\+Pool\+Arena::\+fallback\+\_\+ud}
+
+User data for fallback allocator \Hypertarget{struct_mem_pool_arena_a74636f89aeae385410aaf65cb501c121}\index{MemPoolArena@{MemPoolArena}!lock@{lock}}
+\index{lock@{lock}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{lock}{lock}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a74636f89aeae385410aaf65cb501c121} 
+\doxymbox{\hyperlink{structl__mutex__t}{l\+\_\+mutex\+\_\+t}} Mem\+Pool\+Arena::\+lock}
+
+Lock for memory pool access \Hypertarget{struct_mem_pool_arena_a4cba33c232a8e48a1194c6e3ef833f01}\index{MemPoolArena@{MemPoolArena}!pools@{pools}}
+\index{pools@{pools}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{pools}{pools}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a4cba33c232a8e48a1194c6e3ef833f01} 
+\doxymbox{\hyperlink{struct_mem_pool}{Mem\+Pool}} Mem\+Pool\+Arena::\+pools\+[NUM\+\_\+\+SIZE\+\_\+\+CLASSES]\+}
+
+\doxylink{struct_array}{Array} of small object pools \Hypertarget{struct_mem_pool_arena_a7e9da507d97a5c4ca88abb96846d91f2}\index{MemPoolArena@{MemPoolArena}!small\_limit@{small\_limit}}
+\index{small\_limit@{small\_limit}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{small\_limit}{small\_limit}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a7e9da507d97a5c4ca88abb96846d91f2} 
+size\+\_\+t Mem\+Pool\+Arena::\+small\+\_\+limit}
+
+Upper limit for small objects \Hypertarget{struct_mem_pool_arena_a292a1bed1ad452d8716d93d4afc5c270}\index{MemPoolArena@{MemPoolArena}!threshold@{threshold}}
+\index{threshold@{threshold}!MemPoolArena@{MemPoolArena}}
+\doxysubsubsection{\texorpdfstring{threshold}{threshold}}
+{\footnotesize\ttfamily \label{struct_mem_pool_arena_a292a1bed1ad452d8716d93d4afc5c270} 
+size\+\_\+t Mem\+Pool\+Arena::\+threshold}
+
+Threshold for small vs large objects 
+
+The documentation for this struct was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+lstate.\+h\end{DoxyCompactItemize}

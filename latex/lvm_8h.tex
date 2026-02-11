@@ -1,0 +1,676 @@
+\doxysection{lvm.\+h File Reference}
+\hypertarget{lvm_8h}{}\label{lvm_8h}\index{lvm.h@{lvm.h}}
+
+
+Lua virtual machine.  
+
+
+{\ttfamily \+\#include "{}ldo.\+h"{}}\newline
+{\ttfamily \+\#include "{}lobject.\+h"{}}\newline
+{\ttfamily \+\#include "{}ltm.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_aa6af30bdcb0dce1826c81061cec16d81}{cvt2str}}(o)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a19856e050e5fb27e8c0babf15cf1a1fa}{cvt2num}}(o)
+\item 
+\Hypertarget{lvm_8h_a8fad4fb73165b35bb6e1b9718040703e}\label{lvm_8h_a8fad4fb73165b35bb6e1b9718040703e} 
+\+\#define {\bfseries LUA\+\_\+\+FLOORN2I}~\doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0a7eaebd7cdc41b6f7c4ae319a813f3995}{F2\+Ieq}}
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_af9edcc5da8ea1ac07ffdf79fbe5bb95c}{tonumber}}(o,  n)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a1c1072a8845c14cc7b5b7744ef4d18a4}{tonumberns}}(o,  n)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_aa0972161c02de57dbe993112eb5c5583}{tointeger}}(o,  i)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a0b3a6eff12747eacea6551dbc2d42707}{tointegerns}}(o,  i)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a6c054eb9ce53c1b282e7ff0088895a37}{intop}}(op,  v1,  v2)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_aedbcec0d2a0e951710844d11dfa59a07}{lua\+V\+\_\+rawequalobj}}(t1,  t2)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a16d42351ed7a1d0c0c1677bdfd3b123b}{lua\+V\+\_\+fastget}}(L,  t,  k,  slot,  f)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a1caa2d08a594618bae645c93d3e21a56}{lua\+V\+\_\+fastgeti}}(L,  t,  k,  slot)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_af4a14ec5a459ba7b816ddf29562eed28}{lua\+V\+\_\+fastset}}(t,  k,  val,  hres,  f)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a8b40f79264d00a1c86da7712bafb46ba}{lua\+V\+\_\+fastseti}}(t,  k,  val,  hres)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a432c22e13223409ad55ed6c3aec12bcb}{lua\+V\+\_\+finishfastset}}(L,  t,  slot,  v)
+\item 
+\+\#define \doxymbox{\hyperlink{lvm_8h_a1696d36ebff18f8164f4aa2f993c2088}{lua\+V\+\_\+shiftr}}(x,  y)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}} \{ \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0a7eaebd7cdc41b6f7c4ae319a813f3995}{F2\+Ieq}}
+, \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0a04712d393ba74d0c04f9f1e80f33c02c}{F2\+Ifloor}}
+, \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0ac844cfcb3d7f91dd0c10f424d93c13ca}{F2\+Iceil}}
+ \}
+\begin{DoxyCompactList}\small\item\em Rounding modes for float-\/\texorpdfstring{$>$}{>}integer coercion. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_a2f779d315adf5ac6a26c88409b58eeec}{lua\+V\+\_\+equalobj}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}t1, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}t2)
+\begin{DoxyCompactList}\small\item\em Main operation for equality of Lua values; return \textquotesingle{}t1 == t2\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_a1245a563d674251ea03c7abbd1a2ca8c}{lua\+V\+\_\+lessthan}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}l, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}r)
+\begin{DoxyCompactList}\small\item\em Main operation less than; return \textquotesingle{}l \texorpdfstring{$<$}{<} r\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_aa151c39c80af19e2ea6d309e7993973c}{lua\+V\+\_\+lessequal}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}l, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}r)
+\begin{DoxyCompactList}\small\item\em Main operation less than or equal to; return \textquotesingle{}l \texorpdfstring{$<$}{<}= r\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_a8dde84947fb2b5ec169813216235a4ba}{lua\+V\+\_\+tonumber\+\_\+}} (const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}obj, lua\+\_\+\+Number \texorpdfstring{$\ast$}{*}n)
+\begin{DoxyCompactList}\small\item\em Tries to convert a value to a float. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_a2a864417ad70b6e8d3eb7d3c10cad672}{lua\+V\+\_\+tointeger}} (const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}obj, lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}p, \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}} mode)
+\begin{DoxyCompactList}\small\item\em Tries to convert a value to an integer. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_a217081972ce52f0e7a489d2398422b39}{lua\+V\+\_\+tointegerns}} (const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}obj, lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}p, \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}} mode)
+\begin{DoxyCompactList}\small\item\em Tries to convert a value to an integer, rounding according to \textquotesingle{}mode\textquotesingle{}, without string coercion. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC int \doxymbox{\hyperlink{lvm_8h_aafdf8bf00e39d6cf1d53e1e364ced4cb}{lua\+V\+\_\+flttointeger}} (lua\+\_\+\+Number n, lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}p, \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}} mode)
+\begin{DoxyCompactList}\small\item\em Tries to convert a float to an integer, rounding according to \textquotesingle{}mode\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC void \doxymbox{\hyperlink{lvm_8h_a282d1037898c9b77aae41b12327a6c72}{lua\+V\+\_\+finishget}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}t, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}key, Stk\+Id val, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}slot)
+\begin{DoxyCompactList}\small\item\em Finishes the table access \textquotesingle{}val = t\+[key]\+\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC void \doxymbox{\hyperlink{lvm_8h_ab932d6ab0da7d7c900e4fa020b08ea76}{lua\+V\+\_\+finishset}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}t, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}key, \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}val, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}slot)
+\begin{DoxyCompactList}\small\item\em Finishes a table assignment \textquotesingle{}t\+[key]\+ = val\textquotesingle{}. \end{DoxyCompactList}\item 
+\Hypertarget{lvm_8h_a5db3e64b3cc2f63c3b10b27f7ecd1d03}\label{lvm_8h_a5db3e64b3cc2f63c3b10b27f7ecd1d03} 
+LUAI\+\_\+\+FUNC void {\bfseries lua\+V\+\_\+finish\+Op} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\item 
+\Hypertarget{lvm_8h_a5da1e662a656d6ce9d866e54eb7a1c64}\label{lvm_8h_a5da1e662a656d6ce9d866e54eb7a1c64} 
+LUAI\+\_\+\+FUNC int {\bfseries lua\+B\+\_\+next} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L)
+\item 
+LUAI\+\_\+\+FUNC void \doxymbox{\hyperlink{lvm_8h_ac430e93ed874f6ab2449d7a16aa6b62f}{lua\+V\+\_\+execute}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, \doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}ci)
+\begin{DoxyCompactList}\small\item\em Main execution loop of the Lua virtual machine. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC void \doxymbox{\hyperlink{lvm_8h_aee84bfc563cb4bdd21a013218a289aa7}{lua\+V\+\_\+concat}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, int total)
+\begin{DoxyCompactList}\small\item\em Main operation for concatenation:\+ concat \textquotesingle{}total\textquotesingle{} values in the stack. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer \doxymbox{\hyperlink{lvm_8h_a3fb7bab8732e10dbf0305243201075dc}{lua\+V\+\_\+idiv}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Integer x, lua\+\_\+\+Integer y)
+\begin{DoxyCompactList}\small\item\em Integer division; return \textquotesingle{}m /\+/\+ n\textquotesingle{}, that is, floor(m/\+n). \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer \doxymbox{\hyperlink{lvm_8h_a8c64b8dbe11cb5be7617feb17c279ced}{lua\+V\+\_\+mod}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Integer x, lua\+\_\+\+Integer y)
+\begin{DoxyCompactList}\small\item\em Integer modulus; return \textquotesingle{}m \% n\textquotesingle{}. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Number \doxymbox{\hyperlink{lvm_8h_a7de4dcc7d1f397d2c02443dd7cb3e65b}{lua\+V\+\_\+modf}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, lua\+\_\+\+Number x, lua\+\_\+\+Number y)
+\begin{DoxyCompactList}\small\item\em Float modulus. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer \doxymbox{\hyperlink{lvm_8h_aa785f0ac32664e47c2d3689d75edc5e8}{lua\+V\+\_\+shiftl}} (lua\+\_\+\+Integer x, lua\+\_\+\+Integer y)
+\begin{DoxyCompactList}\small\item\em Shift left operation. \end{DoxyCompactList}\item 
+LUAI\+\_\+\+FUNC void \doxymbox{\hyperlink{lvm_8h_a414b4b487239935324f2f16e1e7715db}{lua\+V\+\_\+objlen}} (\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}L, Stk\+Id ra, const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}rb)
+\begin{DoxyCompactList}\small\item\em Main operation \textquotesingle{}ra = \+\#rb\textquotesingle{}. \end{DoxyCompactList}\item 
+\Hypertarget{lvm_8h_a417a3a2f1c4f1e590ed4b0817b025887}\label{lvm_8h_a417a3a2f1c4f1e590ed4b0817b025887} 
+LUAI\+\_\+\+FUNC Instruction {\bfseries lua\+V\+\_\+getinst} (const \doxymbox{\hyperlink{struct_proto}{Proto}} \texorpdfstring{$\ast$}{*}p, int pc)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lua virtual machine. 
+
+
+
+\label{doc-define-members}
+\Hypertarget{lvm_8h_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{lvm_8h_a19856e050e5fb27e8c0babf15cf1a1fa}\index{lvm.h@{lvm.h}!cvt2num@{cvt2num}}
+\index{cvt2num@{cvt2num}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{cvt2num}{cvt2num}}
+{\footnotesize\ttfamily \label{lvm_8h_a19856e050e5fb27e8c0babf15cf1a1fa} 
+\+\#define cvt2num(\begin{DoxyParamCaption}\item[{}]{o}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{ttisstring(o)}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_aa6af30bdcb0dce1826c81061cec16d81}\index{lvm.h@{lvm.h}!cvt2str@{cvt2str}}
+\index{cvt2str@{cvt2str}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{cvt2str}{cvt2str}}
+{\footnotesize\ttfamily \label{lvm_8h_aa6af30bdcb0dce1826c81061cec16d81} 
+\+\#define cvt2str(\begin{DoxyParamCaption}\item[{}]{o}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{ttisnumber(o)}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a6c054eb9ce53c1b282e7ff0088895a37}\index{lvm.h@{lvm.h}!intop@{intop}}
+\index{intop@{intop}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{intop}{intop}}
+{\footnotesize\ttfamily \label{lvm_8h_a6c054eb9ce53c1b282e7ff0088895a37} 
+\+\#define intop(\begin{DoxyParamCaption}\item[{}]{op}{, }\item[{}]{v1}{, }\item[{}]{v2}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{l\_castU2S(l\_castS2U(v1)\ op\ l\_castS2U(v2))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a16d42351ed7a1d0c0c1677bdfd3b123b}\index{lvm.h@{lvm.h}!luaV\_fastget@{luaV\_fastget}}
+\index{luaV\_fastget@{luaV\_fastget}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_fastget}{luaV\_fastget}}
+{\footnotesize\ttfamily \label{lvm_8h_a16d42351ed7a1d0c0c1677bdfd3b123b} 
+\+\#define lua\+V\+\_\+fastget(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{t}{, }\item[{}]{k}{, }\item[{}]{slot}{, }\item[{}]{f}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(!ttistable(t)\ \ \(\backslash\)}
+\DoxyCodeLine{\ ?\ (slot\ =\ NULL,\ 0)\ \ \textcolor{comment}{/*\ not\ a\ table;\ 'slot'\ is\ NULL\ and\ result\ is\ 0\ */}\ \ \(\backslash\)}
+\DoxyCodeLine{\ :\ (slot\ =\ f(hvalue(t),\ k),\ \ \textcolor{comment}{/*\ else,\ do\ raw\ access\ */}\ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ !isempty(slot)))\ \ \textcolor{comment}{/*\ result\ not\ empty?\ */}}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a1caa2d08a594618bae645c93d3e21a56}\index{lvm.h@{lvm.h}!luaV\_fastgeti@{luaV\_fastgeti}}
+\index{luaV\_fastgeti@{luaV\_fastgeti}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_fastgeti}{luaV\_fastgeti}}
+{\footnotesize\ttfamily \label{lvm_8h_a1caa2d08a594618bae645c93d3e21a56} 
+\+\#define lua\+V\+\_\+fastgeti(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{t}{, }\item[{}]{k}{, }\item[{}]{slot}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(!ttistable(t)\ \ \(\backslash\)}
+\DoxyCodeLine{\ ?\ (slot\ =\ NULL,\ 0)\ \ \textcolor{comment}{/*\ not\ a\ table;\ 'slot'\ is\ NULL\ and\ result\ is\ 0\ */}\ \ \(\backslash\)}
+\DoxyCodeLine{\ :\ (slot\ =\ (l\_castS2U(k)\ -\/\ 1u\ <\ hvalue(t)-\/>alimit)\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ ?\ \&hvalue(t)-\/>array[k\ -\/\ 1]\ :\ \doxymbox{\hyperlink{ltable_8c_abdca99a946a28b2a8569ebfbc9f0e4a7}{luaH\_getint}}(hvalue(t),\ k),\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ !isempty(slot)))\ \ \textcolor{comment}{/*\ result\ not\ empty?\ */}}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_af4a14ec5a459ba7b816ddf29562eed28}\index{lvm.h@{lvm.h}!luaV\_fastset@{luaV\_fastset}}
+\index{luaV\_fastset@{luaV\_fastset}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_fastset}{luaV\_fastset}}
+{\footnotesize\ttfamily \label{lvm_8h_af4a14ec5a459ba7b816ddf29562eed28} 
+\+\#define lua\+V\+\_\+fastset(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{k}{, }\item[{}]{val}{, }\item[{}]{hres}{, }\item[{}]{f}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(hres\ =\ (!ttistable(t)\ ?\ HNOTATABLE\ :\ f(hvalue(t),\ k,\ val)))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a8b40f79264d00a1c86da7712bafb46ba}\index{lvm.h@{lvm.h}!luaV\_fastseti@{luaV\_fastseti}}
+\index{luaV\_fastseti@{luaV\_fastseti}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_fastseti}{luaV\_fastseti}}
+{\footnotesize\ttfamily \label{lvm_8h_a8b40f79264d00a1c86da7712bafb46ba} 
+\+\#define lua\+V\+\_\+fastseti(\begin{DoxyParamCaption}\item[{}]{t}{, }\item[{}]{k}{, }\item[{}]{val}{, }\item[{}]{hres}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (!ttistable(t))\ hres\ =\ HNOTATABLE;\ \(\backslash\)}
+\DoxyCodeLine{\textcolor{keywordflow}{else}\ \{\ luaH\_fastseti(hvalue(t),\ k,\ val,\ hres);\ \}}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a432c22e13223409ad55ed6c3aec12bcb}\index{lvm.h@{lvm.h}!luaV\_finishfastset@{luaV\_finishfastset}}
+\index{luaV\_finishfastset@{luaV\_finishfastset}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_finishfastset}{luaV\_finishfastset}}
+{\footnotesize\ttfamily \label{lvm_8h_a432c22e13223409ad55ed6c3aec12bcb} 
+\+\#define lua\+V\+\_\+finishfastset(\begin{DoxyParamCaption}\item[{}]{L}{, }\item[{}]{t}{, }\item[{}]{slot}{, }\item[{}]{v}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{\ setobj2t(L,\ cast(\doxymbox{\hyperlink{struct_t_value}{TValue}}\ *,slot),\ v);\ \(\backslash\)}
+\DoxyCodeLine{\ \ luaC\_barrierback(L,\ gcvalue(t),\ v);\ \}}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_aedbcec0d2a0e951710844d11dfa59a07}\index{lvm.h@{lvm.h}!luaV\_rawequalobj@{luaV\_rawequalobj}}
+\index{luaV\_rawequalobj@{luaV\_rawequalobj}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_rawequalobj}{luaV\_rawequalobj}}
+{\footnotesize\ttfamily \label{lvm_8h_aedbcec0d2a0e951710844d11dfa59a07} 
+\+\#define lua\+V\+\_\+rawequalobj(\begin{DoxyParamCaption}\item[{}]{t1}{, }\item[{}]{t2}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\doxymbox{\hyperlink{lvm_8c_a4826066036eb5f7cf0f8a33f7073f49e}{luaV\_equalobj}}(NULL,t1,t2)}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a1696d36ebff18f8164f4aa2f993c2088}\index{lvm.h@{lvm.h}!luaV\_shiftr@{luaV\_shiftr}}
+\index{luaV\_shiftr@{luaV\_shiftr}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_shiftr}{luaV\_shiftr}}
+{\footnotesize\ttfamily \label{lvm_8h_a1696d36ebff18f8164f4aa2f993c2088} 
+\+\#define lua\+V\+\_\+shiftr(\begin{DoxyParamCaption}\item[{}]{x}{, }\item[{}]{y}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\doxymbox{\hyperlink{lvm_8c_ade6c9565152d0bb1f6116a90ea2c867a}{luaV\_shiftl}}(x,intop(-\/,\ 0,\ y))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_aa0972161c02de57dbe993112eb5c5583}\index{lvm.h@{lvm.h}!tointeger@{tointeger}}
+\index{tointeger@{tointeger}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{tointeger}{tointeger}}
+{\footnotesize\ttfamily \label{lvm_8h_aa0972161c02de57dbe993112eb5c5583} 
+\+\#define tointeger(\begin{DoxyParamCaption}\item[{}]{o}{, }\item[{}]{i}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(l\_likely(ttisinteger(o))\ ?\ (*(i)\ =\ ivalue(o),\ 1)\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ :\ \doxymbox{\hyperlink{lvm_8c_a924f46c2bf450e137210ca19b4461747}{luaV\_tointeger}}(o,i,LUA\_FLOORN2I))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a0b3a6eff12747eacea6551dbc2d42707}\index{lvm.h@{lvm.h}!tointegerns@{tointegerns}}
+\index{tointegerns@{tointegerns}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{tointegerns}{tointegerns}}
+{\footnotesize\ttfamily \label{lvm_8h_a0b3a6eff12747eacea6551dbc2d42707} 
+\+\#define tointegerns(\begin{DoxyParamCaption}\item[{}]{o}{, }\item[{}]{i}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(l\_likely(ttisinteger(o))\ ?\ (*(i)\ =\ ivalue(o),\ 1)\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ :\ \doxymbox{\hyperlink{lvm_8c_aed793e2bcd34f922ab591e317e57d375}{luaV\_tointegerns}}(o,i,LUA\_FLOORN2I))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_af9edcc5da8ea1ac07ffdf79fbe5bb95c}\index{lvm.h@{lvm.h}!tonumber@{tonumber}}
+\index{tonumber@{tonumber}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{tonumber}{tonumber}}
+{\footnotesize\ttfamily \label{lvm_8h_af9edcc5da8ea1ac07ffdf79fbe5bb95c} 
+\+\#define tonumber(\begin{DoxyParamCaption}\item[{}]{o}{, }\item[{}]{n}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(ttisfloat(o)\ ?\ (*(n)\ =\ fltvalue(o),\ 1)\ :\ \doxymbox{\hyperlink{lvm_8c_adf13f75d26fb8674d228c32803abe382}{luaV\_tonumber\_}}(o,n))}
+
+\end{DoxyCode}
+\Hypertarget{lvm_8h_a1c1072a8845c14cc7b5b7744ef4d18a4}\index{lvm.h@{lvm.h}!tonumberns@{tonumberns}}
+\index{tonumberns@{tonumberns}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{tonumberns}{tonumberns}}
+{\footnotesize\ttfamily \label{lvm_8h_a1c1072a8845c14cc7b5b7744ef4d18a4} 
+\+\#define tonumberns(\begin{DoxyParamCaption}\item[{}]{o}{, }\item[{}]{n}{}\end{DoxyParamCaption})}
+
+{\bfseries Value:\+}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{(ttisfloat(o)\ ?\ ((n)\ =\ fltvalue(o),\ 1)\ :\ \(\backslash\)}
+\DoxyCodeLine{(ttisinteger(o)\ ?\ ((n)\ =\ cast\_num(ivalue(o)),\ 1)\ :\ 0))}
+
+\end{DoxyCode}
+
+
+\label{doc-enum-members}
+\Hypertarget{lvm_8h_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{lvm_8h_a1639065f78212a54317141b2703061c0}\index{lvm.h@{lvm.h}!F2Imod@{F2Imod}}
+\index{F2Imod@{F2Imod}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{F2Imod}{F2Imod}}
+{\footnotesize\ttfamily \label{lvm_8h_a1639065f78212a54317141b2703061c0} 
+enum \doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}}}
+
+
+
+Rounding modes for float-\/\texorpdfstring{$>$}{>}integer coercion. 
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{F2Ieq@{F2Ieq}!lvm.h@{lvm.h}}
+\index{lvm.h@{lvm.h}!F2Ieq@{F2Ieq}}
+}\Hypertarget{lvm_8h_a1639065f78212a54317141b2703061c0a7eaebd7cdc41b6f7c4ae319a813f3995}\label{lvm_8h_a1639065f78212a54317141b2703061c0a7eaebd7cdc41b6f7c4ae319a813f3995} 
+F2\+Ieq&No rounding; accepts only integral values. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{F2Ifloor@{F2Ifloor}!lvm.h@{lvm.h}}
+\index{lvm.h@{lvm.h}!F2Ifloor@{F2Ifloor}}
+}\Hypertarget{lvm_8h_a1639065f78212a54317141b2703061c0a04712d393ba74d0c04f9f1e80f33c02c}\label{lvm_8h_a1639065f78212a54317141b2703061c0a04712d393ba74d0c04f9f1e80f33c02c} 
+F2\+Ifloor&Takes the floor of the number. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{F2Iceil@{F2Iceil}!lvm.h@{lvm.h}}
+\index{lvm.h@{lvm.h}!F2Iceil@{F2Iceil}}
+}\Hypertarget{lvm_8h_a1639065f78212a54317141b2703061c0ac844cfcb3d7f91dd0c10f424d93c13ca}\label{lvm_8h_a1639065f78212a54317141b2703061c0ac844cfcb3d7f91dd0c10f424d93c13ca} 
+F2\+Iceil&Takes the ceiling of the number. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\label{doc-func-members}
+\Hypertarget{lvm_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{lvm_8h_aee84bfc563cb4bdd21a013218a289aa7}\index{lvm.h@{lvm.h}!luaV\_concat@{luaV\_concat}}
+\index{luaV\_concat@{luaV\_concat}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_concat()}{luaV\_concat()}}
+{\footnotesize\ttfamily \label{lvm_8h_aee84bfc563cb4bdd21a013218a289aa7} 
+LUAI\+\_\+\+FUNC void lua\+V\+\_\+concat (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{int}]{total}{}\end{DoxyParamCaption})}
+
+
+
+Main operation for concatenation:\+ concat \textquotesingle{}total\textquotesingle{} values in the stack. 
+
+Concatenates \textquotesingle{}total\textquotesingle{} values in the stack, from \textquotesingle{}L-\/\texorpdfstring{$>$}{>}top.\+p -\/ total\textquotesingle{} up to \textquotesingle{}L-\/\texorpdfstring{$>$}{>}top.\+p -\/ 1\textquotesingle{}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em total} & Number of elements to concatenate. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lvm_8h_a2f779d315adf5ac6a26c88409b58eeec}\index{lvm.h@{lvm.h}!luaV\_equalobj@{luaV\_equalobj}}
+\index{luaV\_equalobj@{luaV\_equalobj}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_equalobj()}{luaV\_equalobj()}}
+{\footnotesize\ttfamily \label{lvm_8h_a2f779d315adf5ac6a26c88409b58eeec} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+equalobj (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{t1}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{t2}{}\end{DoxyParamCaption})}
+
+
+
+Main operation for equality of Lua values; return \textquotesingle{}t1 == t2\textquotesingle{}. 
+
+L == LUA\+\_\+\+NULLPTR means raw equality (no metamethods).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state (optional, for metamethods). \\
+\hline
+{\em t1} & First value. \\
+\hline
+{\em t2} & Second value. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if equal, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_ac430e93ed874f6ab2449d7a16aa6b62f}\index{lvm.h@{lvm.h}!luaV\_execute@{luaV\_execute}}
+\index{luaV\_execute@{luaV\_execute}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_execute()}{luaV\_execute()}}
+{\footnotesize\ttfamily \label{lvm_8h_ac430e93ed874f6ab2449d7a16aa6b62f} 
+LUAI\+\_\+\+FUNC void lua\+V\+\_\+execute (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{\doxymbox{\hyperlink{struct_call_info}{Call\+Info}} \texorpdfstring{$\ast$}{*}}]{ci}{}\end{DoxyParamCaption})}
+
+
+
+Main execution loop of the Lua virtual machine. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & Lua state. \\
+\hline
+{\em ci} & Call information.\\
+\hline
+\end{DoxyParams}
+Main execution loop of the Lua virtual machine.
+
+This function interprets the bytecode instructions. It uses a dispatch loop (switch-\/case) or a jump table (if enabled) to execute each instruction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ci} & The \doxylink{struct_call_info}{Call\+Info} for the function being executed. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lvm_8h_a282d1037898c9b77aae41b12327a6c72}\index{lvm.h@{lvm.h}!luaV\_finishget@{luaV\_finishget}}
+\index{luaV\_finishget@{luaV\_finishget}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_finishget()}{luaV\_finishget()}}
+{\footnotesize\ttfamily \label{lvm_8h_a282d1037898c9b77aae41b12327a6c72} 
+LUAI\+\_\+\+FUNC void lua\+V\+\_\+finishget (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{key}{, }\item[{Stk\+Id}]{val}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{slot}{}\end{DoxyParamCaption})}
+
+
+
+Finishes the table access \textquotesingle{}val = t\+[key]\+\textquotesingle{}. 
+
+If \textquotesingle{}slot\textquotesingle{} is NULL, \textquotesingle{}t\textquotesingle{} is not a table; otherwise, \textquotesingle{}slot\textquotesingle{} points to t\+[k]\+ entry (which must be empty).
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table or object being indexed. \\
+\hline
+{\em key} & The key. \\
+\hline
+{\em val} & Where to store the result. \\
+\hline
+{\em slot} & Pointer to the slot in the table (if found but empty), or NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lvm_8h_ab932d6ab0da7d7c900e4fa020b08ea76}\index{lvm.h@{lvm.h}!luaV\_finishset@{luaV\_finishset}}
+\index{luaV\_finishset@{luaV\_finishset}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_finishset()}{luaV\_finishset()}}
+{\footnotesize\ttfamily \label{lvm_8h_ab932d6ab0da7d7c900e4fa020b08ea76} 
+LUAI\+\_\+\+FUNC void lua\+V\+\_\+finishset (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{t}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{key}{, }\item[{\doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{val}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{slot}{}\end{DoxyParamCaption})}
+
+
+
+Finishes a table assignment \textquotesingle{}t\+[key]\+ = val\textquotesingle{}. 
+
+If \textquotesingle{}slot\textquotesingle{} is NULL, \textquotesingle{}t\textquotesingle{} is not a table. Otherwise, \textquotesingle{}slot\textquotesingle{} points to the entry \textquotesingle{}t\+[key]\+\textquotesingle{}, or to a value with an absent key if there is no such entry. (The value at \textquotesingle{}slot\textquotesingle{} must be empty, otherwise \textquotesingle{}lua\+V\+\_\+fastget\textquotesingle{} would have done the job.)
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em t} & The table or object being indexed. \\
+\hline
+{\em key} & The key. \\
+\hline
+{\em val} & The value to assign. \\
+\hline
+{\em slot} & Pointer to the slot in the table, or NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lvm_8h_aafdf8bf00e39d6cf1d53e1e364ced4cb}\index{lvm.h@{lvm.h}!luaV\_flttointeger@{luaV\_flttointeger}}
+\index{luaV\_flttointeger@{luaV\_flttointeger}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_flttointeger()}{luaV\_flttointeger()}}
+{\footnotesize\ttfamily \label{lvm_8h_aafdf8bf00e39d6cf1d53e1e364ced4cb} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+flttointeger (\begin{DoxyParamCaption}\item[{lua\+\_\+\+Number}]{n}{, }\item[{lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}}]{p}{, }\item[{\doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}}}]{mode}{}\end{DoxyParamCaption})}
+
+
+
+Tries to convert a float to an integer, rounding according to \textquotesingle{}mode\textquotesingle{}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em n} & The float number. \\
+\hline
+{\em p} & Pointer to store the result. \\
+\hline
+{\em mode} & The rounding mode (F2\+Ieq, F2\+Ifloor, F2\+Iceil). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a3fb7bab8732e10dbf0305243201075dc}\index{lvm.h@{lvm.h}!luaV\_idiv@{luaV\_idiv}}
+\index{luaV\_idiv@{luaV\_idiv}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_idiv()}{luaV\_idiv()}}
+{\footnotesize\ttfamily \label{lvm_8h_a3fb7bab8732e10dbf0305243201075dc} 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer lua\+V\+\_\+idiv (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Integer}]{m}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Integer division; return \textquotesingle{}m /\+/\+ n\textquotesingle{}, that is, floor(m/\+n). 
+
+C division truncates its result (rounds towards zero). \textquotesingle{}floor(q) == trunc(q)\textquotesingle{} when \textquotesingle{}q \texorpdfstring{$>$}{>}= 0\textquotesingle{} or when \textquotesingle{}q\textquotesingle{} is integer, otherwise \textquotesingle{}floor(q) == trunc(q) -\/ 1\textquotesingle{}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em m} & Dividend. \\
+\hline
+{\em n} & Divisor. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The result of integer division. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_aa151c39c80af19e2ea6d309e7993973c}\index{lvm.h@{lvm.h}!luaV\_lessequal@{luaV\_lessequal}}
+\index{luaV\_lessequal@{luaV\_lessequal}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_lessequal()}{luaV\_lessequal()}}
+{\footnotesize\ttfamily \label{lvm_8h_aa151c39c80af19e2ea6d309e7993973c} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+lessequal (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{l}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{r}{}\end{DoxyParamCaption})}
+
+
+
+Main operation less than or equal to; return \textquotesingle{}l \texorpdfstring{$<$}{<}= r\textquotesingle{}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em l} & Left operand. \\
+\hline
+{\em r} & Right operand. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if l \texorpdfstring{$<$}{<}= r, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a1245a563d674251ea03c7abbd1a2ca8c}\index{lvm.h@{lvm.h}!luaV\_lessthan@{luaV\_lessthan}}
+\index{luaV\_lessthan@{luaV\_lessthan}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_lessthan()}{luaV\_lessthan()}}
+{\footnotesize\ttfamily \label{lvm_8h_a1245a563d674251ea03c7abbd1a2ca8c} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+lessthan (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{l}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{r}{}\end{DoxyParamCaption})}
+
+
+
+Main operation less than; return \textquotesingle{}l \texorpdfstring{$<$}{<} r\textquotesingle{}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em l} & Left operand. \\
+\hline
+{\em r} & Right operand. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 if l \texorpdfstring{$<$}{<} r, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a8c64b8dbe11cb5be7617feb17c279ced}\index{lvm.h@{lvm.h}!luaV\_mod@{luaV\_mod}}
+\index{luaV\_mod@{luaV\_mod}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_mod()}{luaV\_mod()}}
+{\footnotesize\ttfamily \label{lvm_8h_a8c64b8dbe11cb5be7617feb17c279ced} 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer lua\+V\+\_\+mod (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Integer}]{m}{, }\item[{lua\+\_\+\+Integer}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Integer modulus; return \textquotesingle{}m \% n\textquotesingle{}. 
+
+Assume that C \textquotesingle{}\textquotesingle{} with negative operands follows C99 behavior.
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em m} & Dividend. \\
+\hline
+{\em n} & Divisor. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The result of modulus. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a7de4dcc7d1f397d2c02443dd7cb3e65b}\index{lvm.h@{lvm.h}!luaV\_modf@{luaV\_modf}}
+\index{luaV\_modf@{luaV\_modf}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_modf()}{luaV\_modf()}}
+{\footnotesize\ttfamily \label{lvm_8h_a7de4dcc7d1f397d2c02443dd7cb3e65b} 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Number lua\+V\+\_\+modf (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{lua\+\_\+\+Number}]{m}{, }\item[{lua\+\_\+\+Number}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Float modulus. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em m} & Dividend. \\
+\hline
+{\em n} & Divisor. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The result of modulus. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a414b4b487239935324f2f16e1e7715db}\index{lvm.h@{lvm.h}!luaV\_objlen@{luaV\_objlen}}
+\index{luaV\_objlen@{luaV\_objlen}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_objlen()}{luaV\_objlen()}}
+{\footnotesize\ttfamily \label{lvm_8h_a414b4b487239935324f2f16e1e7715db} 
+LUAI\+\_\+\+FUNC void lua\+V\+\_\+objlen (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{structlua___state}{lua\+\_\+\+State}} \texorpdfstring{$\ast$}{*}}]{L}{, }\item[{Stk\+Id}]{ra}{, }\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{rb}{}\end{DoxyParamCaption})}
+
+
+
+Main operation \textquotesingle{}ra = \+\#rb\textquotesingle{}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em L} & The Lua state. \\
+\hline
+{\em ra} & Destination register. \\
+\hline
+{\em rb} & Source value. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{lvm_8h_aa785f0ac32664e47c2d3689d75edc5e8}\index{lvm.h@{lvm.h}!luaV\_shiftl@{luaV\_shiftl}}
+\index{luaV\_shiftl@{luaV\_shiftl}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_shiftl()}{luaV\_shiftl()}}
+{\footnotesize\ttfamily \label{lvm_8h_aa785f0ac32664e47c2d3689d75edc5e8} 
+LUAI\+\_\+\+FUNC lua\+\_\+\+Integer lua\+V\+\_\+shiftl (\begin{DoxyParamCaption}\item[{lua\+\_\+\+Integer}]{x}{, }\item[{lua\+\_\+\+Integer}]{y}{}\end{DoxyParamCaption})}
+
+
+
+Shift left operation. 
+
+Shift right just negates \textquotesingle{}y\textquotesingle{}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em x} & The value to shift. \\
+\hline
+{\em y} & The shift amount. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The shifted value. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a2a864417ad70b6e8d3eb7d3c10cad672}\index{lvm.h@{lvm.h}!luaV\_tointeger@{luaV\_tointeger}}
+\index{luaV\_tointeger@{luaV\_tointeger}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_tointeger()}{luaV\_tointeger()}}
+{\footnotesize\ttfamily \label{lvm_8h_a2a864417ad70b6e8d3eb7d3c10cad672} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+tointeger (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}}]{p}{, }\item[{\doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}}}]{mode}{}\end{DoxyParamCaption})}
+
+
+
+Tries to convert a value to an integer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & The object to convert. \\
+\hline
+{\em p} & Pointer to store the result. \\
+\hline
+{\em mode} & The rounding mode. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a217081972ce52f0e7a489d2398422b39}\index{lvm.h@{lvm.h}!luaV\_tointegerns@{luaV\_tointegerns}}
+\index{luaV\_tointegerns@{luaV\_tointegerns}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_tointegerns()}{luaV\_tointegerns()}}
+{\footnotesize\ttfamily \label{lvm_8h_a217081972ce52f0e7a489d2398422b39} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+tointegerns (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lua\+\_\+\+Integer \texorpdfstring{$\ast$}{*}}]{p}{, }\item[{\doxymbox{\hyperlink{lvm_8h_a1639065f78212a54317141b2703061c0}{F2\+Imod}}}]{mode}{}\end{DoxyParamCaption})}
+
+
+
+Tries to convert a value to an integer, rounding according to \textquotesingle{}mode\textquotesingle{}, without string coercion. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & The object to convert. \\
+\hline
+{\em p} & Pointer to store the result. \\
+\hline
+{\em mode} & The rounding mode. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{lvm_8h_a8dde84947fb2b5ec169813216235a4ba}\index{lvm.h@{lvm.h}!luaV\_tonumber\_@{luaV\_tonumber\_}}
+\index{luaV\_tonumber\_@{luaV\_tonumber\_}!lvm.h@{lvm.h}}
+\doxysubsubsection{\texorpdfstring{luaV\_tonumber\_()}{luaV\_tonumber\_()}}
+{\footnotesize\ttfamily \label{lvm_8h_a8dde84947fb2b5ec169813216235a4ba} 
+LUAI\+\_\+\+FUNC int lua\+V\+\_\+tonumber\+\_\+ (\begin{DoxyParamCaption}\item[{const \doxymbox{\hyperlink{struct_t_value}{TValue}} \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lua\+\_\+\+Number \texorpdfstring{$\ast$}{*}}]{n}{}\end{DoxyParamCaption})}
+
+
+
+Tries to convert a value to a float. 
+
+The float case is already handled by the macro \textquotesingle{}tonumber\textquotesingle{}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & The object to convert. \\
+\hline
+{\em n} & Pointer to store the result. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 on success, 0 on failure. 
+\end{DoxyReturn}
