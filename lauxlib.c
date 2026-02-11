@@ -956,25 +956,22 @@ LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
               size_t bin_len;
               unsigned char *bin = nirithy_decode(payload, payload_len, &bin_len);
               if (bin && bin_len > 24) { /* 8 timestamp + 16 IV */
-                uint64_t timestamp = 0;
-                uint8_t iv[16];
-                unsigned char *data;
-                size_t data_len;
+                /* Do not decrypt here. Wrap in \x1bEnc header and pass to loader. */
+                size_t new_len = 1 + 3 + bin_len;
+                char *new_buff = (char *)malloc(new_len);
+                if (new_buff) {
+                  new_buff[0] = LUA_SIGNATURE[0]; /* \x1b */
+                  memcpy(new_buff + 1, "Enc", 3);
+                  memcpy(new_buff + 4, bin, bin_len);
 
-                memcpy(&timestamp, bin, 8);
-                memcpy(iv, bin + 8, 16);
-
-                data = bin + 24;
-                data_len = bin_len - 24;
-
-                nirithy_decrypt(data, data_len, timestamp, iv);
-
-                status = luaL_loadbuffer(L, (char*)data, data_len, lua_tostring(L, -1));
-                free(bin);
-                free(payload);
-                if (filename) fclose(lf.f);
-                lua_remove(L, fnameindex);
-                return status;
+                  status = luaL_loadbuffer(L, new_buff, new_len, lua_tostring(L, -1));
+                  free(new_buff);
+                  free(bin);
+                  free(payload);
+                  if (filename) fclose(lf.f);
+                  lua_remove(L, fnameindex);
+                  return status;
+                }
               }
               if (bin) free(bin);
             }
@@ -1168,22 +1165,20 @@ LUALIB_API int luaL_loadbufferx (lua_State *L, const char *buff, size_t size,
     unsigned char *bin = nirithy_decode(buff + 9, size - 9, &bin_len);
     if (bin) {
       if (bin_len > 24) { /* 8 timestamp + 16 IV */
-        uint64_t timestamp = 0;
-        uint8_t iv[16];
-        unsigned char *data;
-        size_t data_len;
-        int status;
+        /* Do not decrypt here. Wrap in \x1bEnc header and pass to loader. */
+        size_t new_len = 1 + 3 + bin_len;
+        char *new_buff = (char *)malloc(new_len);
+        if (new_buff) {
+          int status;
+          new_buff[0] = LUA_SIGNATURE[0]; /* \x1b */
+          memcpy(new_buff + 1, "Enc", 3);
+          memcpy(new_buff + 4, bin, bin_len);
 
-        memcpy(&timestamp, bin, 8);
-        memcpy(iv, bin + 8, 16);
-
-        data = bin + 24;
-        data_len = bin_len - 24;
-
-        nirithy_decrypt(data, data_len, timestamp, iv);
-        status = luaL_loadbufferx(L, (char*)data, data_len, name, mode);
-        free(bin);
-        return status;
+          status = luaL_loadbufferx(L, new_buff, new_len, name, mode);
+          free(new_buff);
+          free(bin);
+          return status;
+        }
       }
       free(bin);
     }
