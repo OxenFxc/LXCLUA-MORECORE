@@ -32,7 +32,6 @@
 #include "lobfuscate.h"
 
 #include "stb_image.h"
-#include "aes.h" /* For AES context and functions */
 
 
 #if !defined(luai_verifycode)
@@ -46,17 +45,6 @@
 #define LUAC_NUM_STD	cast_num(-370.5)
 #define LUAC_VERSION_STD 0x55
 #define LUAC_INST_STD	0x12345678
-
-static void nirithy_derive_key(uint64_t timestamp, uint8_t *key) {
-  uint8_t input[32];
-  uint8_t digest[SHA256_DIGEST_SIZE];
-
-  memcpy(input, &timestamp, 8);
-  memcpy(input + 8, "NirithySalt", 11);
-
-  SHA256(input, 19, digest);
-  memcpy(key, digest, 16); /* Use first 16 bytes as AES-128 key */
-}
 
 
 typedef struct {
@@ -75,35 +63,7 @@ typedef struct {
   lu_byte fixed;  /* dump is fixed in memory */
   int is_standard; /* flag to indicate standard Lua bytecode */
   int force_standard; /* flag to force standard Lua bytecode */
-
-  /* Decryption state */
-  int encrypted;
-  struct AES_ctx ctx;
-  uint8_t keystream[16];
-  int keystream_idx;
 } LoadState;
-
-
-static void decrypt_byte(LoadState *S, uint8_t *b) {
-  if (S->keystream_idx >= 16) {
-    int i;
-    /* Generate new keystream block */
-    memcpy(S->keystream, S->ctx.Iv, 16);
-    AES_ECB_encrypt(&S->ctx, S->keystream);
-
-    /* Increment IV */
-    for (i = 15; i >= 0; --i) {
-      if (S->ctx.Iv[i] == 255) {
-        S->ctx.Iv[i] = 0;
-        continue;
-      }
-      S->ctx.Iv[i]++;
-      break;
-    }
-    S->keystream_idx = 0;
-  }
-  *b ^= S->keystream[S->keystream_idx++];
-}
 
 
 static l_noret error (LoadState *S, const char *why) {
@@ -121,11 +81,7 @@ static l_noret error (LoadState *S, const char *why) {
 static void loadBlock (LoadState *S, void *b, size_t size) {
   if (luaZ_read(S->Z, b, size) != 0)
     error(S, "truncated chunk");
-  if (S->encrypted) {
-    size_t i;
-    uint8_t *pb = (uint8_t *)b;
-    for (i = 0; i < size; i++) decrypt_byte(S, &pb[i]);
-  }
+
 }
 
 
@@ -136,11 +92,6 @@ static lu_byte loadByte (LoadState *S) {
   int b = zgetc(S->Z);
   if (b == EOZ)
     error(S, "truncated chunk");
-  if (S->encrypted) {
-    uint8_t bb = (uint8_t)b;
-    decrypt_byte(S, &bb);
-    return bb;
-  }
   return cast_byte(b);
 }
 
@@ -723,11 +674,6 @@ static void loadFunction (LoadState *S, Proto *f, TString *psource) {
 static void loadBlock_Standard (LoadState *S, void *b, size_t size) {
   if (luaZ_read(S->Z, b, size) != 0)
     error(S, "truncated chunk");
-  if (S->encrypted) {
-    size_t i;
-    uint8_t *pb = (uint8_t *)b;
-    for (i = 0; i < size; i++) decrypt_byte(S, &pb[i]);
-  }
   S->offset += size;
 }
 
@@ -756,11 +702,6 @@ static lu_byte loadByte_Standard (LoadState *S) {
   int b = zgetc(S->Z);
   if (b == EOZ)
     error(S, "truncated chunk");
-  if (S->encrypted) {
-    uint8_t bb = (uint8_t)b;
-    decrypt_byte(S, &bb);
-    b = bb;
-  }
   S->offset++;
   return cast_byte(b);
 }
@@ -1144,40 +1085,8 @@ static void fchecksize (LoadState *S, size_t size, const char *tname) {
 #define checksize(S,t)	fchecksize(S,sizeof(t),#t)
 
 static void checkHeader (LoadState *S) {
-  /* Check signature */
-  char sig[3];
-  if (luaZ_read(S->Z, sig, 3) != 0) error(S, "truncated chunk");
-
-  if (memcmp(sig, "Enc", 3) == 0) {
-      uint64_t timestamp;
-      uint8_t iv[16];
-      uint8_t key[16];
-
-      S->encrypted = 1;
-
-      /* Read metadata (raw) */
-      if (luaZ_read(S->Z, &timestamp, 8) != 0) error(S, "truncated chunk");
-      if (luaZ_read(S->Z, iv, 16) != 0) error(S, "truncated chunk");
-
-      /* Init AES */
-      nirithy_derive_key(timestamp, key);
-      AES_init_ctx_iv(&S->ctx, key, iv);
-      S->keystream_idx = 16;
-
-      /* Verify inner signature */
-      /* First byte of payload must be LUA_SIGNATURE[0] (\x1b) */
-      /* We use loadByte(S) which now decrypts */
-      if (loadByte(S) != LUA_SIGNATURE[0]) error(S, "not a binary chunk");
-
-      /* Next 3 bytes "Lua" */
-      checkliteral(S, &LUA_SIGNATURE[1], "not a binary chunk");
-
-  } else if (memcmp(sig, &LUA_SIGNATURE[1], 3) == 0) {
-      /* Standard Lua signature "Lua" */
-      S->encrypted = 0;
-  } else {
-      error(S, "not a binary chunk");
-  }
+  /* skip 1st char (already read and checked) */
+  checkliteral(S, &LUA_SIGNATURE[1], "not a binary chunk");
   
   lu_byte version = loadByte(S);
   lu_byte format = loadByte(S);
@@ -1200,7 +1109,7 @@ static void checkHeader (LoadState *S) {
   
   /* Detect Standard Lua vs XCLUA */
   int b1 = loadByte(S);
-  int b2 = loadByte(S); /* Read next byte (was zgetc, but we need decryption support) */
+  int b2 = zgetc(S->Z); /* Peek/Read next byte */
 
   if (!S->force_standard && b1 == sizeof(Instruction) && b2 == sizeof(lua_Integer)) {
     S->is_standard = 0;
@@ -1208,7 +1117,7 @@ static void checkHeader (LoadState *S) {
     /* Continue verifying XCLUA header */
     /* b1 (Instruction size) verified by detection */
     /* b2 (lua_Integer size) verified by detection */
-    /* Note: loadByte consumed b2, so we skip checksize(S, lua_Integer) reading */
+    /* Note: zgetc consumed b2, so we skip checksize(S, lua_Integer) reading */
 
     checksize(S, lua_Number);
     if (loadInteger(S) != LUAC_INT)
@@ -1230,7 +1139,7 @@ static void checkHeader (LoadState *S) {
     /* We read b2 (1st byte). Read remaining sizeof(int)-1 bytes */
     int i_val;
     unsigned char *p = (unsigned char *)&i_val;
-    p[0] = (unsigned char)b2;
+    p[0] = b2;
     loadVector_Standard(S, p+1, sizeof(int)-1);
     if (i_val != (int)LUAC_INT_STD)
       error(S, "int format mismatch");
@@ -1278,7 +1187,6 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name, int force_standard
   S.Z = Z;
   S.offset = 1;
   S.force_standard = force_standard;
-  S.encrypted = 0;
   checkHeader(&S);
 
   lu_byte nupvalues;

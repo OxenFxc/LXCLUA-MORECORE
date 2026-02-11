@@ -20,6 +20,64 @@
 #include "lmem.h"
 #include "lstate.h"
 #include "lzio.h"
+#include "sha256.h"
+
+
+/**
+ * @brief Helper to derive key from timestamp (for ZIO decryption).
+ */
+static void nirithy_derive_key(uint64_t timestamp, uint8_t *key) {
+  uint8_t input[32];
+  uint8_t digest[SHA256_DIGEST_SIZE];
+
+  memcpy(input, &timestamp, 8);
+  memcpy(input + 8, "NirithySalt", 11);
+
+  SHA256(input, 19, digest);
+  memcpy(key, digest, 16); /* Use first 16 bytes as AES-128 key */
+}
+
+/**
+ * @brief Initializes decryption state for ZIO.
+ */
+void luaZ_init_decrypt (ZIO *z, uint64_t timestamp, const uint8_t *iv) {
+  uint8_t key[16];
+  nirithy_derive_key(timestamp, key);
+  AES_init_ctx_iv(&z->ctx, key, iv);
+  z->keystream_idx = 16;
+  z->encrypted = 1;
+}
+
+/**
+ * @brief Reads and decrypts a byte from the stream.
+ *
+ * Should only be called via zgetc macro when z->encrypted is true.
+ * Assumes z->n > 0.
+ */
+int luaZ_read_decrypt (ZIO *z) {
+  uint8_t b = cast_uchar(*(z->p++));
+
+  if (z->keystream_idx >= 16) {
+    int i;
+    /* Generate new keystream block */
+    memcpy(z->keystream, z->ctx.Iv, 16);
+    AES_ECB_encrypt(&z->ctx, z->keystream);
+
+    /* Increment IV */
+    for (i = 15; i >= 0; --i) {
+      if (z->ctx.Iv[i] == 255) {
+        z->ctx.Iv[i] = 0;
+        continue;
+      }
+      z->ctx.Iv[i]++;
+      break;
+    }
+    z->keystream_idx = 0;
+  }
+
+  b ^= z->keystream[z->keystream_idx++];
+  return b;
+}
 
 
 /**
@@ -41,6 +99,11 @@ int luaZ_fill (ZIO *z) {
     return EOZ;
   z->n = size - 1;  /* discount char being returned */
   z->p = buff;
+
+  if (z->encrypted) {
+    return luaZ_read_decrypt(z);
+  }
+
   return cast_uchar(*(z->p++));
 }
 
@@ -59,6 +122,7 @@ void luaZ_init (lua_State *L, ZIO *z, lua_Reader reader, void *data) {
   z->data = data;
   z->n = 0;
   z->p = NULL;
+  z->encrypted = 0;
 }
 
 
@@ -90,12 +154,35 @@ size_t luaZ_read (ZIO *z, void *b, size_t n) {
     size_t m;
     if (!checkbuffer(z))
       return n;  /* no more input; return number of missing bytes */
-    m = (n <= z->n) ? n : z->n;  /* min. between n and z->n */
-    memcpy(b, z->p, m);
-    z->n -= m;
-    z->p += m;
-    b = (char *)b + m;
-    n -= m;
+
+    /* If encrypted, we must decrypt byte-by-byte (or block-by-block if optimized)
+       Since our decryption logic is byte-based (AES-CTR), we can iterate.
+       Optimization: decrypt directly into 'b' if possible?
+       Our decrypt function reads from z->p and increments it.
+    */
+    if (z->encrypted) {
+      uint8_t *dst = (uint8_t *)b;
+      size_t i;
+      m = (n <= z->n) ? n : z->n;
+
+      for (i = 0; i < m; i++) {
+        dst[i] = (uint8_t)luaZ_read_decrypt(z);
+      }
+      z->n -= m; /* n decremented by caller of read_decrypt? No, read_decrypt only decs p. */
+                 /* wait, zgetc macro decs n. luaZ_read needs to dec n. */
+                 /* luaZ_read_decrypt accesses z->p directly but DOES NOT decrement z->n. */
+                 /* So we handle n here. */
+
+      b = (char *)b + m;
+      n -= m;
+    } else {
+      m = (n <= z->n) ? n : z->n;  /* min. between n and z->n */
+      memcpy(b, z->p, m);
+      z->n -= m;
+      z->p += m;
+      b = (char *)b + m;
+      n -= m;
+    }
   }
   return 0;
 }
