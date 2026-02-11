@@ -304,10 +304,10 @@ typedef union {
 ** ========================================================
 */
 
-/*
-** Common Header for all collectable objects (in macro form, to be
-** included in other objects)
-*/
+/**
+ * @brief Common Header for all collectable objects.
+ * Included in other objects via macro.
+ */
 #define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked
 
 
@@ -418,12 +418,12 @@ typedef struct TString {
   CommonHeader;
   lu_byte extra;  /**< reserved words for short strings; "has hash" for longs */
   lu_byte shrlen;  /**< length for short strings, 0xFF for long strings */
-  unsigned int hash;
+  unsigned int hash; /**< hash code */
   union {
     size_t lnglen;  /**< length for long strings */
     struct TString *hnext;  /**< linked list for hash table */
   } u;
-  char contents[1];
+  char contents[1]; /**< string data */
   lua_Alloc falloc;  /**< deallocation function for external strings */
   void *ud;  /**< user data for external strings */
 } TString;
@@ -542,8 +542,8 @@ typedef struct Udata {
   CommonHeader;
   unsigned short nuvalue;  /**< number of user values */
   size_t len;  /**< number of bytes */
-  struct Table *metatable;
-  GCObject *gclist;
+  struct Table *metatable; /**< metatable */
+  GCObject *gclist; /**< garbage collector list */
   UValue uv[1];  /**< user values */
 } Udata;
 
@@ -557,8 +557,8 @@ typedef struct Udata0 {
   CommonHeader;
   unsigned short nuvalue;  /**< number of user values */
   size_t len;  /**< number of bytes */
-  struct Table *metatable;
-  union {LUAI_MAXALIGN;} bindata;
+  struct Table *metatable; /**< metatable */
+  union {LUAI_MAXALIGN;} bindata; /**< data */
 } Udata0;
 
 
@@ -604,7 +604,7 @@ typedef struct Upvaldesc {
  * (used for debug information)
  */
 typedef struct LocVar {
-  TString *varname;
+  TString *varname; /**< variable name */
   int startpc;  /**< first point where variable is active */
   int endpc;    /**< first point where variable is dead */
 } LocVar;
@@ -614,8 +614,8 @@ typedef struct LocVar {
  * @brief Associates the absolute line source for a given instruction ('pc').
  */
 typedef struct AbsLineInfo {
-  int pc;
-  int line;
+  int pc;   /**< instruction index */
+  int line; /**< line number */
 } AbsLineInfo;
 
 
@@ -670,8 +670,8 @@ LUAI_FUNC int luaF_callqueuepop (lua_State *L, CallQueue *q, int *nargs, TValue 
 typedef struct Proto {
   CommonHeader;
   lu_byte numparams;  /**< Number of fixed (named) parameters. */
-  lu_byte flag;
-  lu_byte is_vararg;
+  lu_byte flag;       /**< Flags. */
+  lu_byte is_vararg;  /**< Vararg flag. */
   lu_byte maxstacksize;  /**< Number of registers needed by this function. */
   lu_byte nodiscard;     /**< Function is marked as nodiscard. */
   lu_byte difierline_mode;      /**< Obfuscation mode flags. */
@@ -680,9 +680,9 @@ typedef struct Proto {
   int sizeupvalues;  /**< Size of 'upvalues' array. */
   int sizek;  /**< Size of 'k' (constants) array. */
   int sizecode;      /**< Size of 'code' array. */
-  int sizelineinfo;
+  int sizelineinfo; /**< Size of 'lineinfo' array. */
   int sizep;  /**< Size of 'p' (nested prototypes) array. */
-  int sizelocvars;
+  int sizelocvars; /**< Size of 'locvars' array. */
   int sizeabslineinfo;  /**< Size of 'abslineinfo' array. */
   int linedefined;  /**< Debug information: start line. */
   int lastlinedefined;  /**< Debug information: end line. */
@@ -694,9 +694,9 @@ typedef struct Proto {
   AbsLineInfo *abslineinfo;  /**< Map from opcodes to absolute source lines. */
   LocVar *locvars;  /**< Information about local variables. */
   TString  *source;  /**< Source file name. */
-  GCObject *gclist;
-  int is_sleeping;
-  CallQueue *call_queue;
+  GCObject *gclist; /**< garbage collector list */
+  int is_sleeping; /**< sleep status */
+  CallQueue *call_queue; /**< call queue for sleep/wake */
   struct VMCodeTable *vm_code_table;  /**< VM protection code table pointer. */
 } Proto;
 
@@ -772,20 +772,29 @@ typedef struct UpVal {
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; lu_byte ishotfixed; GCObject *gclist
 
+/**
+ * @brief C closure structure.
+ */
 typedef struct CClosure {
   ClosureHeader;
-  lua_CFunction f;
+  lua_CFunction f; /**< C function */
   TValue upvalue[1];  /**< list of upvalues */
 } CClosure;
 
 
+/**
+ * @brief Lua closure structure.
+ */
 typedef struct LClosure {
   ClosureHeader;
-  struct Proto *p;
+  struct Proto *p; /**< function prototype */
   UpVal *upvals[1];  /**< list of upvalues */
 } LClosure;
 
 
+/**
+ * @brief Union of closures.
+ */
 typedef union Closure {
   CClosure c;
   LClosure l;
@@ -874,7 +883,7 @@ typedef struct Table {
   Node *node;      /**< Hash part. */
   Node *lastfree;  /**< Any free position is before this position. */
   struct Table *metatable; /**< Metatable pointer. */
-  GCObject *gclist;
+  GCObject *gclist; /**< garbage collector list */
   lu_byte type;    /**< Custom type flag. */
   l_rwlock_t lock; /**< Lock for thread safety. */
 } Table;

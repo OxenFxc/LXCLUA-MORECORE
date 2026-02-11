@@ -33,10 +33,14 @@
 /** @} */
 
 
-/** Mark for precompiled code ('<esc>Lua') */
+/**
+ * @brief Mark for precompiled code ('<esc>Lua').
+ */
 #define LUA_SIGNATURE	"\x1bLua"
 
-/** Option for multiple returns in 'lua_pcall' and 'lua_call' */
+/**
+ * @brief Option for multiple returns in 'lua_pcall' and 'lua_call'.
+ */
 #define LUA_MULTRET	(-1)
 
 
@@ -95,7 +99,9 @@ typedef struct lua_State lua_State;
 /** @} */
 
 
-/** Minimum Lua stack available to a C function */
+/**
+ * @brief Minimum Lua stack available to a C function.
+ */
 #define LUA_MINSTACK	20
 
 
@@ -109,17 +115,25 @@ typedef struct lua_State lua_State;
 /** @} */
 
 
-/** Type of numbers in Lua */
+/**
+ * @brief Type of numbers in Lua.
+ */
 typedef LUA_NUMBER lua_Number;
 
 
-/** Type for integer functions */
+/**
+ * @brief Type for integer functions.
+ */
 typedef LUA_INTEGER lua_Integer;
 
-/** Unsigned integer type */
+/**
+ * @brief Unsigned integer type.
+ */
 typedef LUA_UNSIGNED lua_Unsigned;
 
-/** Type for continuation-function contexts */
+/**
+ * @brief Type for continuation-function contexts.
+ */
 typedef LUA_KCONTEXT lua_KContext;
 
 
@@ -186,7 +200,9 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 typedef void (*lua_WarnFunction) (void *ud, const char *msg, int tocont);
 
 
-/** Type used by the debug API to collect debug information */
+/**
+ * @brief Type used by the debug API to collect debug information.
+ */
 typedef struct lua_Debug lua_Debug;
 
 
@@ -1259,40 +1275,172 @@ LUA_API void (luaB_hotfix) (lua_State *L, int oldidx, int newidx);
 ** ====================================================
 */
 
+/**
+ * @brief Returns the pointer to the extra space associated with the Lua state.
+ *
+ * @param L The Lua state.
+ */
 #define lua_getextraspace(L)	((void *)((char *)(L) - LUA_EXTRASPACE))
 
+/**
+ * @brief Converts the Lua value at the given index to a number.
+ *
+ * @param L The Lua state.
+ * @param i The index.
+ */
 #define lua_tonumber(L,i)	lua_tonumberx(L,(i),NULL)
+
+/**
+ * @brief Converts the Lua value at the given index to an integer.
+ *
+ * @param L The Lua state.
+ * @param i The index.
+ */
 #define lua_tointeger(L,i)	lua_tointegerx(L,(i),NULL)
 
+/**
+ * @brief Pops n elements from the stack.
+ *
+ * @param L The Lua state.
+ * @param n Number of elements to pop.
+ */
 #define lua_pop(L,n)		lua_settop(L, -(n)-1)
 
+/**
+ * @brief Creates a new empty table and pushes it onto the stack.
+ *
+ * @param L The Lua state.
+ */
 #define lua_newtable(L)		lua_createtable(L, 0, 0)
 
+/**
+ * @brief Registers a C function as a global variable.
+ *
+ * @param L The Lua state.
+ * @param n The name of the global variable.
+ * @param f The C function.
+ */
 #define lua_register(L,n,f) (lua_pushcfunction(L, (f)), lua_setglobal(L, (n)))
 
+/**
+ * @brief Pushes a C function onto the stack.
+ *
+ * @param L The Lua state.
+ * @param f The C function.
+ */
 #define lua_pushcfunction(L,f)	lua_pushcclosure(L, (f), 0)
 
+/**
+ * @brief Returns true if the value at the given index is a function.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isfunction(L,n)	(lua_type(L, (n)) == LUA_TFUNCTION)
+
+/**
+ * @brief Returns true if the value at the given index is a table.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_istable(L,n)	(lua_type(L, (n)) == LUA_TTABLE)
+
+/**
+ * @brief Returns true if the value at the given index is a light userdata.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_islightuserdata(L,n)	(lua_type(L, (n)) == LUA_TLIGHTUSERDATA)
+
+/**
+ * @brief Returns true if the value at the given index is nil.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isnil(L,n)		(lua_type(L, (n)) == LUA_TNIL)
+
+/**
+ * @brief Returns true if the value at the given index is a boolean.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isboolean(L,n)	(lua_type(L, (n)) == LUA_TBOOLEAN)
+
+/**
+ * @brief Returns true if the value at the given index is a thread.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isthread(L,n)	(lua_type(L, (n)) == LUA_TTHREAD)
+
+/**
+ * @brief Returns true if the value at the given index is none (invalid).
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isnone(L,n)		(lua_type(L, (n)) == LUA_TNONE)
+
+/**
+ * @brief Returns true if the value at the given index is none or nil.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
 #define lua_isnoneornil(L, n)	(lua_type(L, (n)) <= 0)
 
+/**
+ * @brief Pushes a literal string onto the stack.
+ *
+ * @param L The Lua state.
+ * @param s The string literal.
+ */
 #define lua_pushliteral(L, s)	lua_pushstring(L, "" s)
 
+/**
+ * @brief Pushes the global table onto the stack.
+ *
+ * @param L The Lua state.
+ */
 #define lua_pushglobaltable(L)  \
 	((void)lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS))
 
+/**
+ * @brief Converts the Lua value at the given index to a string.
+ *
+ * @param L The Lua state.
+ * @param i The index.
+ */
 #define lua_tostring(L,i)	lua_tolstring(L, (i), NULL)
 
 
+/**
+ * @brief Inserts the element at the top into the given index.
+ *
+ * @param L The Lua state.
+ * @param idx The index.
+ */
 #define lua_insert(L,idx)	lua_rotate(L, (idx), 1)
 
+/**
+ * @brief Removes the element at the given index.
+ *
+ * @param L The Lua state.
+ * @param idx The index.
+ */
 #define lua_remove(L,idx)	(lua_rotate(L, (idx), -1), lua_pop(L, 1))
 
+/**
+ * @brief Replaces the element at the given index with the top element.
+ *
+ * @param L The Lua state.
+ * @param idx The index.
+ */
 #define lua_replace(L,idx)	(lua_copy(L, -1, (idx)), lua_pop(L, 1))
 
 /* }=================================================== */
@@ -1477,27 +1625,27 @@ LUA_API int (lua_setcstacklimit) (lua_State *L, unsigned int limit);
  * @brief Debug information structure.
  */
 struct lua_Debug {
-  int event;
-  const char *name;	/* (n) */
-  const char *namewhat;	/* (n) 'global', 'local', 'field', 'method' */
-  const char *what;	/* (S) 'Lua', 'C', 'main', 'tail' */
-  const char *source;	/* (S) */
-  size_t srclen;	/* (S) */
-  int currentline;	/* (l) */
-  int linedefined;	/* (S) */
-  int lastlinedefined;	/* (S) */
-  unsigned char nups;	/* (u) number of upvalues */
-  unsigned char nparams;/* (u) number of parameters */
-  char isvararg;        /* (u) */
-  unsigned char extraargs;  /* (t) number of extra arguments */
-  char istailcall;	/* (t) */
-  int ftransfer;   /* (r) index of first value transferred */
-  int ntransfer;   /* (r) number of transferred values */
-  char short_src[LUA_IDSIZE]; /* (S) */
-  char ishotfixed;  /* (h) whether function was hotfixed */
+  int event; /**< Event code. */
+  const char *name;	/**< (n) Name of the function. */
+  const char *namewhat;	/**< (n) 'global', 'local', 'field', 'method' */
+  const char *what;	/**< (S) 'Lua', 'C', 'main', 'tail' */
+  const char *source;	/**< (S) Source code name (e.g. file name) */
+  size_t srclen;	/**< (S) Source length */
+  int currentline;	/**< (l) Current line number */
+  int linedefined;	/**< (S) Line where function is defined */
+  int lastlinedefined;	/**< (S) Last line of function definition */
+  unsigned char nups;	/**< (u) number of upvalues */
+  unsigned char nparams;/**< (u) number of parameters */
+  char isvararg;        /**< (u) is vararg */
+  unsigned char extraargs;  /**< (t) number of extra arguments */
+  char istailcall;	/**< (t) is tail call */
+  int ftransfer;   /**< (r) index of first value transferred */
+  int ntransfer;   /**< (r) number of transferred values */
+  char short_src[LUA_IDSIZE]; /**< (S) Short source name */
+  char ishotfixed;  /**< (h) whether function was hotfixed */
   
   /* private part */
-  struct CallInfo *i_ci;  /* active function */
+  struct CallInfo *i_ci;  /**< active function */
 };
 
 /* }=========================================================== */
