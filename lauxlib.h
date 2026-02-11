@@ -45,8 +45,8 @@ typedef struct luaL_Buffer luaL_Buffer;
  * Any array of luaL_Reg must end with a sentinel entry in which both name and func are NULL.
  */
 typedef struct luaL_Reg {
-  const char *name;
-  lua_CFunction func;
+  const char *name;  /**< Function name. */
+  lua_CFunction func; /**< Function pointer. */
 } luaL_Reg;
 
 
@@ -62,7 +62,11 @@ typedef struct luaL_Reg {
  */
 LUALIB_API void (luaL_checkversion_) (lua_State *L, lua_Number ver, size_t sz);
 
-/** Macro to check version with current values */
+/**
+ * @brief Macro to check version with current values.
+ *
+ * @param L The Lua state.
+ */
 #define luaL_checkversion(L)  \
 	  luaL_checkversion_(L, LUA_VERSION_NUM, LUAL_NUMSIZES)
 
@@ -324,7 +328,12 @@ LUALIB_API void (luaL_unref) (lua_State *L, int t, int ref);
 LUALIB_API int (luaL_loadfilex) (lua_State *L, const char *filename,
                                                const char *mode);
 
-/** Macro to load file with default mode */
+/**
+ * @brief Macro to load file with default mode.
+ *
+ * @param L The Lua state.
+ * @param f Filename.
+ */
 #define luaL_loadfile(L,f)	luaL_loadfilex(L,f,NULL)
 
 /**
@@ -435,34 +444,115 @@ LUALIB_API void (luaL_requiref) (lua_State *L, const char *modname,
 ** ====================================================
 */
 
-
+/**
+ * @brief Creates a new table with a size hint for the given library.
+ *
+ * @param L The Lua state.
+ * @param l The library array.
+ */
 #define luaL_newlibtable(L,l)	\
   lua_createtable(L, 0, sizeof(l)/sizeof((l)[0]) - 1)
 
+/**
+ * @brief Registers a library in the new table.
+ *
+ * @param L The Lua state.
+ * @param l The library array.
+ */
 #define luaL_newlib(L,l)  \
   (luaL_checkversion(L), luaL_newlibtable(L,l), luaL_setfuncs(L,l,0))
 
+/**
+ * @brief Checks a condition and raises an error if it fails.
+ *
+ * @param L The Lua state.
+ * @param cond The condition.
+ * @param arg The argument index.
+ * @param extramsg The error message.
+ */
 #define luaL_argcheck(L, cond,arg,extramsg)	\
 	((void)(luai_likely(cond) || luaL_argerror(L, (arg), (extramsg))))
 
+/**
+ * @brief Checks if a condition is met, otherwise raises a type error.
+ *
+ * @param L The Lua state.
+ * @param cond The condition.
+ * @param arg The argument index.
+ * @param tname The expected type name.
+ */
 #define luaL_argexpected(L,cond,arg,tname)	\
 	((void)(luai_likely(cond) || luaL_typeerror(L, (arg), (tname))))
 
+/**
+ * @brief Checks if the argument is a string.
+ *
+ * @param L The Lua state.
+ * @param n The argument index.
+ */
 #define luaL_checkstring(L,n)	(luaL_checklstring(L, (n), NULL))
+
+/**
+ * @brief Checks if the argument is a string (optional).
+ *
+ * @param L The Lua state.
+ * @param n The argument index.
+ * @param d Default string.
+ */
 #define luaL_optstring(L,n,d)	(luaL_optlstring(L, (n), (d), NULL))
 
+/**
+ * @brief Returns the type name of the value at the given index.
+ *
+ * @param L The Lua state.
+ * @param i The index.
+ */
 #define luaL_typename(L,i)	lua_typename(L, lua_type(L,(i)))
 
+/**
+ * @brief Loads and runs the given file.
+ *
+ * @param L The Lua state.
+ * @param fn The filename.
+ */
 #define luaL_dofile(L, fn) \
 	(luaL_loadfile(L, fn) || lua_pcall(L, 0, LUA_MULTRET, 0))
 
+/**
+ * @brief Loads and runs the given string.
+ *
+ * @param L The Lua state.
+ * @param s The string.
+ */
 #define luaL_dostring(L, s) \
 	(luaL_loadstring(L, s) || lua_pcall(L, 0, LUA_MULTRET, 0))
 
+/**
+ * @brief Gets the metatable of the given object.
+ *
+ * @param L The Lua state.
+ * @param n The object name.
+ */
 #define luaL_getmetatable(L,n)	(lua_getfield(L, LUA_REGISTRYINDEX, (n)))
 
+/**
+ * @brief Optional parameter helper.
+ *
+ * @param L The Lua state.
+ * @param f Check function.
+ * @param n The argument index.
+ * @param d Default value.
+ */
 #define luaL_opt(L,f,n,d)	(lua_isnoneornil(L,(n)) ? (d) : f(L,(n)))
 
+/**
+ * @brief Loads a buffer.
+ *
+ * @param L The Lua state.
+ * @param s The buffer.
+ * @param sz Size.
+ * @param n Name.
+ */
 #define luaL_loadbuffer(L,s,sz,n)	luaL_loadbufferx(L,s,sz,n,NULL)
 
 
@@ -507,7 +597,7 @@ struct luaL_Buffer {
   char *b;  /**< buffer address */
   size_t size;  /**< buffer size */
   size_t n;  /**< number of characters in buffer */
-  lua_State *L;
+  lua_State *L; /**< Lua state */
   union {
     LUAI_MAXALIGN;  /**< ensure maximum alignment for buffer */
     char b[LUAL_BUFFERSIZE];  /**< initial buffer */
