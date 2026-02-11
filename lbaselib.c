@@ -1385,14 +1385,13 @@ static int getfunc (lua_State *L, int opt) {
     lua_Debug ar;
     int level = opt ? (int)luaL_optinteger(L, 1, 1) : (int)luaL_checkinteger(L, 1);
     luaL_argcheck(L, level >= 0, 1, "level must be non-negative");
+    if (level == 0) return 0;
     if (lua_getstack(L, level, &ar)) {
       lua_getinfo(L, "f", &ar);  /* push function */
       if (lua_isnil(L, -1))
         return luaL_error(L, "unable to retrieve function from stack level %d", level);
       return 1;
     }
-    else if (level == 0)  /* global environment */
-      return 0;
     else
       return luaL_argerror(L, 1, "invalid level");
   }
@@ -1428,7 +1427,9 @@ static int luaB_setfenv (lua_State *L) {
   luaL_checktype(L, 2, LUA_TTABLE);
   
   if (!getfunc(L, 0)) {  /* level 0? */
-    return luaL_error(L, "setfenv(0) is not supported");
+    lua_pushvalue(L, 2);
+    lua_rawseti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+    return 0;
   }
 
   if (lua_iscfunction(L, -1)) {
@@ -1440,8 +1441,23 @@ static int luaB_setfenv (lua_State *L) {
   while ((name = lua_getupvalue(L, -1, i)) != NULL) {
     if (strcmp(name, "_ENV") == 0) {
       lua_pop(L, 1);  /* pop current value */
-      lua_pushvalue(L, 2);  /* new env */
-      lua_setupvalue(L, -2, i);
+
+      /* Create a dummy closure to hold the new environment upvalue */
+      /* "return _ENV" ensures the upvalue exists and is used */
+      if (luaL_loadstring(L, "return _ENV") != LUA_OK) {
+        return luaL_error(L, "failed to create temporary closure");
+      }
+
+      /* Set the new environment as the upvalue of the dummy closure */
+      lua_pushvalue(L, 2);
+      lua_setupvalue(L, -2, 1);
+
+      /* Join the target function's _ENV upvalue to the dummy closure's upvalue */
+      /* This detaches the target function from its previous shared upvalue */
+      lua_upvaluejoin(L, -2, i, -1, 1);
+
+      lua_pop(L, 1);  /* pop dummy closure */
+
       lua_pushvalue(L, -1);  /* return function */
       return 1;
     }
