@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 /*
 ** C23 feature detection
@@ -1033,15 +1032,12 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
 */
 void luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->ci;
-  LClosure *cl = ci_func(ci);
-  Proto *p = cl->p;
   StkId base = ci->func.p + 1;
-  Instruction inst = luaV_getinst(p, (int)(ci->u.l.savedpc - 1 - p->code));  /* interrupted instruction */
+  Instruction inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
   OpCode op = GET_OPCODE(inst);
   switch (op) {  /* finish its execution */
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      Instruction prev = luaV_getinst(p, (int)(ci->u.l.savedpc - 2 - p->code));
-      setobjs2s(L, base + GETARG_A(prev), --L->top.p);
+      setobjs2s(L, base + GETARG_A(*(ci->u.l.savedpc - 2)), --L->top.p);
       break;
     }
     case OP_UNM: case OP_BNOT: case OP_LEN:
@@ -1063,9 +1059,6 @@ void luaV_finishOp (lua_State *L) {
       }
 #endif
       lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_JMP);
-      /* savedpc points to jump instruction */
-      Instruction next = luaV_getinst(p, (int)(ci->u.l.savedpc - p->code));
-      lua_assert(GET_OPCODE(next) == OP_JMP);
       if (res != GETARG_k(inst))  /* condition failed? */
         ci->u.l.savedpc++;  /* skip jump instruction */
       break;
@@ -1350,7 +1343,7 @@ static void inopr (lua_State *L, StkId ra, TValue *a, TValue *b) {
 
 
 /* for test instructions, execute the jump instruction that follows it */
-#define donextjump(ci)	{ Instruction ni = luaV_getinst(cl->p, (int)(pc - cl->p->code)); dojump(ci, ni, 1); }
+#define donextjump(ci)	{ Instruction ni = *pc; dojump(ci, ni, 1); }
 
 /*
 ** do a conditional jump: skip next instruction if 'cond' is not what
@@ -1410,9 +1403,6 @@ static void inopr (lua_State *L, StkId ra, TValue *a, TValue *b) {
     updatebase(ci);  /* correct stack */ \
   } \
   i = *(pc++); \
-  if (cl->p->runtime_code_seed) { \
-    i ^= (cl->p->runtime_code_seed + (int)(pc - 1 - cl->p->code)); \
-  } \
 }
 
 #define vmdispatch(o)	switch(o)
@@ -1501,8 +1491,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_LOADKX) {
         StkId ra = RA(i);
         TValue *rb;
-        Instruction extra = luaV_getinst(cl->p, (int)(pc - cl->p->code));
-        rb = k + GETARG_Ax(extra); pc++;
+        rb = k + GETARG_Ax(*pc); pc++;
         setobj2s(L, ra, rb);
         vmbreak;
       }
@@ -1728,10 +1717,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (b > 0)
           b = 1u << (b - 1);  /* hash size is 2^(b - 1) */
         if (TESTARG_k(i)) {  /* non-zero extra argument? */
-          Instruction extra = luaV_getinst(cl->p, (int)(pc - cl->p->code));
-          lua_assert(GETARG_Ax(extra) != 0);
+          lua_assert(GETARG_Ax(*pc) != 0);
           /* add it to array size */
-          c += cast_uint(GETARG_Ax(extra)) * (MAXARG_C + 1);
+          c += cast_uint(GETARG_Ax(*pc)) * (MAXARG_C + 1);
         }
         pc++;  /* skip extra argument */
         L->top.p = ra + 1;  /* correct top in case of emergency GC */
@@ -2300,8 +2288,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           L->top.p = ci->top.p;  /* correct top in case of emergency GC */
         last += n;
         if (TESTARG_k(i)) {
-          Instruction extra = luaV_getinst(cl->p, (int)(pc - cl->p->code));
-          last += GETARG_Ax(extra) * (MAXARG_C + 1);
+          last += GETARG_Ax(*pc) * (MAXARG_C + 1);
           pc++;
         }
         if (last > luaH_realasize(h))  /* needs more space? */
@@ -2878,36 +2865,3 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 }
 
 /* }======================================================= */
-
-/*
-** {==================================================================
-** In-memory bytecode encryption
-** ===================================================================
-*/
-
-void luaV_encrypt_proto(Proto *p) {
-  if (p->runtime_code_seed != 0) return; /* Already encrypted */
-
-  /* Generate a random seed */
-  p->runtime_code_seed = (l_uint32)time(NULL) ^ (l_uint32)(size_t)p ^ (l_uint32)rand();
-  if (p->runtime_code_seed == 0) p->runtime_code_seed = 0x5A5A5A5A; /* Ensure non-zero */
-
-  /* XOR encrypt the bytecode in place */
-  for (int i = 0; i < p->sizecode; i++) {
-    p->code[i] ^= (p->runtime_code_seed + i);
-  }
-}
-
-void luaV_encrypt_proto_recursive(Proto *p) {
-  luaV_encrypt_proto(p);
-  for (int i = 0; i < p->sizep; i++) {
-    luaV_encrypt_proto_recursive(p->p[i]);
-  }
-}
-
-Instruction luaV_getinst(const Proto *p, int pc) {
-  if (p->runtime_code_seed == 0) return p->code[pc];
-  return p->code[pc] ^ (p->runtime_code_seed + pc);
-}
-
-/* }================================================================== */

@@ -30,7 +30,6 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "ltm.h"
-#include "lvm.h"
 #include "lopnames.h"
 
 
@@ -11542,10 +11541,6 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   L->top.p--;  /* remove declared globals table */
   L->top.p--;  /* remove named types table */
   L->top.p--;  /* remove scanner's table */
-
-  /* Encrypt the compiled bytecode in memory */
-  luaV_encrypt_proto_recursive(cl->p);
-
   return cl;  /* closure is on the stack, too */
 }
 
