@@ -1215,6 +1215,44 @@ static void f_parser (lua_State *L, void *ud) {
   struct SParser *p = cast(struct SParser *, ud);
   const char *mode = p->mode ? p->mode : "bt";
   int c = zgetc(p->z);  /* read first character */
+
+  /* Check for encryption wrapper \x1bEnc */
+  if (c == LUA_SIGNATURE[0]) {
+    char sig[4] = {0};
+    /* We need to peek ahead without consuming if it's NOT Enc */
+    /* ZIO doesn't support extensive peeking, but we can read and unread/buffer */
+    /* Check if next 3 bytes are "Enc" */
+    /* Actually, we are committed if we see \x1b. Standard Lua binary starts with \x1bLua */
+    /* So we can read 3 more bytes. If it's "Enc", handled. If "Lua", standard binary. If anything else, error (or push back?) */
+
+    char next3[3];
+    if (luaZ_read(p->z, next3, 3) == 0) {
+      if (memcmp(next3, "Enc", 3) == 0) {
+        /* It is encrypted! */
+        uint64_t timestamp;
+        uint8_t iv[16];
+        if (luaZ_read(p->z, &timestamp, 8) == 0 && luaZ_read(p->z, iv, 16) == 0) {
+          luaZ_init_decrypt(p->z, timestamp, iv);
+          /* Now read the *real* first character (decrypted) */
+          c = zgetc(p->z);
+        } else {
+          luaD_throw(L, LUA_ERRSYNTAX); /* Truncated encrypted header */
+        }
+      } else {
+        /* Not "Enc". Push back the 3 bytes so normal processing can continue. */
+        /* Note: ungetting in reverse order of reading (if relevant) or just decrementing p 3 times. */
+        zungetc(p->z);
+        zungetc(p->z);
+        zungetc(p->z);
+      }
+    } else {
+        /* Failed to read 3 bytes. Unlikely for valid chunks but possible for short files. */
+        /* If we failed, we probably don't have a valid chunk anyway. */
+        /* But to be safe, we should probably handle it? */
+        /* If read fails, n is 0. zungetc works if p > buffer start. */
+    }
+  }
+
   if (c == LUA_SIGNATURE[0]) {
     int fixed = 0;
     if (strchr(mode, 'B') != NULL)

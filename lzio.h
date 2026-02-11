@@ -11,14 +11,16 @@
 #include "lua.h"
 
 #include "lmem.h"
+#include "aes.h"
 
 
 #define EOZ	(-1)			/* end of stream */
 
 typedef struct Zio ZIO;
 
-#define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : luaZ_fill(z))
+#define zgetc(z)  (((z)->n--)>0 ?  ((z)->encrypted ? luaZ_read_decrypt(z) : cast_uchar(*(z)->p++)) : luaZ_fill(z))
 
+#define zungetc(z)  (((z)->n++), ((z)->p--))
 
 typedef struct Mbuffer {
   char *buffer;
@@ -59,9 +61,17 @@ struct Zio {
   lua_Reader reader;		/* reader function */
   void *data;			/* additional data */
   lua_State *L;			/* Lua state (for reader) */
+
+  /* Decryption state */
+  int encrypted;
+  struct AES_ctx ctx;
+  uint8_t keystream[16];
+  int keystream_idx;
 };
 
 
 LUAI_FUNC int luaZ_fill (ZIO *z);
+LUAI_FUNC int luaZ_read_decrypt (ZIO *z);
+LUAI_FUNC void luaZ_init_decrypt (ZIO *z, uint64_t timestamp, const uint8_t *iv);
 
 #endif
