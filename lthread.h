@@ -11,6 +11,14 @@
   #include <errno.h>
 #endif
 
+/* Atomic support for Writer Recursion tracking */
+#if defined(__cplusplus)
+  #include <atomic>
+  using std::atomic_size_t;
+#else
+  #include <stdatomic.h>
+#endif
+
 #define LTHREAD_TIMEDOUT 1
 
 typedef struct l_mutex_t {
@@ -30,7 +38,14 @@ typedef struct l_cond_t {
 } l_cond_t;
 
 typedef struct l_rwlock_t {
-  l_mutex_t lock; /* Downgraded to recursive mutex to prevent GC deadlocks */
+#if defined(LUA_USE_WINDOWS)
+  SRWLOCK lock;
+#else
+  pthread_rwlock_t lock;
+#endif
+  /* Writer recursion tracking */
+  atomic_size_t writer_thread_id;
+  int write_recursion;
 } l_rwlock_t;
 
 typedef struct l_thread_t {

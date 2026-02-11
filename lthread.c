@@ -107,25 +107,106 @@ void l_cond_destroy(l_cond_t *c) {
 #endif
 }
 
-/* Read/Write Lock (Mapped to Recursive Mutex) */
+/* Read/Write Lock with Writer Recursion */
 void l_rwlock_init(l_rwlock_t *l) {
-  l_mutex_init(&l->lock);
+#if defined(__cplusplus)
+  l->writer_thread_id.store(0);
+#else
+  atomic_init(&l->writer_thread_id, 0);
+#endif
+  l->write_recursion = 0;
+#if defined(LUA_USE_WINDOWS)
+  InitializeSRWLock(&l->lock);
+#else
+  pthread_rwlock_init(&l->lock, NULL);
+#endif
 }
 
 void l_rwlock_rdlock(l_rwlock_t *l) {
-  l_mutex_lock(&l->lock);
+  size_t self = l_thread_selfid();
+  /* Check if we are the writer (recursion) */
+#if defined(__cplusplus)
+  if (l->writer_thread_id.load() == self) {
+#else
+  if (atomic_load(&l->writer_thread_id) == self) {
+#endif
+    /* If we are the writer, we already have exclusive access.
+       Just treat this as another level of write lock (since we already block everyone else). */
+    l->write_recursion++;
+    return;
+  }
+
+#if defined(LUA_USE_WINDOWS)
+  AcquireSRWLockShared(&l->lock);
+#else
+  pthread_rwlock_rdlock(&l->lock);
+#endif
 }
 
 void l_rwlock_wrlock(l_rwlock_t *l) {
-  l_mutex_lock(&l->lock);
+  size_t self = l_thread_selfid();
+#if defined(__cplusplus)
+  if (l->writer_thread_id.load() == self) {
+#else
+  if (atomic_load(&l->writer_thread_id) == self) {
+#endif
+    l->write_recursion++;
+    return;
+  }
+
+#if defined(LUA_USE_WINDOWS)
+  AcquireSRWLockExclusive(&l->lock);
+#else
+  pthread_rwlock_wrlock(&l->lock);
+#endif
+
+  /* We now hold the lock. Set ID. */
+#if defined(__cplusplus)
+  l->writer_thread_id.store(self);
+#else
+  atomic_store(&l->writer_thread_id, self);
+#endif
+  l->write_recursion = 1;
 }
 
 void l_rwlock_unlock(l_rwlock_t *l) {
-  l_mutex_unlock(&l->lock);
+  size_t self = l_thread_selfid();
+#if defined(__cplusplus)
+  if (l->writer_thread_id.load() == self) {
+#else
+  if (atomic_load(&l->writer_thread_id) == self) {
+#endif
+    l->write_recursion--;
+    if (l->write_recursion == 0) {
+      /* Releasing the write lock */
+#if defined(__cplusplus)
+      l->writer_thread_id.store(0);
+#else
+      atomic_store(&l->writer_thread_id, 0);
+#endif
+#if defined(LUA_USE_WINDOWS)
+      ReleaseSRWLockExclusive(&l->lock);
+#else
+      pthread_rwlock_unlock(&l->lock);
+#endif
+    }
+    /* Else: We just decremented recursion count. Do nothing else. */
+  } else {
+    /* We must be a reader */
+#if defined(LUA_USE_WINDOWS)
+    ReleaseSRWLockShared(&l->lock);
+#else
+    pthread_rwlock_unlock(&l->lock);
+#endif
+  }
 }
 
 void l_rwlock_destroy(l_rwlock_t *l) {
-  l_mutex_destroy(&l->lock);
+#if defined(LUA_USE_WINDOWS)
+  /* SRWLock doesn't need destroy */
+#else
+  pthread_rwlock_destroy(&l->lock);
+#endif
 }
 
 /* Thread */
