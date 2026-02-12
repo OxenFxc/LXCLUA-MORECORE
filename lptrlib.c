@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -22,7 +23,7 @@
 
 static int l_ptr_addr (lua_State *L) {
   const void *p = lua_topointer(L, 1);
-  lua_pushlightuserdata(L, (void *)p);
+  lua_pushinteger(L, (lua_Integer)p);
   return 1;
 }
 
@@ -31,7 +32,7 @@ static int l_ptr_add (lua_State *L) {
   const void *p = lua_topointer(L, 1);
   ptrdiff_t offset = luaL_checkinteger(L, 2);
   p = (char *)p + offset;
-  lua_pushlightuserdata(L, (void *)p);
+  lua_pushpointer(L, (void *)p);
   return 1;
 }
 
@@ -116,14 +117,19 @@ static int l_ptr_write (lua_State *L) {
 
 static int l_ptr_malloc (lua_State *L) {
   size_t size = luaL_checkinteger(L, 1);
-  void *p = lua_newuserdata(L, size);
-  lua_pushlightuserdata(L, p);
+  void *p = malloc(size);
+  if (p == NULL) return luaL_error(L, "malloc failed");
+  lua_pushpointer(L, p);
   return 1;
 }
 
 
 static int l_ptr_free (lua_State *L) {
-  /* Lua's garbage collector will handle memory freeing */
+  /* Manual memory management for pointers */
+  if (lua_ispointer(L, 1)) {
+    void *p = (void *)lua_topointer(L, 1);
+    free(p);
+  }
   return 0;
 }
 

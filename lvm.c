@@ -388,6 +388,14 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
       } else if (ttisstruct(t)) {
         luaS_structindex(L, t, key, val);
         return;
+      } else if (ttispointer(t)) {
+        if (ttisinteger(key)) {
+          unsigned char *p = (unsigned char *)ptrvalue(t);
+          setivalue(s2v(val), p[ivalue(key)]);
+        } else {
+          setnilvalue(s2v(val));
+        }
+        return;
       } else {
         if (ttisstring(t) && ttisinteger(key)) {
           size_t l = tsslen(tsvalue(t));
@@ -498,6 +506,15 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     else {  /* not a table? or slot is NULL */
       if (ttisstruct(t)) {
         luaS_structnewindex(L, t, key, val);
+        return;
+      }
+      else if (ttispointer(t)) {
+        if (ttisinteger(key) && ttisinteger(val)) {
+          unsigned char *p = (unsigned char *)ptrvalue(t);
+          p[ivalue(key)] = (unsigned char)ivalue(val);
+        } else {
+          luaG_runerror(L, "pointer index/value must be integer");
+        }
         return;
       }
       else if (ttistable(t)) {
@@ -846,6 +863,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     case LUA_VNUMINT: return (ivalue(t1) == ivalue(t2));
     case LUA_VNUMFLT: return luai_numeq(fltvalue(t1), fltvalue(t2));
     case LUA_VLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
+    case LUA_VPOINTER: return ptrvalue(t1) == ptrvalue(t2);
     case LUA_VLCF: return fvalue(t1) == fvalue(t2);
     case LUA_VSHRSTR: return eqshrstr(tsvalue(t1), tsvalue(t2));
     case LUA_VLNGSTR: return luaS_eqlngstr(tsvalue(t1), tsvalue(t2));
@@ -1846,15 +1864,39 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_ADDI) {
-        op_arithI(L, l_addi, luai_numadd);
+        TValue *v1 = vRB(i);
+        int imm = GETARG_sC(i);
+        if (ttispointer(v1)) {
+           StkId ra = RA(i);
+           setptrvalue(s2v(ra), (char *)ptrvalue(v1) + imm);
+           pc++;
+        } else {
+           op_arithI(L, l_addi, luai_numadd);
+        }
         vmbreak;
       }
       vmcase(OP_ADDK) {
-        op_arithK(L, l_addi, luai_numadd);
+        TValue *v1 = vRB(i);
+        TValue *v2 = KC(i);
+        if (ttispointer(v1) && ttisinteger(v2)) {
+          StkId ra = RA(i);
+          setptrvalue(s2v(ra), (char *)ptrvalue(v1) + ivalue(v2));
+          pc++;
+        } else {
+          op_arithK(L, l_addi, luai_numadd);
+        }
         vmbreak;
       }
       vmcase(OP_SUBK) {
-        op_arithK(L, l_subi, luai_numsub);
+        TValue *v1 = vRB(i);
+        TValue *v2 = KC(i);
+        if (ttispointer(v1) && ttisinteger(v2)) {
+          StkId ra = RA(i);
+          setptrvalue(s2v(ra), (char *)ptrvalue(v1) - ivalue(v2));
+          pc++;
+        } else {
+          op_arithK(L, l_subi, luai_numsub);
+        }
         vmbreak;
       }
       vmcase(OP_MULK) {
@@ -1912,11 +1954,35 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_ADD) {
-        op_arith(L, l_addi, luai_numadd);
+        TValue *v1 = vRB(i);
+        TValue *v2 = vRC(i);
+        if (ttispointer(v1) && ttisinteger(v2)) {
+          StkId ra = RA(i);
+          setptrvalue(s2v(ra), (char *)ptrvalue(v1) + ivalue(v2));
+          pc++;
+        } else if (ttisinteger(v1) && ttispointer(v2)) {
+          StkId ra = RA(i);
+          setptrvalue(s2v(ra), (char *)ptrvalue(v2) + ivalue(v1));
+          pc++;
+        } else {
+          op_arith_aux(L, v1, v2, l_addi, luai_numadd);
+        }
         vmbreak;
       }
       vmcase(OP_SUB) {
-        op_arith(L, l_subi, luai_numsub);
+        TValue *v1 = vRB(i);
+        TValue *v2 = vRC(i);
+        if (ttispointer(v1) && ttisinteger(v2)) {
+          StkId ra = RA(i);
+          setptrvalue(s2v(ra), (char *)ptrvalue(v1) - ivalue(v2));
+          pc++;
+        } else if (ttispointer(v1) && ttispointer(v2)) {
+          StkId ra = RA(i);
+          setivalue(s2v(ra), (char *)ptrvalue(v1) - (char *)ptrvalue(v2));
+          pc++;
+        } else {
+          op_arith_aux(L, v1, v2, l_subi, luai_numsub);
+        }
         vmbreak;
       }
       vmcase(OP_MUL) {

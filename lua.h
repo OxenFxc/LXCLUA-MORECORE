@@ -94,8 +94,9 @@ typedef struct lua_State lua_State;
 #define LUA_TUSERDATA		7
 #define LUA_TTHREAD		8
 #define LUA_TSTRUCT		9
+#define LUA_TPOINTER		10
 
-#define LUA_NUMTYPES		10
+#define LUA_NUMTYPES		11
 /** @} */
 
 
@@ -598,6 +599,14 @@ LUA_API lua_State      *(lua_tothread) (lua_State *L, int idx);
  * @return The pointer value.
  */
 LUA_API const void     *(lua_topointer) (lua_State *L, int idx);
+
+/**
+ * @brief Pushes a raw pointer value onto the stack.
+ *
+ * @param L The Lua state.
+ * @param p The pointer value.
+ */
+LUA_API void (lua_pushpointer) (lua_State *L, void *p);
 
 
 /*
@@ -1353,6 +1362,14 @@ LUA_API void (luaB_hotfix) (lua_State *L, int oldidx, int newidx);
  * @param n The index.
  */
 #define lua_islightuserdata(L,n)	(lua_type(L, (n)) == LUA_TLIGHTUSERDATA)
+
+/**
+ * @brief Returns true if the value at the given index is a raw pointer.
+ *
+ * @param L The Lua state.
+ * @param n The index.
+ */
+#define lua_ispointer(L,n)	(lua_type(L, (n)) == LUA_TPOINTER)
 
 /**
  * @brief Returns true if the value at the given index is nil.
