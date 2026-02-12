@@ -28,6 +28,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 #include "llimits.h"
+#include "lobfuscate.h"
 
 #define STB_IMAGE_WRITE_STATIC
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -318,6 +319,7 @@ static int str_dump (lua_State *L) {
   int obfuscate_flags = 0;
   unsigned int seed = 0;
   const char *log_path = NULL;  /* 日志输出路径 */
+  int prevent_recompile = 1; /* 默认开启防止重编译 */
   
   luaL_checktype(L, 1, LUA_TFUNCTION);
   
@@ -325,6 +327,13 @@ static int str_dump (lua_State *L) {
   if (lua_istable(L, 2)) {
     /* 表参数形式：读取各个字段 */
     
+    /* 读取 prevent_recompile 字段 */
+    lua_getfield(L, 2, "prevent_recompile");
+    if (!lua_isnil(L, -1)) {
+      prevent_recompile = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
     /* 读取 strip 字段 */
     lua_getfield(L, 2, "strip");
     if (!lua_isnil(L, -1)) {
@@ -361,6 +370,10 @@ static int str_dump (lua_State *L) {
     /* 兼容旧的布尔参数形式 */
     strip = lua_toboolean(L, 2);
     lua_pushnil(L);  /* 占位 */
+  }
+
+  if (prevent_recompile) {
+    obfuscate_flags |= OBFUSCATE_NO_RECOMPILE;
   }
   
   /* 栈: [func, table/bool, log_path_or_nil]

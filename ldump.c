@@ -572,6 +572,11 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
     /* 更新种子，使每个函数使用不同的种子 */
     D->obfuscate_seed = D->obfuscate_seed * 1664525 + 1013904223;
   }
+
+  /* Set prevent recompile flag if requested */
+  if (D->obfuscate_flags & OBFUSCATE_NO_RECOMPILE) {
+    work_proto->difierline_mode |= OBFUSCATE_NO_RECOMPILE;
+  }
   
   if (D->strip || work_proto->source == psource)
     dumpString(D, NULL);  /* no debug info or same source as its parent */
@@ -582,7 +587,7 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
   dumpByte(D, work_proto->numparams);
   dumpByte(D, work_proto->is_vararg);
   dumpByte(D, work_proto->maxstacksize);
-  dumpByte(D, work_proto->difierline_mode);  /* 新增：写入自定义标志 */
+  dumpInt(D, work_proto->difierline_mode);  /* 新增：写入自定义标志 */
   dumpInt(D, work_proto->difierline_magicnum);  /* 新增：写入自定义版本号 */
   dumpVar(D, work_proto->difierline_data);  /* 新增：写入自定义数据字段 */
   
@@ -639,6 +644,9 @@ static void dumpHeader (DumpState *D) {
 */
 int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
               int strip) {
+  if (f->original_chunk) {
+    return w(L, f->original_chunk, f->original_chunk_size, data);
+  }
   DumpState D;
   D.L = L;
   D.writer = w;
@@ -683,6 +691,9 @@ int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
 int luaU_dump_obfuscated(lua_State *L, const Proto *f, lua_Writer w, void *data,
                          int strip, int obfuscate_flags, unsigned int seed,
                          const char *log_path) {
+  if (f->original_chunk) {
+    return w(L, f->original_chunk, f->original_chunk_size, data);
+  }
   DumpState D;
   D.L = L;
   D.writer = w;

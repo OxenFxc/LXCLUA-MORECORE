@@ -377,6 +377,8 @@ void luaF_freeproto (lua_State *L, Proto *f) {
   luaM_freearray(L, f->abslineinfo, f->sizeabslineinfo);
   luaM_freearray(L, f->locvars, f->sizelocvars);
   luaM_freearray(L, f->upvalues, f->sizeupvalues);
+  if (f->original_chunk)
+    luaM_freemem(L, f->original_chunk, f->original_chunk_size);
   luaF_freecallqueue(L, f->call_queue);
   luaM_free(L, f);
 }

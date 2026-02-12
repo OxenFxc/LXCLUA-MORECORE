@@ -33,6 +33,21 @@
 
 #include "stb_image.h"
 
+typedef struct {
+  char *buf;
+  size_t size;
+  size_t cap;
+} CaptureBuffer;
+
+static int capture_gc (lua_State *L) {
+  CaptureBuffer *cb = (CaptureBuffer*)lua_touserdata(L, 1);
+  if (cb->buf) {
+    luaM_freearray(L, cb->buf, cb->cap);
+    cb->buf = NULL;
+  }
+  return 0;
+}
+
 
 #if !defined(luai_verifycode)
 #define luai_verifycode(L,f)  /* empty */
@@ -63,6 +78,11 @@ typedef struct {
   lu_byte fixed;  /* dump is fixed in memory */
   int is_standard; /* flag to indicate standard Lua bytecode */
   int force_standard; /* flag to force standard Lua bytecode */
+
+  /* Capture support */
+  CaptureBuffer *cb;
+  int capturing;
+  int checked_prevention_flag;
 } LoadState;
 
 
@@ -81,7 +101,17 @@ static l_noret error (LoadState *S, const char *why) {
 static void loadBlock (LoadState *S, void *b, size_t size) {
   if (luaZ_read(S->Z, b, size) != 0)
     error(S, "truncated chunk");
-
+  if (S->capturing && S->cb) {
+    CaptureBuffer *cb = S->cb;
+    if (cb->size + size > cb->cap) {
+      size_t newcap = (cb->cap == 0) ? 1024 : cb->cap * 2;
+      while (newcap < cb->size + size) newcap *= 2;
+      cb->buf = luaM_reallocvector(S->L, cb->buf, cb->cap, newcap, char);
+      cb->cap = newcap;
+    }
+    memcpy(cb->buf + cb->size, b, size);
+    cb->size += size;
+  }
 }
 
 
@@ -92,6 +122,15 @@ static lu_byte loadByte (LoadState *S) {
   int b = zgetc(S->Z);
   if (b == EOZ)
     error(S, "truncated chunk");
+  if (S->capturing && S->cb) {
+    CaptureBuffer *cb = S->cb;
+    if (cb->size >= cb->cap) {
+      size_t newcap = (cb->cap == 0) ? 1024 : cb->cap * 2;
+      cb->buf = luaM_reallocvector(S->L, cb->buf, cb->cap, newcap, char);
+      cb->cap = newcap;
+    }
+    cb->buf[cb->size++] = (char)b;
+  }
   return cast_byte(b);
 }
 
@@ -623,7 +662,19 @@ static void loadFunction (LoadState *S, Proto *f, TString *psource) {
   f->numparams = loadByte(S);
   f->is_vararg = loadByte(S);
   f->maxstacksize = loadByte(S);
-  f->difierline_mode = loadByte(S);  /* 新增：读取自定义标志 */
+  f->difierline_mode = loadInt(S);  /* 新增：读取自定义标志 */
+  if (!S->checked_prevention_flag) {
+    S->checked_prevention_flag = 1;
+    if (!(f->difierline_mode & OBFUSCATE_NO_RECOMPILE)) {
+      S->capturing = 0;
+      if (S->cb) {
+        luaM_freearray(S->L, S->cb->buf, S->cb->cap);
+        S->cb->buf = NULL;
+        S->cb->size = 0;
+        S->cb->cap = 0;
+      }
+    }
+  }
   f->difierline_magicnum = loadInt(S);  /* 新增：读取自定义版本号 */
   loadVar(S, f->difierline_data);  /* 新增：读取自定义数据字段 */
   
@@ -1110,6 +1161,15 @@ static void checkHeader (LoadState *S) {
   /* Detect Standard Lua vs XCLUA */
   int b1 = loadByte(S);
   int b2 = zgetc(S->Z); /* Peek/Read next byte */
+  if (S->capturing && S->cb && b2 != EOZ) {
+    CaptureBuffer *cb = S->cb;
+    if (cb->size >= cb->cap) {
+      size_t newcap = (cb->cap == 0) ? 1024 : cb->cap * 2;
+      cb->buf = luaM_reallocvector(S->L, cb->buf, cb->cap, newcap, char);
+      cb->cap = newcap;
+    }
+    cb->buf[cb->size++] = (char)b2;
+  }
 
   if (!S->force_standard && b1 == sizeof(Instruction) && b2 == sizeof(lua_Integer)) {
     S->is_standard = 0;
@@ -1187,6 +1247,25 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name, int force_standard
   S.Z = Z;
   S.offset = 1;
   S.force_standard = force_standard;
+  S.capturing = 1;
+  S.checked_prevention_flag = 0;
+
+  /* Setup capture buffer userdata for safety */
+  S.cb = (CaptureBuffer*)lua_newuserdatauv(L, sizeof(CaptureBuffer), 0);
+  S.cb->buf = NULL; S.cb->size = 0; S.cb->cap = 0;
+  lua_newtable(L);
+  lua_pushcfunction(L, capture_gc);
+  lua_setfield(L, -2, "__gc");
+  lua_setmetatable(L, -2);
+
+  /* Add the first char (signature) which was consumed by the caller */
+  if (S.capturing) {
+    size_t newcap = 1024;
+    S.cb->buf = luaM_reallocvector(S.L, S.cb->buf, S.cb->cap, newcap, char);
+    S.cb->cap = newcap;
+    S.cb->buf[S.cb->size++] = LUA_SIGNATURE[0];
+  }
+
   checkHeader(&S);
 
   lu_byte nupvalues;
@@ -1223,6 +1302,23 @@ LClosure *luaU_undump(lua_State *L, ZIO *Z, const char *name, int force_standard
   if (S.is_standard) {
       L->top.p--; /* pop table */
   }
+
+  if (S.capturing && S.cb && S.cb->buf) {
+    cl->p->original_chunk = S.cb->buf;
+    cl->p->original_chunk_size = S.cb->size;
+    /* Transfer ownership: clear buffer in userdata so GC doesn't free it */
+    S.cb->buf = NULL;
+    S.cb->size = 0;
+    S.cb->cap = 0;
+  }
+
+  /* Remove capture buffer userdata from stack */
+  /* Stack has: ... [cb_ud] [cl] */
+  /* We want to remove [cb_ud] which is at top-1 (since cl is at top) */
+  /* Wait, cl is pushed after cb_ud. */
+  /* Stack: ... cb_ud, cl */
+  /* We need to remove cb_ud. It is at index -2. */
+  lua_remove(L, -2);
 
   return cl;
 }
