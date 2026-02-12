@@ -3406,10 +3406,11 @@ int luaO_executeVM (lua_State *L, Proto *f) {
   CallInfo *ci = L->ci;
   LClosure *cl = clLvalue(s2v(ci->func.p));
   TValue *k = f->k;
-  StkId base = ci->func.p + 1;
+  StkId base;
   int pc = (int)(ci->u.l.savedpc - f->code);
   lua_Number nb, nc;
   while (pc < vm->size) {
+    base = ci->func.p + 1;
     VMInstruction decrypted = decryptVMInst(vm->code[pc], vm->encrypt_key, pc);
     int vm_op = VM_GET_OP(decrypted), a = VM_GET_A(decrypted), b = VM_GET_B(decrypted), c = VM_GET_C(decrypted), flags = VM_GET_FLAGS(decrypted);
     int64_t bx = VM_GET_Bx(decrypted);
@@ -3427,7 +3428,7 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_LOADI: { setivalue(s2v(base + a), (lua_Integer)(bx - OFFSET_sBx)); break; }
       case OP_LOADK: { if (bx >= 0 && bx < f->sizek) setobj2s(L, base + a, k + bx); break; }
       case OP_LOADF: { setfltvalue(s2v(base + a), cast_num((lua_Integer)(bx - OFFSET_sBx))); break; }
-      case OP_LOADKX: { pc++; if (pc < f->sizecode) setobj2s(L, base + a, k + GETARG_Ax(f->code[pc])); break; }
+      case OP_LOADKX: { pc++; if (pc < vm->size) { VMInstruction next_inst = decryptVMInst(vm->code[pc], vm->encrypt_key, pc); setobj2s(L, base + a, k + (unsigned int)(VM_GET_Bx(next_inst))); } break; }
       case OP_LOADFALSE: { setbfvalue(s2v(base + a)); break; }
       case OP_LOADTRUE: { setbtvalue(s2v(base + a)); break; }
       case OP_LOADNIL: { StkId ra = base + a; for (int i=0; i<=b; i++) setnilvalue(s2v(ra++)); break; }
@@ -3467,7 +3468,7 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_SETI: { const TValue *slot; TValue *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastgeti(L, s2v(base + a), b, slot)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { TValue key; setivalue(&key, b); ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), &key, rc, slot); break; } break; }
       case OP_GETFIELD: { const TValue *slot; TValue *rc = k + c; if (luaV_fastget(L, s2v(base + b), tsvalue(rc), slot, luaH_getshortstr)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, s2v(base + b), rc, base + a, slot); break; } break; }
       case OP_SETFIELD: { const TValue *slot; TValue *rb = k + b, *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastget(L, s2v(base + a), tsvalue(rb), slot, luaH_getshortstr)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), rb, rc, slot); break; } break; }
-      case OP_NEWTABLE: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); int asize = c; if (flags) { pc++; if (pc < f->sizecode) asize += GETARG_Ax(f->code[pc]) * (MAXARG_C + 1); } L->top.p = base + a + 1; Table *t_ = luaH_new(L); sethvalue2s(L, base + a, t_); if (b || asize) { int hsize = (b > 0) ? (1u << (b - 1)) : 0; luaH_resize(L, t_, asize, hsize); } break; }
+      case OP_NEWTABLE: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); int asize = c; if (flags) { pc++; if (pc < vm->size) { VMInstruction next_inst = decryptVMInst(vm->code[pc], vm->encrypt_key, pc); asize += (unsigned int)(VM_GET_Bx(next_inst)) * (MAXARG_C + 1); } } L->top.p = base + a + 1; Table *t_ = luaH_new(L); sethvalue2s(L, base + a, t_); if (b || asize) { int hsize = (b > 0) ? (1u << (b - 1)) : 0; luaH_resize(L, t_, asize, hsize); } break; }
       case OP_SELF: { TValue *rb = s2v(base + b), *rc = (flags) ? k + c : s2v(base + c); setobj2s(L, base + a + 1, rb); const TValue *slot; if (luaV_fastget(L, rb, tsvalue(rc), slot, luaH_getstr)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, rb, rc, base + a, slot); break; } break; }
       case OP_ADDI: { TValue *rb = s2v(base + b); int imm = sC2int(c); if (ttispointer(rb)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + imm); pc++; } else if (ttisinteger(rb)) { setivalue(s2v(base + a), intop(+, ivalue(rb), (lua_Integer)imm)); pc++; } else if (tonumberns(rb, nb)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, cast_num(imm))); pc++; } else { break; } break; }
       case OP_ADDK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + ivalue(rc)); pc++; } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); pc++; } else { break; } break; }
@@ -3514,7 +3515,7 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_TEST: { if (l_isfalse(s2v(base + a)) == flags) pc++; break; }
       case OP_TESTSET: { TValue *rb = s2v(base + b); if (l_isfalse(rb) == flags) pc++; else setobj2s(L, base + a, rb); break; }
       case OP_SPACESHIP: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer res; if (ttisinteger(rb) && ttisinteger(rc)) { lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc); res = (ib < ic) ? -1 : ((ib > ic) ? 1 : 0); setivalue(s2v(base + a), res); } else if (ttisnumber(rb) && ttisnumber(rc)) { lua_Number nb, nc; luaV_tonumber_(rb, &nb); luaV_tonumber_(rc, &nc); res = (nb < nc) ? -1 : ((nb > nc) ? 1 : 0); setivalue(s2v(base + a), res); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_VARARG: { int n = c - 1; int vatab = flags ? b : -1; ci->u.l.savedpc = (const Instruction *)(f->code + pc); luaT_getvarargs(L, ci, base + a, n); if (vatab >= 0) { /* handle vatab */ } break; }
+      case OP_VARARG: { int n = c - 1; ci->u.l.savedpc = (const Instruction *)(f->code + pc); luaT_getvarargs(L, ci, base + a, n); break; }
       case OP_GETVARG: { luaT_getvararg(L, ci, base + a, s2v(base + c)); break; }
       case OP_VARARGPREP: { luaT_adjustvarargs(L, a, ci, cl->p); base = ci->func.p + 1; break; }
       case OP_IS: { TValue *ra = s2v(base + a); TValue *rb = k + b; const char *typename_expected = getstr(tsvalue(rb)); const char *typename_actual; const TValue *tm = luaT_gettmbyobj(L, ra, TM_TYPE); if (!notm(tm) && ttisstring(tm)) typename_actual = getstr(tsvalue(tm)); else typename_actual = luaT_objtypename(L, ra); if ((strcmp(typename_actual, typename_expected) == 0) != flags) pc++; break; }
@@ -3535,7 +3536,18 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_ADDMETHOD: { TString *method_name = tsvalue(&k[b]); int param_count = c; if (ttistable(s2v(base + a))) { Table *t = hvalue(s2v(base + a)); TValue key; setsvalue(L, &key, luaS_newliteral(L, "__methods")); const TValue *methods_tv = luaH_getstr(t, tsvalue(&key)); if (ttistable(methods_tv)) { Table *methods = hvalue(methods_tv); TValue method_key, method_val; setsvalue(L, &method_key, method_name); setivalue(&method_val, param_count); luaH_set(L, methods, &method_key, &method_val); } } break; }
       case OP_CASE: { StkId ra = base + a; TValue rb; setobj(L, &rb, s2v(base + b)); TValue rc; setobj(L, &rc, s2v(base + c)); Table *t; L->top.p = ra + 1; t = luaH_new(L); sethvalue2s(L, ra, t); luaH_setint(L, t, 1, &rb); luaH_setint(L, t, 2, &rc); checkGC(L, ra + 1); break; }
       case OP_CALL: { StkId ra = base + a; if (b) L->top.p = ra + b; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); if (luaD_precall(L, ra, c - 1)) { luaV_execute(L, L->ci); } base = ci->func.p + 1; break; }
-      case OP_RETURN: { StkId ra = base + a; int n_ = b - 1; if (n_ < 0) n_ = cast_int(L->top.p - ra); L->top.p = ra + n_; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); luaD_poscall(L, ci, n_); return 0; }
+      case OP_TAILCALL: {
+        ci->u.l.savedpc = (const Instruction *)(f->code + pc);
+        return 1;
+      }
+      case OP_RETURN: {
+        StkId ra = base + a; int n_ = b - 1;
+        if (n_ < 0) n_ = cast_int(L->top.p - ra);
+        L->top.p = ra + n_;
+        ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1);
+        luaD_poscall(L, ci, n_);
+        return 0;
+      }
       case OP_RETURN0: { ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); L->ci = ci->previous; L->top.p = base - 1; for (int nres = ci->nresults; nres > 0; nres--) setnilvalue(s2v(L->top.p++)); return 0; }
       case OP_RETURN1: { int nres = ci->nresults; ci->u.l.savedpc = (const Instruction *)(f->code + pc + 1); L->ci = ci->previous; if (!nres) L->top.p = base - 1; else { setobjs2s(L, base - 1, base + a); L->top.p = base; for (; nres > 1; nres--) setnilvalue(s2v(L->top.p++)); } return 0; }
       case OP_FORLOOP: {
@@ -3613,8 +3625,10 @@ int luaO_executeVM (lua_State *L, Proto *f) {
         last += n;
         if (flags) {
           pc++;
-          if (pc < f->sizecode)
-             last += GETARG_Ax(f->code[pc]) * (MAXARG_C + 1);
+          if (pc < vm->size) {
+             VMInstruction next_inst = decryptVMInst(vm->code[pc], vm->encrypt_key, pc);
+             last += (unsigned int)(VM_GET_Bx(next_inst)) * (MAXARG_C + 1);
+          }
         }
         if (last > luaH_realasize(h))
           luaH_resizearray(L, h, last);
