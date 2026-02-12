@@ -724,6 +724,7 @@ l_sinline void *touserdata (const TValue *o) {
   switch (ttype(o)) {
     case LUA_TUSERDATA: return getudatamem(uvalue(o));
     case LUA_TLIGHTUSERDATA: return pvalue(o);
+    case LUA_TPOINTER: return ptrvalue(o);
     default: return NULL;
   }
 }
@@ -766,7 +767,7 @@ LUA_API const void *lua_topointer (lua_State *L, int idx) {
   const TValue *o = index2value(L, idx);
   switch (ttypetag(o)) {
     case LUA_VLCF: return cast_voidp(cast_sizet(fvalue(o)));
-    case LUA_VUSERDATA: case LUA_VLIGHTUSERDATA:
+    case LUA_VUSERDATA: case LUA_VLIGHTUSERDATA: case LUA_VPOINTER:
       return touserdata(o);
     default: {
       if (iscollectable(o))
@@ -792,6 +793,20 @@ LUA_API const void *lua_topointer (lua_State *L, int idx) {
 LUA_API void lua_pushnil (lua_State *L) {
   lua_lock(L);
   setnilvalue(s2v(L->top.p));
+  api_incr_top(L);
+  lua_unlock(L);
+}
+
+
+/**
+ * @brief Pushes a raw pointer value onto the stack.
+ *
+ * @param L The Lua state.
+ * @param p The pointer value.
+ */
+LUA_API void lua_pushpointer (lua_State *L, void *p) {
+  lua_lock(L);
+  setptrvalue(s2v(L->top.p), p);
   api_incr_top(L);
   lua_unlock(L);
 }
