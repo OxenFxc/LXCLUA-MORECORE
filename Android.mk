@@ -63,6 +63,7 @@ LOCAL_SRC_FILES := \
 	lptrlib.c \
 	lsmgrlib.c \
 	llibc.c \
+	lvmpro.c\
 	logtable.c \
 	json_parser.c \
 	lstruct.c \
