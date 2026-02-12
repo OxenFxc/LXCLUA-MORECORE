@@ -647,15 +647,20 @@ static void loadFunction (LoadState *S, Proto *f, TString *psource) {
   /* 首先读取时间戳，确保字符串解密时能正确使用 */
   loadVar(S, S->timestamp);
   
-  f->source = loadStringN(S, f);
-  if (f->source == NULL)  /* no source in dump? */
-    f->source = psource;  /* reuse parent's source */
-  f->linedefined = loadInt(S);
-  f->lastlinedefined = loadInt(S);
   f->numparams = loadByte(S);
   f->is_vararg = loadByte(S);
   f->maxstacksize = loadByte(S);
   f->difierline_mode = loadByte(S);  /* 新增：读取自定义标志 */
+
+  f->difierline_pad = loadInt(S); /* Padding */
+
+  f->linedefined = loadInt(S);
+  f->lastlinedefined = loadInt(S);
+
+  f->source = loadStringN(S, f);
+  if (f->source == NULL)  /* no source in dump? */
+    f->source = psource;  /* reuse parent's source */
+
   f->difierline_magicnum = loadInt(S);  /* 新增：读取自定义版本号 */
   loadVar(S, f->difierline_data);  /* 新增：读取自定义数据字段 */
   

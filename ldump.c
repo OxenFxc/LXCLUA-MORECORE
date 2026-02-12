@@ -606,16 +606,21 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
     D->obfuscate_seed = D->obfuscate_seed * 1664525 + 1013904223;
   }
   
-  if (D->strip || work_proto->source == psource)
-    dumpString(D, NULL);  /* no debug info or same source as its parent */
-  else
-    dumpString(D, work_proto->source);
-  dumpInt(D, work_proto->linedefined);
-  dumpInt(D, work_proto->lastlinedefined);
   dumpByte(D, work_proto->numparams);
   dumpByte(D, work_proto->is_vararg);
   dumpByte(D, work_proto->maxstacksize);
   dumpByte(D, work_proto->difierline_mode);  /* 新增：写入自定义标志 */
+
+  dumpInt(D, 0x1337C0DE); /* Padding */
+
+  dumpInt(D, work_proto->linedefined);
+  dumpInt(D, work_proto->lastlinedefined);
+
+  if (D->strip || work_proto->source == psource)
+    dumpString(D, NULL);  /* no debug info or same source as its parent */
+  else
+    dumpString(D, work_proto->source);
+
   dumpInt(D, work_proto->difierline_magicnum);  /* 新增：写入自定义版本号 */
   dumpVar(D, work_proto->difierline_data);  /* 新增：写入自定义数据字段 */
   
