@@ -669,12 +669,16 @@ LUAI_FUNC int luaF_callqueuepop (lua_State *L, CallQueue *q, int *nargs, TValue 
  */
 typedef struct Proto {
   CommonHeader;
+  Instruction *code;  /**< Opcodes (bytecode). */
+  TValue *k;  /**< Constants used by the function. */
+  struct Proto **p;  /**< Functions defined inside this function. */
   lu_byte numparams;  /**< Number of fixed (named) parameters. */
   lu_byte flag;       /**< Flags. */
   lu_byte is_vararg;  /**< Vararg flag. */
   lu_byte maxstacksize;  /**< Number of registers needed by this function. */
   lu_byte nodiscard;     /**< Function is marked as nodiscard. */
   lu_byte difierline_mode;      /**< Obfuscation mode flags. */
+  int difierline_pad;      /**< Padding for obfuscation. */
   int difierline_magicnum;      /**< Magic number for identification. */
   uint64_t difierline_data;      /**< Extra data for obfuscation. */
   int sizeupvalues;  /**< Size of 'upvalues' array. */
@@ -686,9 +690,6 @@ typedef struct Proto {
   int sizeabslineinfo;  /**< Size of 'abslineinfo' array. */
   int linedefined;  /**< Debug information: start line. */
   int lastlinedefined;  /**< Debug information: end line. */
-  TValue *k;  /**< Constants used by the function. */
-  Instruction *code;  /**< Opcodes (bytecode). */
-  struct Proto **p;  /**< Functions defined inside this function. */
   Upvaldesc *upvalues;  /**< Upvalue information. */
   ls_byte *lineinfo;  /**< Map from opcodes to source lines. */
   AbsLineInfo *abslineinfo;  /**< Map from opcodes to absolute source lines. */
