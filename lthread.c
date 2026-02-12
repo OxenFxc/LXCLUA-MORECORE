@@ -72,7 +72,14 @@ int l_cond_wait_timeout(l_cond_t *c, l_mutex_t *m, long ms) {
   return (GetLastError() == ERROR_TIMEOUT) ? LTHREAD_TIMEDOUT : -1;
 #else
   struct timespec ts;
+#if defined(__EMSCRIPTEN__)
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  ts.tv_sec = tv.tv_sec;
+  ts.tv_nsec = tv.tv_usec * 1000;
+#else
   clock_gettime(CLOCK_REALTIME, &ts);
+#endif
   ts.tv_sec += ms / 1000;
   ts.tv_nsec += (ms % 1000) * 1000000;
   if (ts.tv_nsec >= 1000000000) {

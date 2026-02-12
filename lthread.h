@@ -9,6 +9,9 @@
   #include <pthread.h>
   #include <time.h>
   #include <errno.h>
+  #if defined(__EMSCRIPTEN__)
+    #include <sys/time.h>
+  #endif
 #endif
 
 /* Atomic support for Writer Recursion tracking */
