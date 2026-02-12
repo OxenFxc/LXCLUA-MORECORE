@@ -683,7 +683,7 @@ static void loadFunction (LoadState *S, Proto *f, TString *psource) {
     int map_size = loadInt(S);
     int *reverse_map = luaM_newvector(S->L, map_size, int);
     for (int i = 0; i < map_size; i++) {
-      reverse_map[i] = loadInt(S);
+      reverse_map[i] = loadInt(S) - 1;
     }
     
     /* 注册VM代码到全局表 */

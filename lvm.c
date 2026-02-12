@@ -1752,8 +1752,16 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   if (cl->p->difierline_mode & OBFUSCATE_VM_PROTECT) {
     int vm_result = luaO_executeVM(L, cl->p);
     if (vm_result == 0) {
-      /** VM execution successful, return directly */
-      return;
+      /** VM execution successful */
+      /* Check if we should return to C or continue in interpreter */
+      /* The finished function is at L->ci->next (if L->ci was updated to previous) */
+      /* Note: luaO_executeVM updates L->ci to previous before returning 0 */
+      if (L->ci->next->callstatus & CIST_FRESH)
+        return;
+      else {
+        ci = L->ci;
+        goto returning;
+      }
     }
     /** vm_result == 1 means fallback to native VM */
   }

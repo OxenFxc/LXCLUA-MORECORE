@@ -31,6 +31,7 @@
 #include "lfunc.h"
 #include "lstring.h"
 #include "lclass.h"
+#include "lthread.h"
 #include <math.h>
 
 /* 全局日志文件指针 - 由 luaO_flatten 设置 */
@@ -2818,10 +2819,10 @@ VMProtectContext *luaO_initVMContext (lua_State *L, Proto *f, unsigned int seed)
   
   /* 初始化映射表 */
   for (int i = 0; i < NUM_OPCODES; i++) {
-    ctx->opcode_map[i] = 0;  /* 默认映射到0 */
+    ctx->opcode_map[i] = -1;
   }
   for (int i = 0; i < VM_MAP_SIZE; i++) {
-    ctx->reverse_map[i] = 0;  /* 修复：初始化为0而非-1，避免序列化时64位负数溢出 */
+    ctx->reverse_map[i] = -1;
   }
   
   /* 生成混淆的操作码映射 */
@@ -2829,6 +2830,17 @@ VMProtectContext *luaO_initVMContext (lua_State *L, Proto *f, unsigned int seed)
   
   int *used = (int *)luaM_malloc_(L, sizeof(int) * VM_MAP_SIZE, 0);
   memset(used, 0, sizeof(int) * VM_MAP_SIZE);
+
+  /* 确保 VM_OP_HALT 不会被映射为有效的 Lua 操作码 */
+  /* VM_OP_HALT 是最后一个 enum 值，如果不做处理，可能与随机生成的映射冲突 */
+  /* 我们在这里找到 VM_OP_HALT 对应的随机值（虽然它不在 NUM_OPCODES 中），并标记为已使用 */
+  /* 但是 VM_OP_HALT 在 convertLuaInstToVM 中是硬编码使用的常量。 */
+  /* 这个常量必须不等于任何 opcode_map[i] 的值。 */
+  /* VM_OP_HALT 的值是在编译时确定的（枚举）。如果它 < VM_MAP_SIZE，我们需要标记它。 */
+  if (VM_OP_HALT < VM_MAP_SIZE) {
+    used[VM_OP_HALT] = 1;
+  }
+
   for (int i = 0; i < NUM_OPCODES; i++) {
     int val;
     do {
@@ -3403,6 +3415,7 @@ int luaO_executeVM (lua_State *L, Proto *f) {
     int64_t bx = VM_GET_Bx(decrypted);
     int lua_op = vm->reverse_map[vm_op];
     
+
     if (lua_op < 0 || lua_op >= NUM_OPCODES) {
        if (vm_op == VM_OP_HALT) return 0;
        ci->u.l.savedpc = (const Instruction *)(f->code + pc);
@@ -3418,7 +3431,35 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_LOADFALSE: { setbfvalue(s2v(base + a)); break; }
       case OP_LOADTRUE: { setbtvalue(s2v(base + a)); break; }
       case OP_LOADNIL: { StkId ra = base + a; for (int i=0; i<=b; i++) setnilvalue(s2v(ra++)); break; }
-      case OP_GETTABUP: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; }
+      case OP_GETUPVAL: {
+        StkId ra = base + a;
+        setobj2s(L, ra, cl->upvals[b]->v.p);
+        break;
+      }
+      case OP_GETTABUP: {
+        StkId ra = base + a;
+        TValue *upval = cl->upvals[b]->v.p;
+        TValue *rc = k + c;
+        TString *key = tsvalue(rc);
+        if (ttistable(upval)) {
+           Table *h = hvalue(upval);
+           l_rwlock_rdlock(&h->lock);
+           const TValue *res = luaH_getshortstr(h, key);
+           if (!isempty(res)) {
+              setobj2s(L, ra, res);
+              l_rwlock_unlock(&h->lock);
+           } else {
+              l_rwlock_unlock(&h->lock);
+              savepc(L); L->top.p = ci->top.p;
+              luaV_finishget(L, upval, rc, ra, NULL);
+           }
+        }
+        else {
+          savepc(L); L->top.p = ci->top.p;
+          luaV_finishget(L, upval, rc, ra, NULL);
+        }
+        break;
+      }
       case OP_SETUPVAL: { if (b < cl->nupvalues) { UpVal *uv = cl->upvals[b]; setobj(L, uv->v.p, s2v(base + a)); luaC_barrier(L, uv, s2v(base + a)); } break; }
       case OP_GETTABLE: { const TValue *slot; if (luaV_fastget(L, s2v(base + b), s2v(base + c), slot, luaH_get)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, s2v(base + b), s2v(base + c), base + a, slot); break; } break; }
       case OP_SETTABLE: { const TValue *slot; TValue *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastget(L, s2v(base + a), s2v(base + b), slot, luaH_get)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), s2v(base + b), rc, slot); break; } break; }
@@ -3428,34 +3469,36 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_SETFIELD: { const TValue *slot; TValue *rb = k + b, *rc = (flags) ? k + c : s2v(base + c); if (luaV_fastget(L, s2v(base + a), tsvalue(rb), slot, luaH_getshortstr)) { luaV_finishfastset(L, s2v(base + a), slot, rc); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishset(L, s2v(base + a), rb, rc, slot); break; } break; }
       case OP_NEWTABLE: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); int asize = c; if (flags) { pc++; if (pc < f->sizecode) asize += GETARG_Ax(f->code[pc]) * (MAXARG_C + 1); } L->top.p = base + a + 1; Table *t_ = luaH_new(L); sethvalue2s(L, base + a, t_); if (b || asize) { int hsize = (b > 0) ? (1u << (b - 1)) : 0; luaH_resize(L, t_, asize, hsize); } break; }
       case OP_SELF: { TValue *rb = s2v(base + b), *rc = (flags) ? k + c : s2v(base + c); setobj2s(L, base + a + 1, rb); const TValue *slot; if (luaV_fastget(L, rb, tsvalue(rc), slot, luaH_getstr)) { setobj2s(L, base + a, slot); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_finishget(L, rb, rc, base + a, slot); break; } break; }
-      case OP_ADDI: { TValue *rb = s2v(base + b); int imm = sC2int(c); if (ttispointer(rb)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + imm); } else if (ttisinteger(rb)) { setivalue(s2v(base + a), intop(+, ivalue(rb), (lua_Integer)imm)); } else if (tonumberns(rb, nb)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, cast_num(imm))); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_ADDK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + ivalue(rc)); } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SUBK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) - ivalue(rc)); } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(-, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numsub(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_MULK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(*, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_nummul(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_MODK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_mod(L, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luaV_modf(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_POWK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numpow(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_DIVK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numdiv(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_IDIVK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_idiv(L, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numidiv(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_ADD: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + ivalue(rc)); } else if (ttisinteger(rb) && ttispointer(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rc) + ivalue(rb)); } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SUB: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) - ivalue(rc)); } else if (ttispointer(rb) && ttispointer(rc)) { setivalue(s2v(base + a), (char *)ptrvalue(rb) - (char *)ptrvalue(rc)); } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(-, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numsub(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_MUL: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(*, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_nummul(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_MOD: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_mod(L, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luaV_modf(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_POW: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numpow(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_DIV: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numdiv(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_IDIV: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_idiv(L, ivalue(rb), ivalue(rc))); } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numidiv(L, nb, nc)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BANDK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(&, i1, ivalue(rc))); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BORK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(|, i1, ivalue(rc))); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BXORK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(^, i1, ivalue(rc))); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SHLI: { TValue *rb = s2v(base + b); int ic = sC2int(c); lua_Integer ib; if (tointegerns(rb, &ib)) { setivalue(s2v(base + a), luaV_shiftl(ib, ic)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SHRI: { TValue *rb = s2v(base + b); int ic = sC2int(c); lua_Integer ib; if (tointegerns(rb, &ib)) { setivalue(s2v(base + a), luaV_shiftl(ib, -ic)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BAND: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(&, i1, i2)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BOR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(|, i1, i2)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_BXOR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(^, i1, i2)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SHL: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), luaV_shiftl(i1, i2)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
-      case OP_SHR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), luaV_shiftl(i1, -i2)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
+      case OP_ADDI: { TValue *rb = s2v(base + b); int imm = sC2int(c); if (ttispointer(rb)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + imm); pc++; } else if (ttisinteger(rb)) { setivalue(s2v(base + a), intop(+, ivalue(rb), (lua_Integer)imm)); pc++; } else if (tonumberns(rb, nb)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, cast_num(imm))); pc++; } else { break; } break; }
+      case OP_ADDK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + ivalue(rc)); pc++; } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_SUBK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) - ivalue(rc)); pc++; } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(-, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numsub(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_MULK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(*, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_nummul(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_MODK: { TValue *rb = s2v(base + b); TValue *rc = k + c; savepc(L); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_mod(L, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luaV_modf(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_POWK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numpow(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_DIVK: { TValue *rb = s2v(base + b); TValue *rc = k + c; if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numdiv(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_IDIVK: { TValue *rb = s2v(base + b); TValue *rc = k + c; savepc(L); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_idiv(L, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numidiv(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_ADD: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) + ivalue(rc)); pc++; } else if (ttisinteger(rb) && ttispointer(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rc) + ivalue(rb)); pc++; } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(+, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numadd(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_SUB: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttispointer(rb) && ttisinteger(rc)) { setptrvalue(s2v(base + a), (char *)ptrvalue(rb) - ivalue(rc)); pc++; } else if (ttispointer(rb) && ttispointer(rc)) { setivalue(s2v(base + a), (char *)ptrvalue(rb) - (char *)ptrvalue(rc)); pc++; } else if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(-, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numsub(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_MUL: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), intop(*, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_nummul(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_MOD: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_mod(L, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luaV_modf(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_POW: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numpow(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_DIV: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numdiv(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_IDIV: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); if (ttisinteger(rb) && ttisinteger(rc)) { setivalue(s2v(base + a), luaV_idiv(L, ivalue(rb), ivalue(rc))); pc++; } else if (tonumberns(rb, nb) && tonumberns(rc, nc)) { setfltvalue(s2v(base + a), luai_numidiv(L, nb, nc)); pc++; } else { break; } break; }
+      case OP_BANDK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(&, i1, ivalue(rc))); pc++; } else { break; } break; }
+      case OP_BORK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(|, i1, ivalue(rc))); pc++; } else { break; } break; }
+      case OP_BXORK: { TValue *rb = s2v(base + b); TValue *rc = k + c; lua_Integer i1; if (tointegerns(rb, &i1)) { setivalue(s2v(base + a), intop(^, i1, ivalue(rc))); pc++; } else { break; } break; }
+      case OP_SHLI: { TValue *rb = s2v(base + b); int ic = sC2int(c); lua_Integer ib; if (tointegerns(rb, &ib)) { setivalue(s2v(base + a), luaV_shiftl(ib, ic)); pc++; } else { break; } break; }
+      case OP_SHRI: { TValue *rb = s2v(base + b); int ic = sC2int(c); lua_Integer ib; if (tointegerns(rb, &ib)) { setivalue(s2v(base + a), luaV_shiftl(ib, -ic)); pc++; } else { break; } break; }
+      case OP_BAND: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(&, i1, i2)); pc++; } else { break; } break; }
+      case OP_BOR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(|, i1, i2)); pc++; } else { break; } break; }
+      case OP_BXOR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), intop(^, i1, i2)); pc++; } else { break; } break; }
+      case OP_SHL: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), luaV_shiftl(i1, i2)); pc++; } else { break; } break; }
+      case OP_SHR: { TValue *rb = s2v(base + b); TValue *rc = s2v(base + c); lua_Integer i1, i2; if (tointegerns(rb, &i1) && tointegerns(rc, &i2)) { setivalue(s2v(base + a), luaV_shiftl(i1, -i2)); pc++; } else { break; } break; }
       case OP_NOT: { if (l_isfalse(s2v(base + b))) { setbtvalue(s2v(base + a)); } else { setbfvalue(s2v(base + a)); } break; }
       case OP_UNM: { TValue *rb = s2v(base + b); lua_Number nb; if (ttisinteger(rb)) { setivalue(s2v(base + a), intop(-, 0, ivalue(rb))); } else if (tonumberns(rb, nb)) { setfltvalue(s2v(base + a), luai_numunm(L, nb)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
       case OP_BNOT: { TValue *rb = s2v(base + b); lua_Integer ib; if (tointegerns(rb, &ib)) { setivalue(s2v(base + a), intop(^, ~l_castS2U(0), ib)); } else { ci->u.l.savedpc = (const Instruction *)(f->code + pc); return 1; } break; }
+      case OP_CLOSE: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); luaF_close(L, base + a, LUA_OK, 1); base = ci->func.p + 1; break; }
+      case OP_TBC: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); luaF_newtbcupval(L, base + a); break; }
       case OP_LEN: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = ci->top.p; luaV_objlen(L, base + a, s2v(base + b)); break; }
       case OP_CONCAT: { ci->u.l.savedpc = (const Instruction *)(f->code + pc); L->top.p = base + a + b; luaV_concat(L, b); break; }
       case OP_JMP: { pc += (int)(bx - OFFSET_sJ) + 1; continue; }
