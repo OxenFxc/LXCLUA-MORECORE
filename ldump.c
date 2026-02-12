@@ -638,7 +638,8 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
     /* 写入反向映射表 */
     dumpInt(D, VM_MAP_SIZE);
     for (int i = 0; i < VM_MAP_SIZE; i++) {
-      dumpInt(D, vt->reverse_map[i]);
+      /* 偏移+1以处理-1值，避免dumpInt将其作为巨大无符号数写入导致读取时溢出 */
+      dumpInt(D, vt->reverse_map[i] + 1);
     }
   } else {
     dumpInt(D, 0);  /* VM代码不存在 */
