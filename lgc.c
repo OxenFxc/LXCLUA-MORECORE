@@ -358,6 +358,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       set2black(o);
       break;
     }
+    case LUA_VNUMBIG:
     case LUA_VSHRSTR:
     case LUA_VLNGSTR: {
       set2black(o);  /* nothing to visit */
@@ -1013,6 +1014,11 @@ static void freeobj (lua_State *L, GCObject *o) {
     case LUA_VLNGSTR: {
       TString *ts = gco2ts(o);
       luaM_freemem(L, ts, sizelstring(ts->u.lnglen));
+      break;
+    }
+    case LUA_VNUMBIG: {
+      TBigInt *b = gco2big(o);
+      luaM_freemem(L, b, sizeof(TBigInt) + (b->len > 0 ? (b->len - 1) : 0) * sizeof(l_uint32));
       break;
     }
     default: lua_assert(0);

@@ -348,13 +348,16 @@ typedef struct GCObject {
 /* Variant tags for numbers */
 #define LUA_VNUMINT	makevariant(LUA_TNUMBER, 0)  /* integer numbers */
 #define LUA_VNUMFLT	makevariant(LUA_TNUMBER, 1)  /* float numbers */
+#define LUA_VNUMBIG	99 /* big numbers: 3 | (2<<4) | 64 */
 
 #define ttisnumber(o)		checktype((o), LUA_TNUMBER)
 #define ttisfloat(o)		checktag((o), LUA_VNUMFLT)
 #define ttisinteger(o)		checktag((o), LUA_VNUMINT)
+#define ttisbigint(o)		checktag((o), LUA_VNUMBIG)
 
 #define nvalue(o)	check_exp(ttisnumber(o), \
-	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
+	(ttisinteger(o) ? cast_num(ivalue(o)) : \
+	(ttisbigint(o) ? luaB_tonumber(o) : fltvalue(o))))
 #define fltvalue(o)	check_exp(ttisfloat(o), val_(o).n)
 #define ivalue(o)	check_exp(ttisinteger(o), val_(o).i)
 
@@ -373,7 +376,32 @@ typedef struct GCObject {
 #define chgivalue(obj,x) \
   { TValue *io=(obj); lua_assert(ttisinteger(io)); val_(io).i=(x); }
 
+#define setbigvalue(L,obj,x) \
+  { TValue *io = (obj); TBigInt *x_ = (x); \
+    val_(io).gc = obj2gco(x_); settt_(io, LUA_VNUMBIG); \
+    checkliveness(L,io); }
+
+#define bigvalue(o)	check_exp(ttisbigint(o), gco2big(val_(o).gc))
+
 /* }======================================================= */
+
+
+/*
+** {=======================================================
+** Big Integers
+** ========================================================
+*/
+
+typedef struct TBigInt {
+  CommonHeader;
+  unsigned int len;  /* number of limbs */
+  int sign;          /* 1 or -1 */
+  l_uint32 buff[1];  /* limbs (little endian) */
+} TBigInt;
+
+#define gco2big(o)	check_exp((o)->tt == LUA_VNUMBIG, (TBigInt*)(o))
+
+LUAI_FUNC lua_Number luaB_tonumber (const TValue *obj);
 
 
 /*
