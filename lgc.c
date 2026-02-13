@@ -344,6 +344,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
     case LUA_VSTRUCT: {
       Struct *s = gco2struct(o);
       markobjectN(g, s->def);
+      markobjectN(g, s->parent);
       if (s->gc_offsets) {
           int i;
           for (i = 0; i < s->n_gc_offsets; i++) {
@@ -945,7 +946,10 @@ static void freeobj (lua_State *L, GCObject *o) {
       break;
     case LUA_VSTRUCT: {
       Struct *s = gco2struct(o);
-      luaM_freemem(L, s, sizeof(Struct) + s->data_size - 1);
+      if (s->data == s->inline_data.d)
+        luaM_freemem(L, s, offsetof(Struct, inline_data) + s->data_size);
+      else
+        luaM_freemem(L, s, offsetof(Struct, inline_data));
       break;
     }
     case LUA_VLCL: {
