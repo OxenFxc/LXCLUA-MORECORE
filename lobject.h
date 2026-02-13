@@ -476,7 +476,12 @@ typedef struct Struct {
   int *gc_offsets;      /**< GC offsets array. */
   int n_gc_offsets;     /**< Number of GC offsets. */
   size_t data_size;     /**< Size of the data block. */
-  lu_byte data[1];      /**< Data block. */
+  struct GCObject *parent; /**< Parent object (if this is a view). */
+  lu_byte *data;        /**< Pointer to data. */
+  union {
+    LUAI_MAXALIGN;
+    lu_byte d[1];
+  } inline_data;        /**< Inline data block. */
 } Struct;
 
 #define gco2struct(o)	check_exp((o)->tt == LUA_VSTRUCT, &((cast_u(o) - offsetof(Struct, next))->struct_))

@@ -22,6 +22,7 @@
 #include "lstring.h"
 #include "lapi.h"
 #include "ldebug.h"
+#include <stdio.h>
 
 /* Field types */
 #define ST_INT 0
@@ -143,12 +144,25 @@ static void get_field_info(lua_State *L, Table *fields, TString *key, int *offse
 void luaS_copystruct (lua_State *L, TValue *dest, const TValue *src) {
     Struct *s_src = structvalue(src);
     size_t size = s_src->data_size;
-    Struct *s_dest = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + size - 1, 0);
+    Struct *s_dest;
+
+    if (s_src->data != s_src->inline_data.d) {
+        /* Source is a View -> Create a View */
+        s_dest = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data), 0);
+        s_dest->parent = s_src->parent;
+        s_dest->data = s_src->data;
+    } else {
+        /* Source is an Owner -> Create an Owner (Deep Copy) */
+        s_dest = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data) + size, 0);
+        s_dest->parent = NULL;
+        s_dest->data = s_dest->inline_data.d;
+        memcpy(s_dest->data, s_src->data, size);
+    }
+
     s_dest->def = s_src->def;
     s_dest->data_size = size;
     s_dest->gc_offsets = s_src->gc_offsets;
     s_dest->n_gc_offsets = s_src->n_gc_offsets;
-    memcpy(s_dest->data, s_src->data, size);
 
     TValue *v = dest;
     v->value_.struct_ = s_dest;
@@ -210,12 +224,13 @@ void luaS_structindex (lua_State *L, const TValue *t, TValue *key, StkId val) {
             if (*p) setbtvalue(s2v(val)); else setbfvalue(s2v(val));
             break;
         case ST_STRUCT: {
-            /* Create new struct wrapping the data */
-            Struct *new_s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + size - 1, 0);
+            /* Create new struct View wrapping the data */
+            Struct *new_s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data), 0);
             new_s->def = nested_def;
             new_s->data_size = size;
             get_gc_offsets(L, nested_def, &new_s->gc_offsets, &new_s->n_gc_offsets);
-            memcpy(new_s->data, p, size);
+            new_s->parent = obj2gco(s);
+            new_s->data = p;
 
             /* We need to set val to new_s */
             TValue *v = s2v(val);
@@ -355,10 +370,12 @@ static int struct_call (lua_State *L) {
     int size = get_int_field(L, 1, KEY_SIZE);
 
     /* Allocate struct */
-    Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + size - 1, 0);
+    Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data) + size, 0);
     s->def = def;
     s->data_size = size;
     get_gc_offsets(L, def, &s->gc_offsets, &s->n_gc_offsets);
+    s->parent = NULL;
+    s->data = s->inline_data.d;
     memset(s->data, 0, size);
 
     /* Initialize with defaults */
@@ -653,14 +670,13 @@ static int array_index(lua_State *L) {
         return luaL_error(L, "array index out of bounds");
     }
 
-    /* Return a COPY of the struct at index */
-    Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + arr->size - 1, 0);
+    /* Return a VIEW of the struct at index */
+    Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data), 0);
     s->def = arr->def;
     s->data_size = arr->size;
     get_gc_offsets(L, arr->def, &s->gc_offsets, &s->n_gc_offsets);
-
-    lu_byte *src = arr->data + (idx - 1) * arr->size;
-    memcpy(s->data, src, arr->size);
+    s->parent = obj2gco((Udata *)((char *)arr - udatamemoffset(1)));
+    s->data = arr->data + (idx - 1) * arr->size;
 
     TValue *v = s2v(L->top.p);
     v->value_.struct_ = s;
@@ -810,24 +826,49 @@ static int create_proxy_array(lua_State *L, int type_idx, int size) {
 /* Safe array for structs with pointers (using table storage but struct value semantics) */
 static int safe_array_index(lua_State *L) {
     /* upvalue 1: storage table */
-    lua_pushvalue(L, 2);
-    lua_gettable(L, lua_upvalueindex(1));
-    if (ttisstruct(s2v(L->top.p - 1))) {
-        /* Return a COPY */
-        TValue *src = s2v(L->top.p - 1);
-        Struct *s = structvalue(src);
-        Struct *new_s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + s->data_size - 1, 0);
-        new_s->def = s->def;
-        new_s->data_size = s->data_size;
-        new_s->gc_offsets = s->gc_offsets;
-        new_s->n_gc_offsets = s->n_gc_offsets;
-        memcpy(new_s->data, s->data, s->data_size);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    Table *h = hvalue(s2v(L->top.p - 1));
+    lua_pop(L, 1);
+    int idx = (int)luaL_checkinteger(L, 2);
 
-        TValue *v = s2v(L->top.p - 1); /* replace struct on stack with copy */
+    l_rwlock_rdlock(&h->lock);
+    const TValue *res = luaH_getint(h, idx);
+
+    if (!ttisnil(res) && ttisstruct(res)) {
+        Struct *s = structvalue(res);
+
+        /* Anchor 's' to stack to prevent GC collection after unlock */
+        setgcovalue(L, s2v(L->top.p), obj2gco(s));
+        L->top.p++;
+
+        Table *def = s->def;
+        size_t size = s->data_size;
+        int *gc_offsets = s->gc_offsets;
+        int n_gc_offsets = s->n_gc_offsets;
+        GCObject *parent = obj2gco(s);
+        lu_byte *data = s->data;
+        l_rwlock_unlock(&h->lock);
+
+        /* Create View */
+        Struct *new_s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data), 0);
+        new_s->def = def;
+        new_s->data_size = size;
+        new_s->gc_offsets = gc_offsets;
+        new_s->n_gc_offsets = n_gc_offsets;
+        new_s->parent = parent;
+        new_s->data = data;
+
+        /* Pop anchor */
+        L->top.p--;
+
+        TValue *v = s2v(L->top.p);
         v->value_.struct_ = new_s;
         v->tt_ = ctb(LUA_VSTRUCT);
-        checkliveness(L, v);
+        api_incr_top(L);
+        return 1;
     }
+    l_rwlock_unlock(&h->lock);
+    lua_pushnil(L);
     return 1;
 }
 
@@ -884,11 +925,13 @@ static int create_safe_struct_array(lua_State *L, int def_idx, int count) {
 
     /* Initialize with default structs */
     for (int i = 1; i <= count; i++) {
-        Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, sizeof(Struct) + size - 1, 0);
+        Struct *s = (Struct *)luaC_newobjdt(L, LUA_TSTRUCT, offsetof(Struct, inline_data) + size, 0);
         s->def = (Table*)lua_topointer(L, def_idx);
         s->data_size = size;
         s->gc_offsets = gc_offsets;
         s->n_gc_offsets = n_gc_offsets;
+        s->parent = NULL;
+        s->data = s->inline_data.d;
         memset(s->data, 0, size);
 
         /* Note: Using 0-init. Ideally should use default values from def but this matches current create_struct_array behavior */
@@ -1020,8 +1063,8 @@ int luaopen_struct (lua_State *L) {
   luaL_newlib(L, struct_funcs);
 
   /* Register __struct_define globally for syntax support */
-  lua_pushcfunction(L, struct_define);
-  lua_setglobal(L, "__struct_define");
+  // lua_pushcfunction(L, struct_define);
+  // lua_setglobal(L, "__struct_define");
 
   /* Register array global */
   lua_newtable(L); /* array table */
