@@ -30,6 +30,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "lvm.h"
+#include "lbigint.h"
 
 
 /**
@@ -166,6 +167,18 @@ static lua_Number numarith (lua_State *L, int op, lua_Number v1,
  */
 int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
                    TValue *res) {
+  if (ttisbigint(p1) || ttisbigint(p2)) {
+    switch (op) {
+      case LUA_OPADD: luaB_add(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPSUB: luaB_sub(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPMUL: luaB_mul(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPDIV: luaB_div(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPIDIV: luaB_div(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPMOD: luaB_mod(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      case LUA_OPPOW: luaB_pow(L, (TValue*)p1, (TValue*)p2, res); return 1;
+      default: return 0;
+    }
+  }
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR:
@@ -524,13 +537,22 @@ unsigned luaO_tostringbuff (const TValue *obj, char *buff) {
  * @param obj The object to convert (must be a number).
  */
 void luaO_tostring (lua_State *L, TValue *obj) {
+  if (ttisbigint(obj)) {
+    luaB_tostring(L, obj);
+    return;
+  }
   if (ttisboolean(obj)) {
     if (ttistrue(obj)) {
       setsvalue(L, obj, luaS_newliteral(L, "true"));
     } else {
       setsvalue(L, obj, luaS_newliteral(L, "false"));
     }
+  } else if (ttisbigint(obj)) {
+    luaB_tostring(L, obj);
   } else {
+    if (ttisnumber(obj) && !ttisinteger(obj) && !ttisfloat(obj)) {
+        printf("DEBUG: luaO_tostring unknown number variant. rawtt=%d LUA_VNUMBIG=%d\n", rawtt(obj), LUA_VNUMBIG);
+    }
     char buff[LUA_N2SBUFFSZ];
     unsigned len = luaO_tostringbuff(obj, buff);
     setsvalue(L, obj, luaS_newlstr(L, buff, len));

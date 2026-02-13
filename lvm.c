@@ -57,6 +57,24 @@
 #include "lstruct.h"
 #include "lnamespace.h"
 #include "ljit.h"
+#include "lbigint.h"
+
+static int try_add(lua_Integer a, lua_Integer b, lua_Integer *r) {
+    if ((b > 0 && a > LUA_MAXINTEGER - b) || (b < 0 && a < LUA_MININTEGER - b)) return 0;
+    *r = a + b; return 1;
+}
+static int try_sub(lua_Integer a, lua_Integer b, lua_Integer *r) {
+    if ((b < 0 && a > LUA_MAXINTEGER + b) || (b > 0 && a < LUA_MININTEGER + b)) return 0;
+    *r = a - b; return 1;
+}
+static int try_mul(lua_Integer a, lua_Integer b, lua_Integer *r) {
+    if (a == 0 || b == 0) { *r = 0; return 1; }
+    if (a > 0 && b > 0 && a > LUA_MAXINTEGER / b) return 0;
+    if (a > 0 && b < 0 && b < LUA_MININTEGER / a) return 0;
+    if (a < 0 && b > 0 && a < LUA_MININTEGER / b) return 0;
+    if (a < 0 && b < 0 && a < LUA_MAXINTEGER / b) return 0;
+    *r = a * b; return 1;
+}
 
 
 /*
@@ -1048,6 +1066,9 @@ l_sinline int LEfloatint (lua_Number f, lua_Integer i) {
  */
 l_sinline int LTnum (const TValue *l, const TValue *r) {
   lua_assert(ttisnumber(l) && ttisnumber(r));
+  if (ttisbigint(l) || ttisbigint(r)) {
+      return luaB_compare((TValue*)l, (TValue*)r) < 0;
+  }
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
     if (ttisinteger(r))
@@ -1074,6 +1095,9 @@ l_sinline int LTnum (const TValue *l, const TValue *r) {
  */
 l_sinline int LEnum (const TValue *l, const TValue *r) {
   lua_assert(ttisnumber(l) && ttisnumber(r));
+  if (ttisbigint(l) || ttisbigint(r)) {
+      return luaB_compare((TValue*)l, (TValue*)r) <= 0;
+  }
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
     if (ttisinteger(r))
@@ -1189,6 +1213,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE: return 1;
     case LUA_VNUMINT: return (ivalue(t1) == ivalue(t2));
     case LUA_VNUMFLT: return luai_numeq(fltvalue(t1), fltvalue(t2));
+    case LUA_VNUMBIG: return luaB_compare((TValue*)t1, (TValue*)t2) == 0;
     case LUA_VLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
     case LUA_VPOINTER: return ptrvalue(t1) == ptrvalue(t2);
     case LUA_VLCF: return fvalue(t1) == fvalue(t2);
@@ -1617,6 +1642,60 @@ static void inopr (lua_State *L, StkId ra, TValue *a, TValue *b) {
     lua_Integer iv1 = ivalue(v1);  \
     pc++; setivalue(s2v(ra), iop(L, iv1, imm));  \
   }  \
+  else if (ttisfloat(v1)) {  \
+    lua_Number nb = fltvalue(v1);  \
+    lua_Number fimm = cast_num(imm);  \
+    pc++; setfltvalue(s2v(ra), fop(L, nb, fimm)); \
+  }}
+
+#define op_arith_overflow_aux(L,v1,v2,tryop,fop,bigop) {  \
+  StkId ra = RA(i); \
+  if (ttisinteger(v1) && ttisinteger(v2)) {  \
+    lua_Integer i1 = ivalue(v1); lua_Integer i2 = ivalue(v2); \
+    lua_Integer r; \
+    if (tryop(i1, i2, &r)) { \
+       pc++; setivalue(s2v(ra), r); \
+    } else { \
+       bigop(L, v1, v2, s2v(ra)); \
+       pc++; \
+    } \
+  }  \
+  else if (ttisbigint(v1) || ttisbigint(v2)) { \
+      bigop(L, v1, v2, s2v(ra)); \
+      pc++; \
+  } \
+  else op_arithf_aux(L, v1, v2, fop); }
+
+#define op_arith_overflow(L,tryop,fop,bigop) {  \
+  TValue *v1 = vRB(i);  \
+  TValue *v2 = vRC(i);  \
+  op_arith_overflow_aux(L, v1, v2, tryop, fop, bigop); }
+
+#define op_arith_overflow_K(L,tryop,fop,bigop) {  \
+  TValue *v1 = vRB(i);  \
+  TValue *v2 = KC(i); lua_assert(ttisnumber(v2));  \
+  op_arith_overflow_aux(L, v1, v2, tryop, fop, bigop); }
+
+#define op_arith_overflow_I(L,tryop,fop,bigop) {  \
+  StkId ra = RA(i); \
+  TValue *v1 = vRB(i);  \
+  int imm = GETARG_sC(i);  \
+  if (ttisinteger(v1)) {  \
+    lua_Integer iv1 = ivalue(v1);  \
+    lua_Integer r; \
+    if (tryop(iv1, imm, &r)) { \
+       pc++; setivalue(s2v(ra), r); \
+    } else { \
+       TValue vimm; setivalue(&vimm, imm); \
+       bigop(L, v1, &vimm, s2v(ra)); \
+       pc++; \
+    } \
+  }  \
+  else if (ttisbigint(v1)) { \
+      TValue vimm; setivalue(&vimm, imm); \
+      bigop(L, v1, &vimm, s2v(ra)); \
+      pc++; \
+  } \
   else if (ttisfloat(v1)) {  \
     lua_Number nb = fltvalue(v1);  \
     lua_Number fimm = cast_num(imm);  \
@@ -2265,7 +2344,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
            setptrvalue(s2v(ra), (char *)ptrvalue(v1) + imm);
            pc++;
         } else {
-           op_arithI(L, l_addi, luai_numadd);
+           op_arith_overflow_I(L, try_add, luai_numadd, luaB_add);
         }
         vmbreak;
       }
@@ -2277,7 +2356,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setptrvalue(s2v(ra), (char *)ptrvalue(v1) + ivalue(v2));
           pc++;
         } else {
-          op_arithK(L, l_addi, luai_numadd);
+          op_arith_overflow_K(L, try_add, luai_numadd, luaB_add);
         }
         vmbreak;
       }
@@ -2289,12 +2368,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setptrvalue(s2v(ra), (char *)ptrvalue(v1) - ivalue(v2));
           pc++;
         } else {
-          op_arithK(L, l_subi, luai_numsub);
+          op_arith_overflow_K(L, try_sub, luai_numsub, luaB_sub);
         }
         vmbreak;
       }
       vmcase(OP_MULK) {
-        op_arithK(L, l_muli, luai_nummul);
+        op_arith_overflow_K(L, try_mul, luai_nummul, luaB_mul);
         vmbreak;
       }
       vmcase(OP_MODK) {
@@ -2359,7 +2438,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setptrvalue(s2v(ra), (char *)ptrvalue(v2) + ivalue(v1));
           pc++;
         } else {
-          op_arith_aux(L, v1, v2, l_addi, luai_numadd);
+          op_arith_overflow_aux(L, v1, v2, try_add, luai_numadd, luaB_add);
         }
         vmbreak;
       }
@@ -2375,12 +2454,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setivalue(s2v(ra), (char *)ptrvalue(v1) - (char *)ptrvalue(v2));
           pc++;
         } else {
-          op_arith_aux(L, v1, v2, l_subi, luai_numsub);
+          op_arith_overflow_aux(L, v1, v2, try_sub, luai_numsub, luaB_sub);
         }
         vmbreak;
       }
       vmcase(OP_MUL) {
-        op_arith(L, l_muli, luai_nummul);
+        op_arith_overflow(L, try_mul, luai_nummul, luaB_mul);
         vmbreak;
       }
       vmcase(OP_MOD) {
