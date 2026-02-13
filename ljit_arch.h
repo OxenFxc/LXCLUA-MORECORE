@@ -35,6 +35,9 @@ void jit_emit_epilogue(JitState *J);
 ** Opcode Implementations
 */
 void jit_emit_op_return0(JitState *J);
+void jit_emit_op_return1(JitState *J, int ra);
+void jit_emit_op_add(JitState *J, int ra, int rb, int rc, const Instruction *next_pc);
+void jit_emit_op_sub(JitState *J, int ra, int rb, int rc, const Instruction *next_pc);
 
 /*
 ** Memory Management

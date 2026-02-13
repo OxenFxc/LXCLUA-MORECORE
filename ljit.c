@@ -20,18 +20,37 @@
 ** Currently supports OP_RETURN0 for verification.
 */
 
+void luaJ_prep_return0(lua_State *L, CallInfo *ci) {
+  L->top.p = ci->func.p;
+}
+
+void luaJ_prep_return1(lua_State *L, CallInfo *ci, int ra) {
+  StkId base = ci->func.p + 1;
+  setobjs2s(L, base - 1, base + ra);
+  L->top.p = base;
+}
+
 void luaJ_compile(lua_State *L, Proto *p) {
   if (p->jit_code) return; // Already compiled
 
-  // Simple heuristic: Only compile small functions with supported opcodes
-  // Check if first instruction is OP_RETURN0
+  // Simple heuristic: Only compile functions with supported opcodes
   if (p->sizecode < 1) return;
 
-  Instruction inst = p->code[0];
-  OpCode op = GET_OPCODE(inst);
-
-  // For this PoC, only support functions starting with RETURN0
-  if (op != OP_RETURN0) return;
+  // First pass: Verify all opcodes are supported
+  for (int i = 0; i < p->sizecode; i++) {
+    Instruction inst = p->code[i];
+    OpCode op = GET_OPCODE(inst);
+    switch (op) {
+      case OP_ADD:
+      case OP_SUB:
+      case OP_RETURN0:
+      case OP_RETURN1:
+      case OP_MMBIN:
+        break;
+      default:
+        return; // Unsupported opcode, abort JIT
+    }
+  }
 
   JitState *J = jit_new_state();
   if (!J) return; // Architecture not supported or allocation failed
@@ -44,9 +63,29 @@ void luaJ_compile(lua_State *L, Proto *p) {
   // Prologue
   jit_emit_prologue(J);
 
-  // Emit Instructions
-  if (op == OP_RETURN0) {
-    jit_emit_op_return0(J);
+  // Second pass: Emit code
+  for (int i = 0; i < p->sizecode; i++) {
+    Instruction inst = p->code[i];
+    OpCode op = GET_OPCODE(inst);
+    switch (op) {
+      case OP_RETURN0:
+        jit_emit_op_return0(J);
+        break;
+      case OP_RETURN1:
+        jit_emit_op_return1(J, GETARG_A(inst));
+        break;
+      case OP_ADD:
+        jit_emit_op_add(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), &p->code[i+1]);
+        break;
+      case OP_SUB:
+        jit_emit_op_sub(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), &p->code[i+1]);
+        break;
+      case OP_MMBIN:
+        // Metadata for interpreter, ignored by JIT
+        break;
+      default:
+        break;
+    }
   }
 
   // Epilogue
