@@ -1,5 +1,6 @@
 #define ljit_c
 #define LUA_CORE
+#define LJIT_DEBUG
 
 #include "lprefix.h"
 #include <string.h>
@@ -20,6 +21,9 @@
 ** Validates and prepares the stack, calls luaD_precall, and executes Lua functions recursively.
 */
 static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int c, const Instruction *next_pc) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] Call Helper Triggered: RA %d, B %d, C %d\n", ra_idx, b, c);
+#endif
   StkId ra = ci->func.p + 1 + ra_idx;
   int nresults = c - 1;
   CallInfo *newci;
@@ -38,6 +42,9 @@ static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int 
 
 /* Comparison Helpers for JIT */
 int luaJ_eqi(lua_State *L, TValue *ra, int im) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] EQI Helper Triggered: im %d\n", im);
+#endif
   if (ttisinteger(ra)) return ivalue(ra) == im;
   if (ttisfloat(ra)) return luai_numeq(fltvalue(ra), cast_num(im));
   return 0;
@@ -97,6 +104,9 @@ void luaJ_prep_return0(lua_State *L, CallInfo *ci) {
 }
 
 void luaJ_prep_return1(lua_State *L, CallInfo *ci, int ra) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] Return1 Helper Triggered: ra %d\n", ra);
+#endif
   StkId base = ci->func.p + 1;
   setobjs2s(L, base - 1, base + ra);
   L->top.p = base;
