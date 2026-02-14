@@ -861,6 +861,10 @@ void luaB_tostring_prec(lua_State *L, const TValue *obj, int precision, TValue *
             /* exp = -3, mant="123" -> 0.123 */
             /* exp = -5, mant="123" -> 0.00123 */
 
+            if (precision == -1) {
+                precision = (int)(-exp);
+            }
+
             lua_Integer decimal_pos = mant_len + exp;
             /* decimal_pos is number of digits before dot */
 
