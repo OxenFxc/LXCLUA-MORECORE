@@ -277,6 +277,64 @@ static void emit_b_cond(JitState *J, int cond, int offset) {
   emit_u32(J, 0x54000000 | ((offset & 0x7FFFF) << 5) | cond);
 }
 
+// Helper for LSL (Logical Shift Left) Immediate
+static void emit_lsl_r_imm(JitState *J, int d, int n, int imm) {
+  // UBFM Xd, Xn, (64-imm)%64, 63-imm
+  int immr = (64 - imm) & 63;
+  int imms = 63 - imm;
+  emit_u32(J, 0xD3400000 | (imms << 10) | (immr << 16) | (n << 5) | d);
+}
+
+// Helper for LSR (Logical Shift Right) Immediate
+static void emit_lsr_r_imm(JitState *J, int d, int n, int imm) {
+  // UBFM Xd, Xn, imm, 63
+  int immr = imm;
+  int imms = 63;
+  emit_u32(J, 0xD3400000 | (imms << 10) | (immr << 16) | (n << 5) | d);
+}
+
+// Helper for UBFX (Unsigned Bitfield Extract)
+static void emit_ubfx(JitState *J, int d, int n, int lsb, int width) {
+  // UBFM Xd, Xn, lsb, lsb+width-1
+  int immr = lsb;
+  int imms = lsb + width - 1;
+  emit_u32(J, 0xD3400000 | (imms << 10) | (immr << 16) | (n << 5) | d);
+}
+
+// Helper for AND with Immediate
+static void emit_and_r_imm(JitState *J, int d, int n, unsigned long long imm) {
+  if (imm == 0xFF) {
+     emit_ubfx(J, d, n, 0, 8);
+  } else if (imm == 0x0F) {
+     emit_ubfx(J, d, n, 0, 4);
+  } else if (imm == 0x40) {
+     // For testing bit 6 (0x40), we can't easily use UBFX alone to generate 0/non-0 that matches AND 0x40.
+     // But usually we just want to test it.
+     // For actual AND operation:
+     emit_mov_r_imm(J, RA_X8, imm);
+     emit_u32(J, 0x8A080000 | (n << 5) | d); // AND Xd, Xn, X8
+  } else {
+     emit_mov_r_imm(J, RA_X8, imm);
+     emit_u32(J, 0x8A080000 | (n << 5) | d); // AND Xd, Xn, X8
+  }
+}
+
+// ADDS Xd, Xn, #imm (Set Flags)
+static void emit_adds_r_r_imm(JitState *J, int d, int n, int imm) {
+  if (imm > 4095) {
+    emit_mov_r_imm(J, RA_X8, imm);
+    // ADDS Xd, Xn, X8
+    emit_u32(J, 0xAB000000 | (RA_X8 << 16) | (n << 5) | d);
+  } else {
+    emit_u32(J, 0xB1000000 | (imm << 10) | (n << 5) | d);
+  }
+}
+
+// Branch if Overflow Set (VS)
+static void emit_b_vs(JitState *J, int offset) {
+  emit_b_cond(J, 6, offset); // 6 = VS
+}
+
 static void jit_add_fixup(JitState *J, int offset, int target_pc) {
   if (J->fixup_count == J->fixup_capacity) {
     size_t new_cap = J->fixup_capacity == 0 ? 16 : J->fixup_capacity * 2;
@@ -351,6 +409,102 @@ static void emit_update_savedpc(JitState *J) {
   emit_str_r_mem(J, RA_X0, RA_X20, 32);
 }
 
+// Forward decl or implementation before use
+static void emit_arith_common(JitState *J, int ra, int rb, int rc, const Instruction *next_pc, int op) {
+  // Update savedpc
+  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
+  emit_str_r_mem(J, RA_X0, RA_X20, 32);
+
+  // X0 = L
+  emit_mov_r_r(J, RA_X0, RA_X19);
+  // X1 = op
+  emit_mov_r_imm(J, RA_X1, op);
+
+  // X2 = &R[rb]
+  emit_get_reg_addr(J, rb, RA_X2);
+
+  // X3 = &R[rc]
+  emit_get_reg_addr(J, rc, RA_X3);
+
+  // X4 = &R[ra]
+  emit_get_reg_addr(J, ra, RA_X4);
+
+  // Call luaO_arith
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
+  emit_blr(J, RA_X8);
+}
+
+static void emit_arith_k(JitState *J, int ra, int rb, int k_idx, const Instruction *next_pc, int op) {
+  // Update savedpc
+  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
+  emit_str_r_mem(J, RA_X0, RA_X20, 32);
+
+  emit_mov_r_r(J, RA_X0, RA_X19); // L
+  emit_mov_r_imm(J, RA_X1, op); // op
+
+  emit_get_reg_addr(J, rb, RA_X2); // p1 = &R[rb]
+
+  // p2 = &K[k_idx]
+  if (!J->p) { emit_barrier(J); return; }
+  TValue *k = &J->p->k[k_idx];
+  emit_mov_r_imm(J, RA_X3, (unsigned long long)(uintptr_t)k);
+
+  emit_get_reg_addr(J, ra, RA_X4); // res = &R[ra]
+
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
+  emit_blr(J, RA_X8);
+}
+
+static void emit_arith_i(JitState *J, int ra, int rb, int imm, const Instruction *next_pc, int op) {
+  // Update savedpc
+  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
+  emit_str_r_mem(J, RA_X0, RA_X20, 32);
+
+  emit_mov_r_r(J, RA_X0, RA_X19); // L
+  emit_mov_r_imm(J, RA_X1, op); // op
+
+  emit_get_reg_addr(J, rb, RA_X2); // p1 = &R[rb]
+
+  // p2 is temporary TValue on stack.
+  // Use SP (X31)
+  // SUB SP, SP, #16
+  emit_u32(J, 0xD10043FF);
+
+  // Store imm to [SP]
+  emit_mov_r_imm(J, RA_X8, (long long)imm);
+  emit_str_r_mem(J, RA_X8, RA_SP, 0);
+
+  // Store tag LUA_VNUMINT to [SP+8]
+  emit_mov_r_imm(J, RA_X8, LUA_VNUMINT);
+  emit_str_w_mem(J, RA_X8, RA_SP, 8);
+
+  emit_mov_r_r(J, RA_X3, RA_SP); // p2 = SP
+
+  emit_get_reg_addr(J, ra, RA_X4); // res = &R[ra]
+
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
+  emit_blr(J, RA_X8);
+
+  // ADD SP, SP, #16
+  emit_u32(J, 0x910043FF);
+}
+
+static void emit_unary_arith_common(JitState *J, int ra, int rb, const Instruction *next_pc, int op) {
+  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
+  emit_str_r_mem(J, RA_X0, RA_X20, 32);
+
+  emit_mov_r_r(J, RA_X0, RA_X19);
+  emit_mov_r_imm(J, RA_X1, op);
+
+  emit_get_reg_addr(J, rb, RA_X2); // p1
+  emit_mov_r_r(J, RA_X3, RA_X2);   // p2 = p1
+
+  emit_get_reg_addr(J, ra, RA_X4); // res
+
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
+  emit_blr(J, RA_X8);
+}
+
 static void jit_emit_op_move(JitState *J, int a, int b) {
   // Load &R[B]
   emit_get_reg_addr(J, b, RA_X2);
@@ -419,85 +573,469 @@ static void jit_emit_op_loadnil(JitState *J, int a, int b) {
      emit_str_w_mem(J, RA_X3, RA_X2, 8 + i*16);
   }
 }
-static void jit_emit_op_getupval(JitState *J, int a, int b) { emit_barrier(J); }
+
+static void jit_emit_op_getupval(JitState *J, int a, int b) {
+  emit_update_savedpc(J);
+
+  // 1. Get func (StkId) from ci->func (ci is in X20)
+  emit_ldr_r_mem(J, RA_X2, RA_X20, 0);
+
+  // 2. Get LClosure (GCobj*) from func->val.gc
+  emit_ldr_r_mem(J, RA_X3, RA_X2, 0);
+
+  // 3. Get UpVal* from LClosure->upvals[b]
+  // Offset of upvals is 32.
+  emit_ldr_r_mem(J, RA_X4, RA_X3, 32 + b * 8);
+
+  // 4. Get value pointer from UpVal->v.p
+  // UpVal->v is at offset 16
+  emit_ldr_r_mem(J, RA_X5, RA_X4, 16);
+
+  // 5. Copy value to R[A]
+  emit_get_reg_addr(J, a, RA_X6);
+
+  emit_ldr_r_mem(J, RA_X7, RA_X5, 0);
+  emit_str_r_mem(J, RA_X7, RA_X6, 0);
+  emit_ldr_r_mem(J, RA_X7, RA_X5, 8);
+  emit_str_r_mem(J, RA_X7, RA_X6, 8);
+}
+
 static void jit_emit_op_setupval(JitState *J, int a, int b) { emit_barrier(J); }
 static void jit_emit_op_gettabup(JitState *J, int a, int b, int c) { emit_barrier(J); }
 
 static void jit_emit_op_gettable(JitState *J, int a, int b, int c) {
-  // Update savedpc
+  // Fast Path attempt for Array Access
+  // 1. Get Table (RB)
+  emit_get_reg_addr(J, b, RA_X2);
+  emit_ldr_w_mem(J, RA_X3, RA_X2, 8); // Tag
+  emit_and_r_imm(J, RA_X3, RA_X3, 0xFF);
+  emit_cmp_w_imm(J, RA_X3, ctb(LUA_VTABLE));
+  emit_b_cond(J, 1, 0); int p1 = J->size - 4; // NE
+
+  // 2. Get Key (RC)
+  emit_get_reg_addr(J, c, RA_X3);
+  emit_ldr_w_mem(J, RA_X4, RA_X3, 8); // Tag
+  emit_and_r_imm(J, RA_X4, RA_X4, 0xFF);
+  emit_cmp_w_imm(J, RA_X4, LUA_VNUMINT);
+  emit_b_cond(J, 1, 0); int p2 = J->size - 4; // NE
+
+  // 3. Load Table Ptr
+  emit_ldr_r_mem(J, RA_X5, RA_X2, 0);
+
+  // 4. Load alimit and array
+  emit_ldr_r_mem(J, RA_X6, RA_X5, 8);
+  emit_lsr_r_imm(J, RA_X6, RA_X6, 32); // X6 = alimit
+  emit_ldr_r_mem(J, RA_X7, RA_X5, 16); // X7 = array*
+
+  // 5. Check Bounds
+  emit_ldr_r_mem(J, RA_X8, RA_X3, 0); // Key Value
+  emit_mov_r_imm(J, RA_X4, 1);
+  emit_sub_r_r_r(J, RA_X8, RA_X8, RA_X4); // key - 1
+  emit_cmp_r_r(J, RA_X8, RA_X6);
+  emit_b_cond(J, 2, 0); int p3 = J->size - 4; // HS
+
+  // 6. Access Array
+  emit_lsl_r_imm(J, RA_X8, RA_X8, 4);
+  emit_add_r_r_r(J, RA_X7, RA_X7, RA_X8); // &array[key-1]
+
+  // 7. Check Nil/Empty
+  emit_ldr_w_mem(J, RA_X4, RA_X7, 8);
+  emit_and_r_imm(J, RA_X4, RA_X4, 0x0F);
+  emit_cmp_w_imm(J, RA_X4, 0);
+  emit_b_cond(J, 0, 0); int p4 = J->size - 4; // EQ
+
+  // 8. Store Result
+  emit_get_reg_addr(J, a, RA_X2);
+  emit_ldr_r_mem(J, RA_X4, RA_X7, 0);
+  emit_str_r_mem(J, RA_X4, RA_X2, 0);
+  emit_ldr_r_mem(J, RA_X4, RA_X7, 8);
+  emit_str_r_mem(J, RA_X4, RA_X2, 8);
+
+  emit_u32(J, 0x14000000); int p_done = J->size - 4;
+
+  // Slow Path
+  int slow_pos = J->size;
+  unsigned int *cp = (unsigned int *)(J->code + p1);
+  *cp |= (((slow_pos - p1)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p2);
+  *cp |= (((slow_pos - p2)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p3);
+  *cp |= (((slow_pos - p3)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p4);
+  *cp |= (((slow_pos - p4)/4) & 0x7FFFF) << 5;
+
+  // C Call
   emit_update_savedpc(J);
-
   emit_mov_r_r(J, RA_X0, RA_X19); // L
-
   emit_get_reg_addr(J, b, RA_X1); // t
   emit_get_reg_addr(J, c, RA_X2); // key
   emit_get_reg_addr(J, a, RA_X3); // val
-
-  emit_mov_r_imm(J, RA_X4, 0); // slot
+  emit_mov_r_imm(J, RA_X4, 0); // slot = NULL
 
   emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaV_finishget);
   emit_blr(J, RA_X8);
+
+  int done_pos = J->size;
+  cp = (unsigned int *)(J->code + p_done);
+  *cp |= ((done_pos - p_done)/4 & 0x03FFFFFF);
 }
 
-static void jit_emit_op_geti(JitState *J, int a, int b, int c) { emit_barrier(J); }
+static void jit_emit_op_geti(JitState *J, int a, int b, int c) {
+  // Fast Path for Immediate Integer Key (c)
+  // 1. Get Table (RB)
+  emit_get_reg_addr(J, b, RA_X2);
+
+  // Check Table Tag
+  emit_ldr_w_mem(J, RA_X3, RA_X2, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0xFF);
+  emit_cmp_w_imm(J, RA_X3, ctb(LUA_VTABLE));
+  emit_b_cond(J, 1, 0); int p1 = J->size - 4; // NE
+
+  // 2. Load Table Ptr
+  emit_ldr_r_mem(J, RA_X4, RA_X2, 0);
+
+  // 3. Load alimit/array
+  // alimit is at offset 8 (high 32 bits).
+  emit_ldr_r_mem(J, RA_X5, RA_X4, 8);
+  emit_lsr_r_imm(J, RA_X5, RA_X5, 32); // X5 = alimit
+  emit_ldr_r_mem(J, RA_X6, RA_X4, 16); // X6 = array*
+
+  // 4. Check Bounds (c is immediate int)
+  emit_mov_r_imm(J, RA_X7, (long long)c);
+  emit_mov_r_imm(J, RA_X8, 1);
+  emit_sub_r_r_r(J, RA_X7, RA_X7, RA_X8); // key - 1
+  emit_cmp_r_r(J, RA_X7, RA_X5);
+  emit_b_cond(J, 2, 0); int p2 = J->size - 4; // HS (Unsigned >=)
+
+  // 5. Access Array
+  // offset = index * 16 (X7 is index)
+  emit_lsl_r_imm(J, RA_X7, RA_X7, 4);
+  emit_add_r_r_r(J, RA_X6, RA_X6, RA_X7);
+
+  // 6. Check Nil
+  // Tag is at offset 8
+  emit_ldr_w_mem(J, RA_X3, RA_X6, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0x0F);
+  emit_cmp_w_imm(J, RA_X3, 0); // LUA_TNIL
+  emit_b_cond(J, 0, 0); int p3 = J->size - 4; // EQ
+
+  // 7. Store Result
+  emit_get_reg_addr(J, a, RA_X2);
+  emit_ldr_r_mem(J, RA_X3, RA_X6, 0);
+  emit_str_r_mem(J, RA_X3, RA_X2, 0);
+  emit_ldr_r_mem(J, RA_X3, RA_X6, 8);
+  emit_str_r_mem(J, RA_X3, RA_X2, 8);
+
+  emit_u32(J, 0x14000000); int p_done = J->size - 4;
+
+  // Slow Path
+  int slow_pos = J->size;
+  unsigned int *cp = (unsigned int *)(J->code + p1);
+  *cp |= (((slow_pos - p1)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p2);
+  *cp |= (((slow_pos - p2)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p3);
+  *cp |= (((slow_pos - p3)/4) & 0x7FFFF) << 5;
+
+  // C Call
+  emit_update_savedpc(J);
+  emit_mov_r_r(J, RA_X0, RA_X19); // L
+  emit_get_reg_addr(J, b, RA_X1); // t
+
+  // Construct Key on Stack
+  emit_u32(J, 0xD10043FF); // SUB SP, SP, #16
+  emit_mov_r_imm(J, RA_X8, (long long)c);
+  emit_str_r_mem(J, RA_X8, RA_SP, 0);
+  emit_mov_r_imm(J, RA_X8, LUA_VNUMINT);
+  emit_str_w_mem(J, RA_X8, RA_SP, 8);
+  emit_mov_r_r(J, RA_X2, RA_SP); // key
+
+  emit_get_reg_addr(J, a, RA_X3); // val
+  emit_mov_r_imm(J, RA_X4, 0); // slot = NULL
+
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaV_finishget);
+  emit_blr(J, RA_X8);
+
+  emit_u32(J, 0x910043FF); // ADD SP, SP, #16
+
+  int done_pos = J->size;
+  cp = (unsigned int *)(J->code + p_done);
+  *cp |= ((done_pos - p_done)/4 & 0x03FFFFFF);
+}
+
 static void jit_emit_op_getfield(JitState *J, int a, int b, int c) { emit_barrier(J); }
 static void jit_emit_op_settabup(JitState *J, int a, int b, int c) { emit_barrier(J); }
 
 static void jit_emit_op_settable(JitState *J, int a, int b, int c) {
+  // Check 'k' bit from instruction
+  Instruction inst = *(J->next_pc - 1);
+  int k = GETARG_k(inst);
+
+  // Fast Path attempt for Array Set
+  // 1. Get Table (RA)
+  emit_get_reg_addr(J, a, RA_X2);
+  emit_ldr_w_mem(J, RA_X3, RA_X2, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0xFF);
+  emit_cmp_w_imm(J, RA_X3, LUA_VTABLE | (0 << 4));
+  emit_b_cond(J, 1, 0); int p1 = J->size - 4; // NE
+
+  // 2. Get Key (RB)
+  emit_get_reg_addr(J, b, RA_X3);
+  emit_ldr_w_mem(J, RA_X4, RA_X3, 8);
+  emit_and_r_imm(J, RA_X4, RA_X4, 0xFF);
+  emit_cmp_w_imm(J, RA_X4, LUA_VNUMINT);
+  emit_b_cond(J, 1, 0); int p2 = J->size - 4; // NE
+
+  // 3. Get Value (RC or KC)
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     emit_mov_r_imm(J, RA_X4, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_X4);
+  }
+
+  // Value must not be collectable
+  emit_ldr_w_mem(J, RA_X5, RA_X4, 8);
+  emit_and_r_imm(J, RA_X5, RA_X5, 0x40);
+  emit_cmp_w_imm(J, RA_X5, 0);
+  emit_b_cond(J, 1, 0); int p3 = J->size - 4; // NE
+
+  // 4. Load Table Ptr
+  emit_ldr_r_mem(J, RA_X5, RA_X2, 0);
+
+  // 5. Load alimit and array
+  emit_ldr_r_mem(J, RA_X6, RA_X5, 8);
+  emit_lsr_r_imm(J, RA_X6, RA_X6, 32);
+  emit_ldr_r_mem(J, RA_X7, RA_X5, 16);
+
+  // 6. Check Bounds
+  emit_ldr_r_mem(J, RA_X8, RA_X3, 0); // Key Value
+  emit_mov_r_imm(J, RA_X3, 1);
+  emit_sub_r_r_r(J, RA_X8, RA_X8, RA_X3);
+  emit_cmp_r_r(J, RA_X8, RA_X6);
+  emit_b_cond(J, 2, 0); int p4 = J->size - 4; // HS
+
+  // 7. Access Array
+  emit_lsl_r_imm(J, RA_X8, RA_X8, 4);
+  emit_add_r_r_r(J, RA_X7, RA_X7, RA_X8);
+
+  // 8. Check Existing Value (Must NOT be nil/empty)
+  emit_ldr_w_mem(J, RA_X3, RA_X7, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0x0F);
+  emit_cmp_w_imm(J, RA_X3, 0);
+  emit_b_cond(J, 0, 0); int p5 = J->size - 4; // EQ
+
+  // 9. Store New Value
+  emit_ldr_r_mem(J, RA_X3, RA_X4, 0);
+  emit_str_r_mem(J, RA_X3, RA_X7, 0);
+  emit_ldr_r_mem(J, RA_X3, RA_X4, 8);
+  emit_str_r_mem(J, RA_X3, RA_X7, 8);
+
+  emit_u32(J, 0x14000000); int p_done = J->size - 4;
+
+  // Slow Path
+  int slow_pos = J->size;
+  unsigned int *cp = (unsigned int *)(J->code + p1);
+  *cp |= (((slow_pos - p1)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p2);
+  *cp |= (((slow_pos - p2)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p3);
+  *cp |= (((slow_pos - p3)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p4);
+  *cp |= (((slow_pos - p4)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p5);
+  *cp |= (((slow_pos - p5)/4) & 0x7FFFF) << 5;
+
   emit_update_savedpc(J);
-
   emit_mov_r_r(J, RA_X0, RA_X19); // L
-
   emit_get_reg_addr(J, a, RA_X1); // t
   emit_get_reg_addr(J, b, RA_X2); // key
-  emit_get_reg_addr(J, c, RA_X3); // val
 
-  emit_mov_r_imm(J, RA_X4, 0); // slot
+  // Value
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     emit_mov_r_imm(J, RA_X3, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_X3);
+  }
 
+  emit_mov_r_imm(J, RA_X4, 0); // slot = NULL
   emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaV_finishset);
   emit_blr(J, RA_X8);
+
+  int done_pos = J->size;
+  cp = (unsigned int *)(J->code + p_done);
+  *cp |= ((done_pos - p_done)/4 & 0x03FFFFFF);
 }
-static void jit_emit_op_seti(JitState *J, int a, int b, int c) { emit_barrier(J); }
+
+static void jit_emit_op_seti(JitState *J, int a, int b, int c) {
+  Instruction inst = *(J->next_pc - 1);
+  int k = GETARG_k(inst);
+
+  // Fast Path for Immediate Integer Key (B)
+  // 1. Get Table (RA)
+  emit_get_reg_addr(J, a, RA_X2);
+
+  emit_ldr_w_mem(J, RA_X3, RA_X2, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0xFF);
+  emit_cmp_w_imm(J, RA_X3, ctb(LUA_VTABLE));
+  emit_b_cond(J, 1, 0); int p1 = J->size - 4; // NE
+
+  // 2. Get Value (RC or KC)
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     emit_mov_r_imm(J, RA_X4, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_X4);
+  }
+
+  // Value must not be collectable
+  emit_ldr_w_mem(J, RA_X3, RA_X4, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0x40); // BIT_ISCOLLECTABLE is bit 6? 0x40.
+  emit_cmp_w_imm(J, RA_X3, 0);
+  emit_b_cond(J, 1, 0); int p2 = J->size - 4; // NE (is collectable)
+
+  // 3. Load Table Ptr
+  emit_ldr_r_mem(J, RA_X5, RA_X2, 0);
+
+  // 4. Load alimit/array
+  emit_ldr_r_mem(J, RA_X6, RA_X5, 8);
+  emit_lsr_r_imm(J, RA_X6, RA_X6, 32);
+  emit_ldr_r_mem(J, RA_X7, RA_X5, 16);
+
+  // 5. Check Bounds (b is immediate int)
+  emit_mov_r_imm(J, RA_X8, (long long)b);
+  emit_mov_r_imm(J, RA_X3, 1);
+  emit_sub_r_r_r(J, RA_X8, RA_X8, RA_X3);
+  emit_cmp_r_r(J, RA_X8, RA_X6);
+  emit_b_cond(J, 2, 0); int p3 = J->size - 4; // HS
+
+  // 6. Access Array
+  emit_lsl_r_imm(J, RA_X8, RA_X8, 4);
+  emit_add_r_r_r(J, RA_X7, RA_X7, RA_X8);
+
+  // 7. Check Existing Not Nil
+  emit_ldr_w_mem(J, RA_X3, RA_X7, 8);
+  emit_and_r_imm(J, RA_X3, RA_X3, 0x0F);
+  emit_cmp_w_imm(J, RA_X3, 0);
+  emit_b_cond(J, 0, 0); int p4 = J->size - 4; // EQ
+
+  // 8. Store
+  emit_ldr_r_mem(J, RA_X3, RA_X4, 0); // Val
+  emit_str_r_mem(J, RA_X3, RA_X7, 0);
+  emit_ldr_r_mem(J, RA_X3, RA_X4, 8); // Tag
+  emit_str_r_mem(J, RA_X3, RA_X7, 8);
+
+  emit_u32(J, 0x14000000); int p_done = J->size - 4;
+
+  // Slow Path
+  int slow_pos = J->size;
+  unsigned int *cp = (unsigned int *)(J->code + p1);
+  *cp |= (((slow_pos - p1)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p2);
+  *cp |= (((slow_pos - p2)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p3);
+  *cp |= (((slow_pos - p3)/4) & 0x7FFFF) << 5;
+  cp = (unsigned int *)(J->code + p4);
+  *cp |= (((slow_pos - p4)/4) & 0x7FFFF) << 5;
+
+  emit_update_savedpc(J);
+  emit_mov_r_r(J, RA_X0, RA_X19); // L
+  emit_get_reg_addr(J, a, RA_X1); // t
+
+  // Construct Key on Stack
+  emit_u32(J, 0xD10043FF); // SUB SP, SP, #16
+  emit_mov_r_imm(J, RA_X8, (long long)b);
+  emit_str_r_mem(J, RA_X8, RA_SP, 0);
+  emit_mov_r_imm(J, RA_X8, LUA_VNUMINT);
+  emit_str_w_mem(J, RA_X8, RA_SP, 8);
+  emit_mov_r_r(J, RA_X2, RA_SP); // key
+
+  // Value
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     emit_mov_r_imm(J, RA_X3, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_X3);
+  }
+
+  emit_mov_r_imm(J, RA_X4, 0); // slot = NULL
+  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaV_finishset);
+  emit_blr(J, RA_X8);
+
+  emit_u32(J, 0x910043FF); // ADD SP, SP, #16
+
+  int done_pos = J->size;
+  cp = (unsigned int *)(J->code + p_done);
+  *cp |= ((done_pos - p_done)/4 & 0x03FFFFFF);
+}
 static void jit_emit_op_setfield(JitState *J, int a, int b, int c) { emit_barrier(J); }
 static void jit_emit_op_newtable(JitState *J, int a, int vb, int vc, int k) { emit_barrier(J); }
 static void jit_emit_op_self(JitState *J, int a, int b, int c) { emit_barrier(J); }
-static void jit_emit_op_addi(JitState *J, int a, int b, int sc, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_addk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_subk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_mulk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_modk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_powk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_divk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_idivk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_bandk(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_bork(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_bxork(JitState *J, int a, int b, int c, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_shli(JitState *J, int a, int b, int sc, const Instruction *next) { emit_barrier(J); }
-static void jit_emit_op_shri(JitState *J, int a, int b, int sc, const Instruction *next) { emit_barrier(J); }
 
-static void emit_arith_common(JitState *J, int ra, int rb, int rc, const Instruction *next_pc, int op) {
-  // Update savedpc
-  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
-  emit_str_r_mem(J, RA_X0, RA_X20, 32);
+static void jit_emit_op_addi(JitState *J, int a, int b, int sc, const Instruction *next) {
+  // Fast Path for ADDI (Integers)
+  emit_get_reg_addr(J, b, RA_X2); // &RB
 
-  // X0 = L
-  emit_mov_r_r(J, RA_X0, RA_X19);
-  // X1 = op
-  emit_mov_r_imm(J, RA_X1, op);
+  // Check RB tag (offset 8)
+  emit_ldr_w_mem(J, RA_X3, RA_X2, 8);
+  emit_cmp_w_imm(J, RA_X3, LUA_VNUMINT);
 
-  // X2 = &R[rb]
-  emit_get_reg_addr(J, rb, RA_X2);
+  // B.NE Mismatch (Slow Path)
+  emit_b_cond(J, 1, 0); int p1 = J->size - 4; // 1 = NE
 
-  // X3 = &R[rc]
-  emit_get_reg_addr(J, rc, RA_X3);
+  // Fast Add Immediate
+  emit_ldr_r_mem(J, RA_X3, RA_X2, 0); // Val RB
 
-  // X4 = &R[ra]
-  emit_get_reg_addr(J, ra, RA_X4);
+  if (sc >= 0 && sc <= 4095) {
+     emit_adds_r_r_imm(J, RA_X3, RA_X3, sc);
+  } else {
+     emit_mov_r_imm(J, RA_X8, (long long)sc);
+     // ADDS X3, X3, X8
+     emit_u32(J, 0xAB000000 | (RA_X8 << 16) | (RA_X3 << 5) | RA_X3);
+  }
 
-  // Call luaO_arith
-  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
-  emit_blr(J, RA_X8);
+  // Check Overflow (VS)
+  emit_b_vs(J, 0); int p2 = J->size - 4;
+
+  // Store result
+  emit_get_reg_addr(J, a, RA_X4);
+  emit_str_r_mem(J, RA_X3, RA_X4, 0);
+  emit_mov_r_imm(J, RA_X5, LUA_VNUMINT);
+  emit_str_w_mem(J, RA_X5, RA_X4, 8);
+
+  // Jump to Done
+  emit_u32(J, 0x14000000); int p_done = J->size - 4;
+
+  // Slow Path
+  int slow_pos = J->size;
+  // Fix p1
+  unsigned int *c = (unsigned int *)(J->code + p1);
+  *c |= (((slow_pos - p1)/4) & 0x7FFFF) << 5;
+  // Fix p2
+  c = (unsigned int *)(J->code + p2);
+  *c |= (((slow_pos - p2)/4) & 0x7FFFF) << 5;
+
+  emit_arith_i(J, a, b, sc, next, LUA_OPADD);
+
+  // Done
+  int done_pos = J->size;
+  c = (unsigned int *)(J->code + p_done);
+  *c |= ((done_pos - p_done)/4 & 0x03FFFFFF);
 }
+
+static void jit_emit_op_addk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPADD); }
+static void jit_emit_op_subk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPSUB); }
+static void jit_emit_op_mulk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPMUL); }
+static void jit_emit_op_modk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPMOD); }
+static void jit_emit_op_powk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPPOW); }
+static void jit_emit_op_divk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPDIV); }
+static void jit_emit_op_idivk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPIDIV); }
+static void jit_emit_op_bandk(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPBAND); }
+static void jit_emit_op_bork(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPBOR); }
+static void jit_emit_op_bxork(JitState *J, int a, int b, int c, const Instruction *next) { emit_arith_k(J, a, b, c, next, LUA_OPBXOR); }
+static void jit_emit_op_shli(JitState *J, int a, int b, int sc, const Instruction *next) { emit_arith_i(J, a, b, sc, next, LUA_OPSHL); }
+static void jit_emit_op_shri(JitState *J, int a, int b, int sc, const Instruction *next) { emit_arith_i(J, a, b, sc, next, LUA_OPSHR); }
 
 static void jit_emit_op_add(JitState *J, int a, int b, int c, const Instruction *next) {
   emit_arith_common(J, a, b, c, next, LUA_OPADD);
@@ -537,22 +1075,6 @@ static void jit_emit_op_shr(JitState *J, int a, int b, int c, const Instruction 
 }
 
 static void jit_emit_op_spaceship(JitState *J, int a, int b, int c) { emit_barrier(J); }
-
-static void emit_unary_arith_common(JitState *J, int ra, int rb, const Instruction *next_pc, int op) {
-  emit_mov_r_imm(J, RA_X0, (unsigned long long)(uintptr_t)next_pc);
-  emit_str_r_mem(J, RA_X0, RA_X20, 32);
-
-  emit_mov_r_r(J, RA_X0, RA_X19);
-  emit_mov_r_imm(J, RA_X1, op);
-
-  emit_get_reg_addr(J, rb, RA_X2); // p1
-  emit_mov_r_r(J, RA_X3, RA_X2);   // p2 = p1
-
-  emit_get_reg_addr(J, ra, RA_X4); // res
-
-  emit_mov_r_imm(J, RA_X8, (unsigned long long)(uintptr_t)&luaO_arith);
-  emit_blr(J, RA_X8);
-}
 
 static void jit_emit_op_unm(JitState *J, int a, int b, const Instruction *next) {
   emit_unary_arith_common(J, a, b, next, LUA_OPUNM);
