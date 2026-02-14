@@ -17,12 +17,11 @@
 
 /*
 ** Helper function for OP_CALL in JIT
-** Validates and prepares the stack, calls luaD_precall, and executes Lua functions recursively.
+** Validates and prepares the stack, calls luaD_call to execute the function.
 */
 static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int c, const Instruction *next_pc) {
   StkId ra = ci->func.p + 1 + ra_idx;
   int nresults = c - 1;
-  CallInfo *newci;
 
   if (b != 0) {
     L->top.p = ra + b;
@@ -30,10 +29,8 @@ static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int 
 
   ci->u.l.savedpc = next_pc;
 
-  if ((newci = luaD_precall(L, ra, nresults)) != NULL) {
-     /* Lua function: run it recursively */
-     luaV_execute(L, newci);
-  }
+  /* Use luaD_call to ensure proper stack management and CIST_FRESH */
+  luaD_call(L, ra, nresults);
 }
 
 /* Comparison Helpers for JIT */
