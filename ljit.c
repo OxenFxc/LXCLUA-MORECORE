@@ -1,5 +1,6 @@
 #define ljit_c
 #define LUA_CORE
+#define LJIT_DEBUG
 
 #include "lprefix.h"
 #include <string.h>
@@ -13,6 +14,69 @@
 #include "lopcodes.h"
 #include "lstate.h"
 #include "ljit.h"
+#include "lvm.h"
+
+/*
+** Helper function for OP_CALL in JIT
+** Validates and prepares the stack, calls luaD_precall, and executes Lua functions recursively.
+*/
+static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int c, const Instruction *next_pc) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] Call Helper Triggered: RA %d, B %d, C %d\n", ra_idx, b, c);
+#endif
+  StkId ra = ci->func.p + 1 + ra_idx;
+  int nresults = c - 1;
+  CallInfo *newci;
+
+  if (b != 0) {
+    L->top.p = ra + b;
+  }
+
+  ci->u.l.savedpc = next_pc;
+
+  if ((newci = luaD_precall(L, ra, nresults)) != NULL) {
+     /* Lua function: run it recursively */
+     luaV_execute(L, newci);
+  }
+}
+
+/* Comparison Helpers for JIT */
+int luaJ_eqi(lua_State *L, TValue *ra, int im) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] EQI Helper Triggered: im %d\n", im);
+#endif
+  if (ttisinteger(ra)) return ivalue(ra) == im;
+  if (ttisfloat(ra)) return luai_numeq(fltvalue(ra), cast_num(im));
+  return 0;
+}
+
+int luaJ_lti(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) < im;
+  else if (ttisfloat(ra)) return luai_numlt(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 0, 0, TM_LT);
+}
+
+int luaJ_lei(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) <= im;
+  else if (ttisfloat(ra)) return luai_numle(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 0, 0, TM_LE);
+}
+
+int luaJ_gti(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) > im;
+  else if (ttisfloat(ra)) return luai_numgt(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 1, 0, TM_LT);
+}
+
+int luaJ_gei(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) >= im;
+  else if (ttisfloat(ra)) return luai_numge(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 1, 0, TM_LE);
+}
+
+int luaJ_istrue(TValue *o) {
+  return !l_isfalse(o);
+}
 
 #if defined(__x86_64__) || defined(_M_X64)
   #if defined(__linux__) || defined(__APPLE__)
@@ -40,6 +104,9 @@ void luaJ_prep_return0(lua_State *L, CallInfo *ci) {
 }
 
 void luaJ_prep_return1(lua_State *L, CallInfo *ci, int ra) {
+#ifdef LJIT_DEBUG
+  printf("[JIT] Return1 Helper Triggered: ra %d\n", ra);
+#endif
   StkId base = ci->func.p + 1;
   setobjs2s(L, base - 1, base + ra);
   L->top.p = base;
@@ -56,14 +123,98 @@ void luaJ_compile(lua_State *L, Proto *p) {
     Instruction inst = p->code[i];
     OpCode op = GET_OPCODE(inst);
     switch (op) {
+      case OP_MOVE:
+      case OP_LOADI:
+      case OP_LOADF:
+      case OP_LOADK:
+      case OP_LOADKX:
+      case OP_LOADFALSE:
+      case OP_LFALSESKIP:
+      case OP_LOADTRUE:
+      case OP_LOADNIL:
+      case OP_GETUPVAL:
+      case OP_SETUPVAL:
+      case OP_GETTABUP:
+      case OP_GETTABLE:
+      case OP_GETI:
+      case OP_GETFIELD:
+      case OP_SETTABUP:
+      case OP_SETTABLE:
+      case OP_SETI:
+      case OP_SETFIELD:
+      case OP_NEWTABLE:
+      case OP_SELF:
+      case OP_ADDI:
+      case OP_ADDK:
+      case OP_SUBK:
+      case OP_MULK:
+      case OP_MODK:
+      case OP_POWK:
+      case OP_DIVK:
+      case OP_IDIVK:
+      case OP_BANDK:
+      case OP_BORK:
+      case OP_BXORK:
+      case OP_SHLI:
+      case OP_SHRI:
       case OP_ADD:
       case OP_SUB:
+      case OP_MUL:
+      case OP_MOD:
+      case OP_POW:
+      case OP_DIV:
+      case OP_IDIV:
+      case OP_BAND:
+      case OP_BOR:
+      case OP_BXOR:
+      case OP_SHL:
+      case OP_SHR:
+      case OP_SPACESHIP:
+      case OP_MMBIN:
+      case OP_MMBINI:
+      case OP_MMBINK:
+      case OP_UNM:
+      case OP_BNOT:
+      case OP_NOT:
+      case OP_LEN:
+      case OP_CONCAT:
+      case OP_CLOSE:
+      case OP_TBC:
+      case OP_JMP:
+      case OP_EQ:
+      case OP_LT:
+      case OP_LE:
+      case OP_EQK:
+      case OP_EQI:
+      case OP_LTI:
+      case OP_LEI:
+      case OP_GTI:
+      case OP_GEI:
+      case OP_TEST:
+      case OP_TESTSET:
+      case OP_CALL:
+      case OP_TAILCALL:
+      case OP_RETURN:
       case OP_RETURN0:
       case OP_RETURN1:
-      case OP_MMBIN:
+      case OP_FORLOOP:
+      case OP_FORPREP:
+      case OP_TFORPREP:
+      case OP_TFORCALL:
+      case OP_TFORLOOP:
+      case OP_SETLIST:
+      case OP_CLOSURE:
+      case OP_VARARG:
+      case OP_GETVARG:
+      case OP_ERRNNIL:
+      case OP_VARARGPREP:
+      case OP_IS:
+      case OP_TESTNIL:
         break;
       default:
-        return; // Unsupported opcode, abort JIT
+        // Partially supported or unsupported opcodes (e.g. some OOP ones)
+        // For now we try to support most standard ones.
+        break; // Continue compilation even if opcode is unsupported
     }
   }
 
@@ -75,13 +226,17 @@ void luaJ_compile(lua_State *L, Proto *p) {
     return;
   }
 
+  J->p = p;
+
   // Prologue
   jit_emit_prologue(J);
 
   // Second pass: Emit code
   for (int i = 0; i < p->sizecode; i++) {
     Instruction inst = p->code[i];
+    J->next_pc = &p->code[i+1];
     OpCode op = GET_OPCODE(inst);
+    // printf("JIT compiling op: %d at %d\n", op, i);
     switch (op) {
       case OP_MOVE: jit_emit_op_move(J, GETARG_A(inst), GETARG_B(inst)); break;
       case OP_LOADI: jit_emit_op_loadi(J, GETARG_A(inst), GETARG_sBx(inst)); break;
@@ -133,25 +288,102 @@ void luaJ_compile(lua_State *L, Proto *p) {
       case OP_MMBIN: break; // Metadata
       case OP_MMBINI: break; // Metadata
       case OP_MMBINK: break; // Metadata
-      case OP_UNM: jit_emit_op_unm(J, GETARG_A(inst), GETARG_B(inst)); break;
-      case OP_BNOT: jit_emit_op_bnot(J, GETARG_A(inst), GETARG_B(inst)); break;
+      case OP_UNM: jit_emit_op_unm(J, GETARG_A(inst), GETARG_B(inst), &p->code[i+1]); break;
+      case OP_BNOT: jit_emit_op_bnot(J, GETARG_A(inst), GETARG_B(inst), &p->code[i+1]); break;
       case OP_NOT: jit_emit_op_not(J, GETARG_A(inst), GETARG_B(inst)); break;
       case OP_LEN: jit_emit_op_len(J, GETARG_A(inst), GETARG_B(inst)); break;
       case OP_CONCAT: jit_emit_op_concat(J, GETARG_A(inst), GETARG_B(inst)); break;
       case OP_CLOSE: jit_emit_op_close(J, GETARG_A(inst)); break;
       case OP_TBC: jit_emit_op_tbc(J, GETARG_A(inst)); break;
       case OP_JMP: jit_emit_op_jmp(J, GETARG_sJ(inst)); break;
-      case OP_EQ: jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_LT: jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_LE: jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_EQK: jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_EQI: jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_LTI: jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_LEI: jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_GTI: jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_GEI: jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_TEST: jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst)); break;
-      case OP_TESTSET: jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
+      case OP_EQ:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LT:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LE:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_EQK:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_EQI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LTI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LEI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_GTI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_GEI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_TEST:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_TESTSET:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
       case OP_CALL: jit_emit_op_call(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst)); break;
       case OP_TAILCALL: jit_emit_op_tailcall(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), GETARG_k(inst)); break;
       case OP_RETURN: jit_emit_op_return(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), GETARG_k(inst)); break;
@@ -190,7 +422,7 @@ void luaJ_compile(lua_State *L, Proto *p) {
       case OP_NEWNAMESPACE: jit_emit_op_newnamespace(J, GETARG_A(inst), GETARG_Bx(inst)); break;
       case OP_LINKNAMESPACE: jit_emit_op_linknamespace(J, GETARG_A(inst), GETARG_B(inst)); break;
       case OP_EXTRAARG: break;
-      default: break;
+      default: emit_barrier(J); break;
     }
   }
 
