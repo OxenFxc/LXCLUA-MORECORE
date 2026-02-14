@@ -357,6 +357,42 @@ static void ASM_JGE_REL32(JitState *J, int offset) {
   emit_u32(J, offset);
 }
 
+// Shift Left (SHL r/m64, imm8)
+static void ASM_SHL_R_IMM(JitState *J, int reg, int imm) {
+  unsigned char rex = 0x48;
+  if (reg >= 8) rex |= 1;
+  emit_byte(J, rex);
+  emit_byte(J, 0xC1);
+  emit_byte(J, 0xE0 + (reg & 7));
+  emit_byte(J, (unsigned char)imm);
+}
+
+// Shift Right (SHR r/m64, imm8)
+static void ASM_SHR_R_IMM(JitState *J, int reg, int imm) {
+  unsigned char rex = 0x48;
+  if (reg >= 8) rex |= 1;
+  emit_byte(J, rex);
+  emit_byte(J, 0xC1);
+  emit_byte(J, 0xE8 + (reg & 7));
+  emit_byte(J, (unsigned char)imm);
+}
+
+// AND r/m64, imm32
+static void ASM_AND_R_IMM32(JitState *J, int reg, int imm) {
+  unsigned char rex = 0x48;
+  if (reg >= 8) rex |= 1;
+  emit_byte(J, rex);
+  emit_byte(J, 0x81);
+  emit_byte(J, 0xE0 + (reg & 7));
+  emit_u32(J, imm);
+}
+
+// Jump if Above or Equal (Unsigned)
+static void ASM_JAE(JitState *J, int offset) {
+  emit_byte(J, 0x73);
+  emit_byte(J, (unsigned char)offset);
+}
+
 static void jit_add_fixup(JitState *J, int offset, int target_pc) {
   if (J->fixup_count == J->fixup_capacity) {
     size_t new_cap = J->fixup_capacity == 0 ? 16 : J->fixup_capacity * 2;
@@ -513,33 +549,170 @@ static void jit_emit_op_loadtrue(JitState *J, int a) {
 static void jit_emit_op_lfalseskip(JitState *J, int a) { emit_barrier(J); }
 
 static void jit_emit_op_gettable(JitState *J, int a, int b, int c) {
-  // Update savedpc first
+  // Fast Path attempt for Array Access
+  // 1. Get Table (RB)
+  emit_get_reg_addr(J, b, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RDX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, ctb(LUA_VTABLE)); // Table is collectable
+  ASM_JNE(J, 0); int p1 = J->size - 1;
+
+  // 2. Get Key (RC)
+  emit_get_reg_addr(J, c, RA_RCX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RCX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, LUA_VNUMINT); // 3
+  ASM_JNE(J, 0); int p2 = J->size - 1;
+
+  // 3. Load Table Ptr
+  ASM_MOV_R_MEM_OFF(J, RA_RSI, RA_RDX, 0); // Table*
+
+  // 4. Load alimit and array
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_RSI, 8); // Load offset 8 (contains alimit at +4)
+  ASM_SHR_R_IMM(J, RA_R10, 32); // R10 = alimit (high 32 bits)
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RSI, 16); // array*
+
+  // 5. Check Bounds
+  ASM_MOV_R_MEM_OFF(J, RA_RAX, RA_RCX, 0); // Key Value
+  ASM_SUB_R_IMM32(J, RA_RAX, 1); // key - 1
+  ASM_CMP_RR(J, RA_RAX, RA_R10); // CMP (key-1), alimit
+  ASM_JAE(J, 0); int p3 = J->size - 1; // Unsigned >=
+
+  // 6. Access Array
+  ASM_SHL_R_IMM(J, RA_RAX, 4); // index * 16
+  ASM_ADD_RR(J, RA_R8, RA_RAX); // R8 = &array[key-1]
+
+  // 7. Check Nil/Empty
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8); // Tag of val
+  ASM_AND_R_IMM32(J, RA_R11, 0x0F);
+  ASM_CMP_R_IMM32(J, RA_R11, 0); // LUA_TNIL
+  ASM_JE(J, 0); int p4 = J->size - 1;
+
+  // 8. Store Result
+  emit_get_reg_addr(J, a, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_R8, 0); // Value
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8); // Tag
+  ASM_MOV_MEM_OFF_R(J, RA_RDX, 0, RA_R10);
+  ASM_MOV_MEM_OFF_R(J, RA_RDX, 8, RA_R11);
+
+  // Jump to Done
+  ASM_JMP(J, 0); int p_done = J->size - 1;
+
+  // Slow Path
+  int slow_pos = J->size;
+  J->code[p1] = (unsigned char)(slow_pos - (p1 + 1));
+  J->code[p2] = (unsigned char)(slow_pos - (p2 + 1));
+  J->code[p3] = (unsigned char)(slow_pos - (p3 + 1));
+  J->code[p4] = (unsigned char)(slow_pos - (p4 + 1));
+
+  // Existing C call
   emit_update_savedpc(J);
-
   ASM_MOV_RR(J, RA_RDI, RA_RBX); // L
-
   emit_get_reg_addr(J, b, RA_RSI); // t
   emit_get_reg_addr(J, c, RA_RDX); // key
   emit_get_reg_addr(J, a, RA_RCX); // val
-
   ASM_XOR_RR(J, RA_R8, RA_R8); // slot = NULL
-
   ASM_MOV_R_IMM(J, RA_RAX, (unsigned long long)(uintptr_t)&luaV_finishget);
   ASM_CALL_R(J, RA_RAX);
+
+  int done_pos = J->size;
+  J->code[p_done] = (unsigned char)(done_pos - (p_done + 1));
 }
 
 static void jit_emit_op_settable(JitState *J, int a, int b, int c) {
-  // Update savedpc first
-  emit_update_savedpc(J);
+  // Check 'k' bit from instruction
+  Instruction inst = *(J->next_pc - 1);
+  int k = GETARG_k(inst);
 
+  // Fast Path attempt for Array Set
+  // 1. Get Table (RA)
+  emit_get_reg_addr(J, a, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RDX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, LUA_VTABLE | (0 << 4)); // 5
+  ASM_JNE(J, 0); int p1 = J->size - 1;
+
+  // 2. Get Key (RB)
+  emit_get_reg_addr(J, b, RA_RCX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RCX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, LUA_VNUMINT); // 3
+  ASM_JNE(J, 0); int p2 = J->size - 1;
+
+  // 3. Get Value (RC or KC)
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     ASM_MOV_R_IMM(J, RA_R9, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_R9);
+  }
+
+  // Value must not be collectable
+  ASM_MOV_R_MEM_OFF(J, RA_RAX, RA_R9, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_RAX, 0x40);
+  ASM_CMP_R_IMM32(J, RA_RAX, 0);
+  ASM_JNE(J, 0); int p3 = J->size - 1;
+
+  // 4. Load Table Ptr
+  ASM_MOV_R_MEM_OFF(J, RA_RSI, RA_RDX, 0); // Table*
+
+  // 5. Load alimit and array
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_RSI, 8);
+  ASM_SHR_R_IMM(J, RA_R10, 32); // alimit
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RSI, 16); // array*
+
+  // 6. Check Bounds
+  ASM_MOV_R_MEM_OFF(J, RA_RAX, RA_RCX, 0); // Key Value
+  ASM_SUB_R_IMM32(J, RA_RAX, 1);
+  ASM_CMP_RR(J, RA_RAX, RA_R10);
+  ASM_JAE(J, 0); int p4 = J->size - 1;
+
+  // 7. Access Array
+  ASM_SHL_R_IMM(J, RA_RAX, 4);
+  ASM_ADD_RR(J, RA_R8, RA_RAX); // R8 = &array[key-1]
+
+  // 8. Check Existing Value (Must NOT be nil/empty to avoid NEWINDEX)
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8); // Tag of existing slot
+  ASM_AND_R_IMM32(J, RA_R11, 0x0F);
+  ASM_CMP_R_IMM32(J, RA_R11, 0); // LUA_TNIL
+  ASM_JE(J, 0); int p5 = J->size - 1;
+
+  // 9. Store New Value
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_R9, 0); // New Value
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R9, 8); // New Tag
+  ASM_MOV_MEM_OFF_R(J, RA_R8, 0, RA_R10);
+  ASM_MOV_MEM_OFF_R(J, RA_R8, 8, RA_R11);
+
+  // Done
+  ASM_JMP(J, 0); int p_done = J->size - 1;
+
+  // Slow Path
+  int slow_pos = J->size;
+  J->code[p1] = (unsigned char)(slow_pos - (p1 + 1));
+  J->code[p2] = (unsigned char)(slow_pos - (p2 + 1));
+  J->code[p3] = (unsigned char)(slow_pos - (p3 + 1));
+  J->code[p4] = (unsigned char)(slow_pos - (p4 + 1));
+  J->code[p5] = (unsigned char)(slow_pos - (p5 + 1));
+
+  emit_update_savedpc(J);
   ASM_MOV_RR(J, RA_RDI, RA_RBX); // L
   emit_get_reg_addr(J, a, RA_RSI); // t
   emit_get_reg_addr(J, b, RA_RDX); // key
-  emit_get_reg_addr(J, c, RA_RCX); // val
-  ASM_XOR_RR(J, RA_R8, RA_R8); // slot = NULL
 
+  // Value arg handling for C call
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     ASM_MOV_R_IMM(J, RA_RCX, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_RCX);
+  }
+
+  ASM_XOR_RR(J, RA_R8, RA_R8); // slot = NULL
   ASM_MOV_R_IMM(J, RA_RAX, (unsigned long long)(uintptr_t)&luaV_finishset);
   ASM_CALL_R(J, RA_RAX);
+
+  int done_pos = J->size;
+  J->code[p_done] = (unsigned char)(done_pos - (p_done + 1));
 }
 
 // Barriers for Control Flow
@@ -1090,8 +1263,172 @@ static void jit_emit_op_getupval(JitState *J, int a, int b) {
 static void jit_emit_op_setupval(JitState *J, int a, int b) { emit_barrier(J); }
 static void jit_emit_op_gettabup(JitState *J, int a, int b, int c) { emit_barrier(J); }
 static void jit_emit_op_settabup(JitState *J, int a, int b, int c) { emit_barrier(J); }
-static void jit_emit_op_geti(JitState *J, int a, int b, int c) { emit_barrier(J); }
-static void jit_emit_op_seti(JitState *J, int a, int b, int c) { emit_barrier(J); }
+static void jit_emit_op_geti(JitState *J, int a, int b, int c) {
+  // Fast Path for Immediate Integer Key (c)
+  // 1. Get Table (RB)
+  emit_get_reg_addr(J, b, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RDX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, ctb(LUA_VTABLE));
+  ASM_JNE(J, 0); int p1 = J->size - 1;
+
+  // 2. Load Table Ptr
+  ASM_MOV_R_MEM_OFF(J, RA_RSI, RA_RDX, 0);
+
+  // 3. Load alimit/array
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_RSI, 8);
+  ASM_SHR_R_IMM(J, RA_R10, 32); // alimit
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RSI, 16); // array*
+
+  // 4. Check Bounds (c is immediate int)
+  ASM_MOV_R_IMM(J, RA_RAX, (long long)c);
+  ASM_SUB_R_IMM32(J, RA_RAX, 1);
+  ASM_CMP_RR(J, RA_RAX, RA_R10);
+  ASM_JAE(J, 0); int p2 = J->size - 1;
+
+  // 5. Access Array
+  ASM_SHL_R_IMM(J, RA_RAX, 4);
+  ASM_ADD_RR(J, RA_R8, RA_RAX);
+
+  // 6. Check Nil
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8);
+  ASM_AND_R_IMM32(J, RA_R11, 0x0F);
+  ASM_CMP_R_IMM32(J, RA_R11, 0);
+  ASM_JE(J, 0); int p3 = J->size - 1;
+
+  // 7. Store Result
+  emit_get_reg_addr(J, a, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_R8, 0);
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8);
+  ASM_MOV_MEM_OFF_R(J, RA_RDX, 0, RA_R10);
+  ASM_MOV_MEM_OFF_R(J, RA_RDX, 8, RA_R11);
+
+  ASM_JMP(J, 0); int p_done = J->size - 1;
+
+  // Slow Path
+  int slow_pos = J->size;
+  J->code[p1] = (unsigned char)(slow_pos - (p1 + 1));
+  J->code[p2] = (unsigned char)(slow_pos - (p2 + 1));
+  J->code[p3] = (unsigned char)(slow_pos - (p3 + 1));
+
+  // C Call
+  emit_update_savedpc(J);
+  ASM_MOV_RR(J, RA_RDI, RA_RBX); // L
+  emit_get_reg_addr(J, b, RA_RSI); // t
+
+  // Construct Key on Stack (reuse RSP space)
+  ASM_SUB_R_IMM32(J, RA_RSP, 16);
+  ASM_MOV_R_IMM(J, RA_RAX, (long long)c);
+  ASM_MOV_MEM_R(J, RA_RSP, 0, RA_RAX);
+  ASM_MOV_R_IMM32(J, RA_RAX, LUA_VNUMINT);
+  ASM_MOV_MEM_R(J, RA_RSP, 8, RA_RAX);
+  ASM_MOV_RR(J, RA_RDX, RA_RSP); // key
+
+  emit_get_reg_addr(J, a, RA_RCX); // val
+  ASM_XOR_RR(J, RA_R8, RA_R8); // slot = NULL
+
+  ASM_MOV_R_IMM(J, RA_RAX, (unsigned long long)(uintptr_t)&luaV_finishget);
+  ASM_CALL_R(J, RA_RAX);
+
+  ASM_ADD_R_IMM32(J, RA_RSP, 16);
+
+  int done_pos = J->size;
+  J->code[p_done] = (unsigned char)(done_pos - (p_done + 1));
+}
+static void jit_emit_op_seti(JitState *J, int a, int b, int c) {
+  Instruction inst = *(J->next_pc - 1);
+  int k = GETARG_k(inst);
+
+  // Fast Path for Immediate Integer Key (B)
+  // 1. Get Table (RA)
+  emit_get_reg_addr(J, a, RA_RDX);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RDX, 8); // Tag
+  ASM_AND_R_IMM32(J, RA_R8, 0xFF); // Mask Tag
+  ASM_CMP_R_IMM32(J, RA_R8, ctb(LUA_VTABLE));
+  ASM_JNE(J, 0); int p1 = J->size - 1;
+
+  // 2. Get Value (RC or KC)
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     ASM_MOV_R_IMM(J, RA_R9, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_R9);
+  }
+
+  // Value must not be collectable
+  ASM_MOV_R_MEM_OFF(J, RA_RAX, RA_R9, 8);
+  ASM_AND_R_IMM32(J, RA_RAX, 0x40);
+  ASM_CMP_R_IMM32(J, RA_RAX, 0);
+  ASM_JNE(J, 0); int p2 = J->size - 1;
+
+  // 3. Load Table Ptr
+  ASM_MOV_R_MEM_OFF(J, RA_RSI, RA_RDX, 0);
+
+  // 4. Load alimit/array
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_RSI, 8);
+  ASM_SHR_R_IMM(J, RA_R10, 32);
+  ASM_MOV_R_MEM_OFF(J, RA_R8, RA_RSI, 16);
+
+  // 5. Check Bounds (b is immediate int)
+  ASM_MOV_R_IMM(J, RA_RAX, (long long)b);
+  ASM_SUB_R_IMM32(J, RA_RAX, 1);
+  ASM_CMP_RR(J, RA_RAX, RA_R10);
+  ASM_JAE(J, 0); int p3 = J->size - 1;
+
+  // 6. Access Array
+  ASM_SHL_R_IMM(J, RA_RAX, 4);
+  ASM_ADD_RR(J, RA_R8, RA_RAX);
+
+  // 7. Check Existing Not Nil
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R8, 8);
+  ASM_AND_R_IMM32(J, RA_R11, 0x0F);
+  ASM_CMP_R_IMM32(J, RA_R11, 0);
+  ASM_JE(J, 0); int p4 = J->size - 1;
+
+  // 8. Store
+  ASM_MOV_R_MEM_OFF(J, RA_R10, RA_R9, 0);
+  ASM_MOV_R_MEM_OFF(J, RA_R11, RA_R9, 8);
+  ASM_MOV_MEM_OFF_R(J, RA_R8, 0, RA_R10);
+  ASM_MOV_MEM_OFF_R(J, RA_R8, 8, RA_R11);
+
+  ASM_JMP(J, 0); int p_done = J->size - 1;
+
+  // Slow Path
+  int slow_pos = J->size;
+  J->code[p1] = (unsigned char)(slow_pos - (p1 + 1));
+  J->code[p2] = (unsigned char)(slow_pos - (p2 + 1));
+  J->code[p3] = (unsigned char)(slow_pos - (p3 + 1));
+  J->code[p4] = (unsigned char)(slow_pos - (p4 + 1));
+
+  emit_update_savedpc(J);
+  ASM_MOV_RR(J, RA_RDI, RA_RBX); // L
+  emit_get_reg_addr(J, a, RA_RSI); // t
+
+  // Construct Key on Stack (reuse RSP space)
+  ASM_SUB_R_IMM32(J, RA_RSP, 16);
+  ASM_MOV_R_IMM(J, RA_RAX, (long long)b);
+  ASM_MOV_MEM_R(J, RA_RSP, 0, RA_RAX);
+  ASM_MOV_R_IMM32(J, RA_RAX, LUA_VNUMINT);
+  ASM_MOV_MEM_R(J, RA_RSP, 8, RA_RAX);
+  ASM_MOV_RR(J, RA_RDX, RA_RSP); // key
+
+  // Value
+  if (k) {
+     TValue *kval = &J->p->k[c];
+     ASM_MOV_R_IMM(J, RA_RCX, (unsigned long long)(uintptr_t)kval);
+  } else {
+     emit_get_reg_addr(J, c, RA_RCX);
+  }
+
+  ASM_XOR_RR(J, RA_R8, RA_R8); // slot = NULL
+  ASM_MOV_R_IMM(J, RA_RAX, (unsigned long long)(uintptr_t)&luaV_finishset);
+  ASM_CALL_R(J, RA_RAX);
+
+  ASM_ADD_R_IMM32(J, RA_RSP, 16);
+
+  int done_pos = J->size;
+  J->code[p_done] = (unsigned char)(done_pos - (p_done + 1));
+}
 static void jit_emit_op_getfield(JitState *J, int a, int b, int c) { emit_barrier(J); }
 static void jit_emit_op_setfield(JitState *J, int a, int b, int c) { emit_barrier(J); }
 static void jit_emit_op_newtable(JitState *J, int a, int vb, int vc, int k) { emit_barrier(J); }
