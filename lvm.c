@@ -665,23 +665,25 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
         if (ttisnumber(t) && ttisinteger(key)) {
             /* Support number[precision] -> string */
             lua_Integer prec = ivalue(key);
-            if (prec >= 0) {
+            if (prec >= -1) {
                if (ttisbigfloat(t) || ttisbigint(t)) {
                    luaB_tostring_prec(L, t, (int)prec, s2v(val));
                    return;
-               } else if (ttisinteger(t)) {
-                   char buff[128];
-                   if (prec < 90) {
-                       sprintf(buff, "%.*f", (int)prec, (double)ivalue(t));
-                       setsvalue2s(L, val, luaS_new(L, buff));
-                       return;
-                   }
-               } else if (ttisfloat(t)) {
-                   char buff[128];
-                   if (prec < 90) {
-                       sprintf(buff, "%.*f", (int)prec, fltvalue(t));
-                       setsvalue2s(L, val, luaS_new(L, buff));
-                       return;
+               } else if (prec >= 0) {
+                   if (ttisinteger(t)) {
+                       char buff[128];
+                       if (prec < 90) {
+                           sprintf(buff, "%.*f", (int)prec, (double)ivalue(t));
+                           setsvalue2s(L, val, luaS_new(L, buff));
+                           return;
+                       }
+                   } else if (ttisfloat(t)) {
+                       char buff[128];
+                       if (prec < 90) {
+                           sprintf(buff, "%.*f", (int)prec, fltvalue(t));
+                           setsvalue2s(L, val, luaS_new(L, buff));
+                           return;
+                       }
                    }
                }
             }
