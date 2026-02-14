@@ -36,6 +36,41 @@ static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int 
   }
 }
 
+/* Comparison Helpers for JIT */
+int luaJ_eqi(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) == im;
+  if (ttisfloat(ra)) return luai_numeq(fltvalue(ra), cast_num(im));
+  return 0;
+}
+
+int luaJ_lti(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) < im;
+  else if (ttisfloat(ra)) return luai_numlt(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 0, 0, TM_LT);
+}
+
+int luaJ_lei(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) <= im;
+  else if (ttisfloat(ra)) return luai_numle(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 0, 0, TM_LE);
+}
+
+int luaJ_gti(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) > im;
+  else if (ttisfloat(ra)) return luai_numgt(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 1, 0, TM_LT);
+}
+
+int luaJ_gei(lua_State *L, TValue *ra, int im) {
+  if (ttisinteger(ra)) return ivalue(ra) >= im;
+  else if (ttisfloat(ra)) return luai_numge(fltvalue(ra), cast_num(im));
+  else return luaT_callorderiTM(L, ra, im, 1, 0, TM_LE);
+}
+
+int luaJ_istrue(TValue *o) {
+  return !l_isfalse(o);
+}
+
 #if defined(__x86_64__) || defined(_M_X64)
   #if defined(__linux__) || defined(__APPLE__)
     #include "ljit_emit_x64.h"
@@ -251,17 +286,94 @@ void luaJ_compile(lua_State *L, Proto *p) {
       case OP_CLOSE: jit_emit_op_close(J, GETARG_A(inst)); break;
       case OP_TBC: jit_emit_op_tbc(J, GETARG_A(inst)); break;
       case OP_JMP: jit_emit_op_jmp(J, GETARG_sJ(inst)); break;
-      case OP_EQ: jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_LT: jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_LE: jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_EQK: jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
-      case OP_EQI: jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_LTI: jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_LEI: jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_GTI: jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_GEI: jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst)); break;
-      case OP_TEST: jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst)); break;
-      case OP_TESTSET: jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst)); break;
+      case OP_EQ:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eq(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LT:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lt(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LE:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_le(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_EQK:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eqk(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_EQI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_eqi(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LTI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_LEI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_lei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_GTI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_gti(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_GEI:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_gei(J, GETARG_A(inst), GETARG_sB(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_TEST:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_test(J, GETARG_A(inst), GETARG_k(inst), 0);
+        }
+        break;
+      case OP_TESTSET:
+        if (i+1 < p->sizecode && GET_OPCODE(p->code[i+1]) == OP_JMP) {
+           jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), GETARG_sJ(p->code[i+1]));
+           i++;
+        } else {
+           jit_emit_op_testset(J, GETARG_A(inst), GETARG_B(inst), GETARG_k(inst), 0);
+        }
+        break;
       case OP_CALL: jit_emit_op_call(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst)); break;
       case OP_TAILCALL: jit_emit_op_tailcall(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), GETARG_k(inst)); break;
       case OP_RETURN: jit_emit_op_return(J, GETARG_A(inst), GETARG_B(inst), GETARG_C(inst), GETARG_k(inst)); break;
