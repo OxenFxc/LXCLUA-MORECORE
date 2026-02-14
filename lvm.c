@@ -1968,26 +1968,28 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   cl = ci_func(ci);
 
   /* JIT compilation entry point */
-  if (cl->p->jit_code) {
-    /* Only enter JIT if we are at the beginning of the function */
-    if (ci->u.l.savedpc == cl->p->code) {
-      typedef int (*JitFunction)(lua_State *L, CallInfo *ci);
-      JitFunction jit_func = (JitFunction)cl->p->jit_code;
-      if (jit_func(L, ci)) {
-        if (L->ci->next->callstatus & CIST_FRESH)
-          return;
-        else {
-          ci = L->ci;
-          goto returning;
-        }
-      }
-    }
-  } else {
-    /* Only compile if we are at the start */
-    if (ci->u.l.savedpc == cl->p->code) {
-      luaJ_compile(L, cl->p);
-      if (cl->p->jit_code) goto startfunc;
-    }
+  if (G(L)->jit_enabled) {
+     if (cl->p->jit_code) {
+       /* Only enter JIT if we are at the beginning of the function */
+       if (ci->u.l.savedpc == cl->p->code) {
+         typedef int (*JitFunction)(lua_State *L, CallInfo *ci);
+         JitFunction jit_func = (JitFunction)cl->p->jit_code;
+         if (jit_func(L, ci)) {
+           if (L->ci->next->callstatus & CIST_FRESH)
+             return;
+           else {
+             ci = L->ci;
+             goto returning;
+           }
+         }
+       }
+     } else {
+       /* Only compile if we are at the start */
+       if (ci->u.l.savedpc == cl->p->code) {
+         luaJ_compile(L, cl->p);
+         if (cl->p->jit_code) goto startfunc;
+       }
+     }
   }
   
   /** VM protection detection: If the function enables VM protection, use a custom VM interpreter */

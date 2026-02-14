@@ -92,6 +92,7 @@ static const luaL_Reg stdlibs[] = {
   {"http", luaopen_http},
   {LUA_FSLIBNAME, luaopen_fs},
   {"vmprotect", luaopen_vmprotect},
+  {LUA_JITLIBNAME, luaopen_jit},
 
 #ifndef _WIN32
   {LUA_SMGRNAME, luaopen_smgr},
@@ -159,6 +160,7 @@ static const luaL_Reg loadedlibs[] = {
   {"http", luaopen_http},
   {LUA_FSLIBNAME, luaopen_fs},
   {"vmprotect", luaopen_vmprotect},
+  {LUA_JITLIBNAME, luaopen_jit},
 
 #ifndef _WIN32
   {LUA_SMGRNAME, luaopen_smgr},

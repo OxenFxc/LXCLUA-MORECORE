@@ -7,9 +7,11 @@
 #include <stdlib.h>
 
 #include "lua.h"
+#include "lauxlib.h"
 #include "ldebug.h"
 #include "ldo.h"
 #include "lfunc.h"
+#include "lgc.h"
 #include "lobject.h"
 #include "lopcodes.h"
 #include "lstate.h"
@@ -38,18 +40,20 @@ static void luaJ_call_helper(lua_State *L, CallInfo *ci, int ra_idx, int b, int 
   if ((newci = luaD_precall(L, ra, nresults)) != NULL) {  /* Lua function? */
     newci->callstatus |= CIST_FRESH;  /* mark that it is a "fresh" execute */
 
-    LClosure *cl = ci_func(newci);
-    if (!cl->p->jit_code) {
-       luaJ_compile(L, cl->p);
-    }
-
-    if (cl->p->jit_code) {
-       typedef int (*JitFunction)(lua_State *L, CallInfo *ci);
-       JitFunction jit_func = (JitFunction)cl->p->jit_code;
-       if (jit_func(L, newci)) {
-          return; /* JIT finished successfully */
+    if (G(L)->jit_enabled) {
+       LClosure *cl = ci_func(newci);
+       if (!cl->p->jit_code) {
+          luaJ_compile(L, cl->p);
        }
-       /* JIT returned 0 (barrier), fall through to interpreter */
+
+       if (cl->p->jit_code) {
+          typedef int (*JitFunction)(lua_State *L, CallInfo *ci);
+          JitFunction jit_func = (JitFunction)cl->p->jit_code;
+          if (jit_func(L, newci)) {
+             return; /* JIT finished successfully */
+          }
+          /* JIT returned 0 (barrier), fall through to interpreter */
+       }
     }
 
     luaV_execute(L, newci);  /* call it (interpreter) */
@@ -457,4 +461,33 @@ void luaJ_compile(lua_State *L, Proto *p) {
 
 void luaJ_freeproto(Proto *p) {
   jit_free_code(p);
+}
+
+static int jit_on(lua_State *L) {
+  G(L)->jit_enabled = 1;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int jit_off(lua_State *L) {
+  G(L)->jit_enabled = 0;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int jit_status(lua_State *L) {
+  lua_pushboolean(L, G(L)->jit_enabled);
+  return 1;
+}
+
+static const luaL_Reg jitlib[] = {
+  {"on", jit_on},
+  {"off", jit_off},
+  {"status", jit_status},
+  {NULL, NULL}
+};
+
+LUAMOD_API int luaopen_jit(lua_State *L) {
+  luaL_newlib(L, jitlib);
+  return 1;
 }

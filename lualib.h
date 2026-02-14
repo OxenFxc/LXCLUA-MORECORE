@@ -62,6 +62,9 @@ LUAMOD_API int (luaopen_struct) (lua_State *L);
 #define LUA_FSLIBNAME	"fs"
 LUAMOD_API int (luaopen_fs) (lua_State *L);
 
+#define LUA_JITLIBNAME	"jit"
+LUAMOD_API int (luaopen_jit) (lua_State *L);
+
 /* translator library */
 #define LUA_TRANSLATORLIBNAME	"translator"
 LUAMOD_API int (luaopen_translator) (lua_State *L);

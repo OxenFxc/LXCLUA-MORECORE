@@ -329,6 +329,7 @@ typedef struct global_State {
   MemPoolArena mempool;  /**< memory pool manager */
   /* VM保护代码表链表 */
   struct VMCodeTable *vm_code_list;  /**< VM protection code table list head */
+  int jit_enabled;  /**< JIT enabled flag */
 } global_State;
 
 
