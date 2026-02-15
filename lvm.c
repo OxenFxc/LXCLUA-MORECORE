@@ -2690,6 +2690,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_JMP) {
+        if (!cl->p->jit_code && GETARG_sJ(i) < 0) {
+            cl->p->jit_counter++;
+            if (cl->p->jit_counter > 200) {
+                 if (!jit_compile(L, cl->p)) {
+                     cl->p->jit_counter = -1000000000; // Backoff for a while
+                 }
+            }
+        }
         dojump(ci, i, 0);
         vmbreak;
       }
@@ -2994,6 +3002,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_TFORLOOP) {
        l_tforloop: {
         StkId ra = RA(i);
+        if (!cl->p->jit_code) {
+             cl->p->jit_counter++;
+             if (cl->p->jit_counter > 200) {
+                  if (!jit_compile(L, cl->p)) {
+                      cl->p->jit_counter = -1000000000; // Backoff for a while
+                  }
+             }
+        }
         if (!ttisnil(s2v(ra + 4))) {  /* continue loop? */
           setobjs2s(L, ra + 2, ra + 4);  /* save control variable */
           pc -= GETARG_Bx(i);  /* jump back */
