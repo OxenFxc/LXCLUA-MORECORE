@@ -283,6 +283,90 @@ extern "C" int jit_compile(lua_State *L, Proto *p) {
                 cc.jmp(labels[pc + 1 + sJ]);
                 break;
             }
+            case OP_TEST: {
+                int sJ = GETARG_sJ(p->code[pc+1]);
+                Label skip = labels[pc + 2];
+
+                x86::Gp tag = cc.new_gp32();
+                cc.movzx(tag, ptr_tt(base, a));
+
+                if (k_flag == 0) { // Jump if Falsy
+                     Label stay = cc.new_label();
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.je(stay);
+
+                     cc.and_(tag, 0x0F);
+                     cc.cmp(tag, LUA_TNIL);
+                     cc.je(stay);
+
+                     cc.jmp(skip);
+
+                     cc.bind(stay);
+                } else { // Jump if Truthy
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.je(skip);
+
+                     cc.and_(tag, 0x0F);
+                     cc.cmp(tag, LUA_TNIL);
+                     cc.je(skip);
+
+                     // Fallthrough
+                }
+                break;
+            }
+            case OP_TESTSET: {
+                int b = GETARG_B(i);
+                int sJ = GETARG_sJ(p->code[pc+1]);
+                Label skip = labels[pc + 2];
+
+                x86::Gp tag = cc.new_gp32();
+                cc.movzx(tag, ptr_tt(base, b)); // Check RB
+
+                if (k_flag == 0) { // Jump if Falsy
+                     Label try_copy = cc.new_label();
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.je(try_copy);
+
+                     x86::Gp tag_masked = cc.new_gp32();
+                     cc.mov(tag_masked, tag);
+                     cc.and_(tag_masked, 0x0F);
+                     cc.cmp(tag_masked, LUA_TNIL);
+                     cc.je(try_copy);
+
+                     cc.jmp(skip); // Truthy -> Skip
+
+                     cc.bind(try_copy);
+                     if (a != b) {
+                         x86::Gp tmp1 = cc.new_gp64();
+                         x86::Gp tmp2 = cc.new_gp64();
+                         cc.mov(tmp1, x86::ptr(base, b * sizeof(StackValue)));
+                         cc.mov(tmp2, x86::ptr(base, b * sizeof(StackValue) + 8));
+                         cc.mov(x86::ptr(base, a * sizeof(StackValue)), tmp1);
+                         cc.mov(x86::ptr(base, a * sizeof(StackValue) + 8), tmp2);
+                     }
+                     // Fallthrough to JMP
+                } else { // Jump if Truthy
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.je(skip);
+
+                     x86::Gp tag_masked = cc.new_gp32();
+                     cc.mov(tag_masked, tag);
+                     cc.and_(tag_masked, 0x0F);
+                     cc.cmp(tag_masked, LUA_TNIL);
+                     cc.je(skip);
+
+                     // Truthy -> Copy and Fallthrough
+                     if (a != b) {
+                         x86::Gp tmp1 = cc.new_gp64();
+                         x86::Gp tmp2 = cc.new_gp64();
+                         cc.mov(tmp1, x86::ptr(base, b * sizeof(StackValue)));
+                         cc.mov(tmp2, x86::ptr(base, b * sizeof(StackValue) + 8));
+                         cc.mov(x86::ptr(base, a * sizeof(StackValue)), tmp1);
+                         cc.mov(x86::ptr(base, a * sizeof(StackValue) + 8), tmp2);
+                     }
+                }
+                break;
+            }
             case OP_GETTABLE: {
                 int b = GETARG_B(i);
                 int c = GETARG_C(i);
@@ -801,6 +885,92 @@ extern "C" int jit_compile(lua_State *L, Proto *p) {
             case OP_JMP: {
                 int sJ = GETARG_sJ(i);
                 cc.b(labels[pc + 1 + sJ]);
+                break;
+            }
+            case OP_TEST: {
+                int sJ = GETARG_sJ(p->code[pc+1]);
+                Label skip = labels[pc + 2];
+
+                a64::Gp tag = cc.new_gp32();
+                cc.ldrb(tag, ptr_tt(base, a));
+
+                if (k_flag == 0) { // Jump if Falsy
+                   // If Truthy -> Skip.
+
+                   cc.cmp(tag, LUA_VFALSE);
+                   Label stay = cc.new_label();
+                   cc.b_eq(stay);
+
+                   cc.and_(tag, tag, 0x0F);
+                   cc.cmp(tag, LUA_TNIL);
+                   cc.b_eq(stay);
+
+                   cc.b(skip);
+
+                   cc.bind(stay);
+                } else { // Jump if Truthy
+                   // If Falsy -> Skip.
+
+                   cc.cmp(tag, LUA_VFALSE);
+                   cc.b_eq(skip);
+
+                   cc.and_(tag, tag, 0x0F);
+                   cc.cmp(tag, LUA_TNIL);
+                   cc.b_eq(skip);
+
+                   // Fallthrough
+                }
+                break;
+            }
+            case OP_TESTSET: {
+                int b = GETARG_B(i);
+                int sJ = GETARG_sJ(p->code[pc+1]);
+                Label skip = labels[pc + 2];
+
+                a64::Gp tag = cc.new_gp32();
+                cc.ldrb(tag, ptr_tt(base, b));
+
+                if (k_flag == 0) { // Jump if Falsy
+                     Label try_copy = cc.new_label();
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.b_eq(try_copy);
+
+                     a64::Gp tag_masked = cc.new_gp32();
+                     cc.and_(tag_masked, tag, 0x0F);
+                     cc.cmp(tag_masked, LUA_TNIL);
+                     cc.b_eq(try_copy);
+
+                     cc.b(skip); // Truthy -> Skip
+
+                     cc.bind(try_copy);
+                     if (a != b) {
+                         a64::Gp tmp1 = cc.new_gp64();
+                         a64::Gp tmp2 = cc.new_gp64();
+                         cc.ldr(tmp1, a64::ptr(base, b * sizeof(StackValue)));
+                         cc.ldr(tmp2, a64::ptr(base, b * sizeof(StackValue) + 8));
+                         cc.str(tmp1, a64::ptr(base, a * sizeof(StackValue)));
+                         cc.str(tmp2, a64::ptr(base, a * sizeof(StackValue) + 8));
+                     }
+                     // Fallthrough
+                } else { // Jump if Truthy
+                     cc.cmp(tag, LUA_VFALSE);
+                     cc.b_eq(skip);
+
+                     a64::Gp tag_masked = cc.new_gp32();
+                     cc.and_(tag_masked, tag, 0x0F);
+                     cc.cmp(tag_masked, LUA_TNIL);
+                     cc.b_eq(skip);
+
+                     // Truthy -> Copy and Fallthrough
+                     if (a != b) {
+                         a64::Gp tmp1 = cc.new_gp64();
+                         a64::Gp tmp2 = cc.new_gp64();
+                         cc.ldr(tmp1, a64::ptr(base, b * sizeof(StackValue)));
+                         cc.ldr(tmp2, a64::ptr(base, b * sizeof(StackValue) + 8));
+                         cc.str(tmp1, a64::ptr(base, a * sizeof(StackValue)));
+                         cc.str(tmp2, a64::ptr(base, a * sizeof(StackValue) + 8));
+                     }
+                }
                 break;
             }
             case OP_CALL: {
