@@ -190,6 +190,13 @@ EMCC ?= emcc
 EMAR ?= emar
 EMRANLIB ?= emranlib
 
+# 本地 WebAssembly 编译 (使用指定路径的 Emscripten)
+# 使用方法: make localwasm EMSDK_PATH="E:\Soft\Proje\LXCLUA-NCore\emsdk"
+EMSDK_PATH ?= E:\Soft\Proje\LXCLUA-NCore\emsdk
+LOCAL_EMCC := $(EMSDK_PATH)/upstream/emscripten/emcc.bat
+LOCAL_EMAR := $(EMSDK_PATH)/upstream/emscripten/emar.bat
+LOCAL_EMRANLIB := $(EMSDK_PATH)/upstream/emscripten/emranlib.bat
+
 wasm:
 	$(MAKE) $(ALL) PLAT=wasm CC="$(EMCC) -std=c23" \
 	"CXX=$(EMCC)" \
@@ -202,7 +209,7 @@ wasm:
 	"LUAC_T=luac.js" \
 	"LBCDUMP_T=lbcdump.js" \
 	"LIBS=-lm" \
-	"LDFLAGS=-sWASM=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,callMain,FS -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=1 -sINVOKE_RUN=0 --closure 1"
+	"LDFLAGS=-sWASM=1 -sSINGLE_FILE=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,callMain,FS -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=1 -sINVOKE_RUN=0 --closure 1"
 
 # WASM 最小化版本（无文件系统，更小体积）
 wasm-minimal:
@@ -215,10 +222,38 @@ wasm-minimal:
 	"LUA_T=lxclua.js" \
 	"LUAC_T=luac.js" \
 	"LBCDUMP_T=lbcdump.js" \
-	"LDFLAGS=-sWASM=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 --closure 1 -sINVOKE_RUN=0"
+	"LDFLAGS=-sWASM=1 -sSINGLE_FILE=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 --closure 1 -sINVOKE_RUN=0"
+
+# 本地 WebAssembly 编译 (使用本地 EMSDK_PATH)
+localwasm:
+	$(MAKE) $(ALL) PLAT=wasm CC="$(LOCAL_EMCC) -std=c23" \
+	"CXX=$(LOCAL_EMCC)" \
+	"CFLAGS=-O3 -DNDEBUG -fno-exceptions -DLUA_32BITS=0" \
+	"SYSCFLAGS=-DLUA_USE_LONGJMP -DLUA_COMPAT_MATHLIB -DLUA_COMPAT_MAXN" \
+	"SYSLIBS=" \
+	"AR=$(LOCAL_EMAR) rcu" \
+	"RANLIB=$(LOCAL_EMRANLIB)" \
+	"LUA_T=lxclua.js" \
+	"LUAC_T=luac.js" \
+	"LBCDUMP_T=lbcdump.js" \
+	"LIBS=-lm" \
+	"LDFLAGS=-sWASM=1 -sSINGLE_FILE=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,callMain,FS -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=1 -sINVOKE_RUN=0 --closure 1"
+
+# 本地 WebAssembly 最小化版本（无文件系统，更小体积）
+localwasm-minimal:
+	$(MAKE) $(ALL) CC="$(LOCAL_EMCC) -std=c23" \
+	"CFLAGS=-Os -DNDEBUG -fno-exceptions -DLUA_32BITS=0" \
+	"SYSCFLAGS=-DLUA_USE_LONGJMP -DLUA_COMPAT_MATHLIB -DLUA_COMPAT_MAXN" \
+	"SYSLIBS=" \
+	"AR=$(LOCAL_EMAR) rcu" \
+	"RANLIB=$(LOCAL_EMRANLIB)" \
+	"LUA_T=lxclua.js" \
+	"LUAC_T=luac.js" \
+	"LBCDUMP_T=lbcdump.js" \
+	"LDFLAGS=-sWASM=1 -sSINGLE_FILE=1 -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE=1 -sEXPORT_NAME=LuaModule -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 --closure 1 -sINVOKE_RUN=0"
 
 # Targets that do not create files (not all makes understand .PHONY).
-.PHONY: all $(PLATS) help test clean default o a depend echo wasm wasm-minimal release mingw-release linux-release macos-release wasm-release termux-release
+.PHONY: all $(PLATS) help test clean default o a depend echo wasm wasm-minimal localwasm localwasm-minimal release mingw-release linux-release macos-release wasm-release termux-release
 
 # 发行版打包配置
 RELEASE_NAME= lxclua

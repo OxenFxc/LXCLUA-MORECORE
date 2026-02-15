@@ -8,6 +8,10 @@ LOCAL_CFLAGS := -std=c++17 -O3 -fomit-frame-pointer \
 LOCAL_CFLAGS += -fno-exceptions -fno-rtti -fno-unwind-tables \
                 -fno-asynchronous-unwind-tables
 
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/asmjit
+
+LOCAL_LDLIBS := -lc++
+
 LOCAL_SRC_FILES := \
     asmjit/asmjit/core/archtraits.cpp \
     asmjit/asmjit/core/assembler.cpp \
@@ -46,73 +50,31 @@ LOCAL_SRC_FILES := \
     asmjit/asmjit/support/arenalist.cpp \
     asmjit/asmjit/support/arenatree.cpp \
     asmjit/asmjit/support/arenavector.cpp \
-    asmjit/asmjit/support/support.cpp
-
-ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
-    LOCAL_SRC_FILES += \
-        asmjit/asmjit/arm/a64assembler.cpp \
-        asmjit/asmjit/arm/a64builder.cpp \
-        asmjit/asmjit/arm/a64compiler.cpp \
-        asmjit/asmjit/arm/a64emithelper.cpp \
-        asmjit/asmjit/arm/a64formatter.cpp \
-        asmjit/asmjit/arm/a64func.cpp \
-        asmjit/asmjit/arm/a64instapi.cpp \
-        asmjit/asmjit/arm/a64instdb.cpp \
-        asmjit/asmjit/arm/a64operand.cpp \
-        asmjit/asmjit/arm/a64rapass.cpp \
-        asmjit/asmjit/arm/armformatter.cpp \
-        asmjit/asmjit/ujit/unicompiler_a64.cpp \
-        asmjit/asmjit/ujit/vecconsttable.cpp
-endif
-
-ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
-    LOCAL_SRC_FILES += \
-        asmjit/asmjit/arm/a64assembler.cpp \
-        asmjit/asmjit/arm/a64builder.cpp \
-        asmjit/asmjit/arm/a64compiler.cpp \
-        asmjit/asmjit/arm/a64emithelper.cpp \
-        asmjit/asmjit/arm/a64formatter.cpp \
-        asmjit/asmjit/arm/a64func.cpp \
-        asmjit/asmjit/arm/a64instapi.cpp \
-        asmjit/asmjit/arm/a64instdb.cpp \
-        asmjit/asmjit/arm/a64operand.cpp \
-        asmjit/asmjit/arm/a64rapass.cpp \
-        asmjit/asmjit/arm/armformatter.cpp \
-        asmjit/asmjit/ujit/unicompiler_a64.cpp \
-        asmjit/asmjit/ujit/vecconsttable.cpp
-endif
-
-ifeq ($(TARGET_ARCH_ABI), x86_64)
-    LOCAL_SRC_FILES += \
-        asmjit/asmjit/x86/x86assembler.cpp \
-        asmjit/asmjit/x86/x86builder.cpp \
-        asmjit/asmjit/x86/x86compiler.cpp \
-        asmjit/asmjit/x86/x86emithelper.cpp \
-        asmjit/asmjit/x86/x86formatter.cpp \
-        asmjit/asmjit/x86/x86func.cpp \
-        asmjit/asmjit/x86/x86instapi.cpp \
-        asmjit/asmjit/x86/x86instdb.cpp \
-        asmjit/asmjit/x86/x86operand.cpp \
-        asmjit/asmjit/x86/x86rapass.cpp \
-        asmjit/asmjit/ujit/unicompiler_x86.cpp \
-        asmjit/asmjit/ujit/vecconsttable.cpp
-endif
-
-ifeq ($(TARGET_ARCH_ABI), x86)
-    LOCAL_SRC_FILES += \
-        asmjit/asmjit/x86/x86assembler.cpp \
-        asmjit/asmjit/x86/x86builder.cpp \
-        asmjit/asmjit/x86/x86compiler.cpp \
-        asmjit/asmjit/x86/x86emithelper.cpp \
-        asmjit/asmjit/x86/x86formatter.cpp \
-        asmjit/asmjit/x86/x86func.cpp \
-        asmjit/asmjit/x86/x86instapi.cpp \
-        asmjit/asmjit/x86/x86instdb.cpp \
-        asmjit/asmjit/x86/x86operand.cpp \
-        asmjit/asmjit/x86/x86rapass.cpp \
-        asmjit/asmjit/ujit/unicompiler_x86.cpp \
-        asmjit/asmjit/ujit/vecconsttable.cpp
-endif
+    asmjit/asmjit/support/support.cpp \
+    asmjit/asmjit/arm/a64assembler.cpp \
+    asmjit/asmjit/arm/a64builder.cpp \
+    asmjit/asmjit/arm/a64compiler.cpp \
+    asmjit/asmjit/arm/a64emithelper.cpp \
+    asmjit/asmjit/arm/a64formatter.cpp \
+    asmjit/asmjit/arm/a64func.cpp \
+    asmjit/asmjit/arm/a64instapi.cpp \
+    asmjit/asmjit/arm/a64instdb.cpp \
+    asmjit/asmjit/arm/a64operand.cpp \
+    asmjit/asmjit/arm/a64rapass.cpp \
+    asmjit/asmjit/arm/armformatter.cpp \
+    asmjit/asmjit/x86/x86assembler.cpp \
+    asmjit/asmjit/x86/x86builder.cpp \
+    asmjit/asmjit/x86/x86compiler.cpp \
+    asmjit/asmjit/x86/x86emithelper.cpp \
+    asmjit/asmjit/x86/x86formatter.cpp \
+    asmjit/asmjit/x86/x86func.cpp \
+    asmjit/asmjit/x86/x86instapi.cpp \
+    asmjit/asmjit/x86/x86instdb.cpp \
+    asmjit/asmjit/x86/x86operand.cpp \
+    asmjit/asmjit/x86/x86rapass.cpp \
+    asmjit/asmjit/ujit/unicompiler_a64.cpp \
+    asmjit/asmjit/ujit/unicompiler_x86.cpp \
+    asmjit/asmjit/ujit/vecconsttable.cpp
 
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/asmjit
 include $(BUILD_STATIC_LIBRARY)
@@ -206,7 +168,7 @@ ifeq ($(TARGET_ARCH_ABI), x86)
     LOCAL_CFLAGS += -march=i686
 endif
 
-LOCAL_LDLIBS += -llog -lz
+LOCAL_LDLIBS += -llog -lz -lc++ -lc++abi
 LOCAL_STATIC_LIBRARIES := asmjit
 
 include $(BUILD_STATIC_LIBRARY)
