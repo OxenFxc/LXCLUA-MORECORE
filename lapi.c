@@ -1059,12 +1059,18 @@ l_sinline int auxgetstr (lua_State *L, const TValue *t, const char *k) {
 
 
 /*
-** The following function assumes that the registry cannot be a weak
-** table; so, an emergency collection while using the global table
-** cannot collect it.
+** Get the global table. This function checks that the global table
+** is still a valid table (not nil, not replaced with something else).
+** This is needed because, unlike the standard Lua implementation,
+** we use direct array access which can be dangerous if the global
+** table is corrupted.
 */
-#define getGtable(L)  \
-	(&hvalue(&G(L)->l_registry)->array[LUA_RIDX_GLOBALS - 1])
+static const TValue *getGlobalTable (lua_State *L) {
+  Table *registry = hvalue(&G(L)->l_registry);
+  const TValue *gt = &registry->array[LUA_RIDX_GLOBALS - 1];
+  api_check(L, ttistable(gt), "global table must be a table");
+  return gt;
+}
 
 
 /**
@@ -1077,7 +1083,7 @@ l_sinline int auxgetstr (lua_State *L, const TValue *t, const char *k) {
 LUA_API int lua_getglobal (lua_State *L, const char *name) {
   const TValue *G;
   lua_lock(L);
-  G = getGtable(L);
+  G = getGlobalTable(L);
   return auxgetstr(L, G, name);
 }
 
@@ -1397,7 +1403,7 @@ static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
 LUA_API void lua_setglobal (lua_State *L, const char *name) {
   const TValue *G;
   lua_lock(L);  /* unlock done in 'auxsetstr' */
-  G = getGtable(L);
+  G = getGlobalTable(L);
   auxsetstr(L, G, name);
 }
 
@@ -1811,7 +1817,7 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
     LClosure *f = clLvalue(s2v(L->top.p - 1));  /* get new function */
     if (f->nupvalues >= 1) {  /* does it have an upvalue? */
       /* get global table from registry */
-      const TValue *gt = getGtable(L);
+      const TValue *gt = getGlobalTable(L);
       /* set global table as 1st upvalue of 'f' (may be LUA_ENV) */
       setobj(L, f->upvals[0]->v.p, gt);
       luaC_barrier(L, f->upvals[0], gt);
