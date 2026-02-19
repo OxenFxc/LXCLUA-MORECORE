@@ -57,6 +57,96 @@
 - 循环展开与严格别名分析
 - 去除调试符号，最小化二进制体积
 
+## 语法扩展与特性
+
+LXCLUA-NCore 引入了大量现代语言特性和语法糖，极大地扩展了 Lua 5.5 的能力。
+
+### 1. 扩展运算符 (Extended Operators)
+
+- **复合赋值**: `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `&=`, `|=`, `~=`, `>>=`, `<<=`, `..=`
+- **自增**: `++` (e.g. `i++` 后缀自增)
+- **比较**: `!=` (等价于 `~=`), `<=>` (三路比较)
+- **管道操作**:
+    - `|>`: 前向管道 (e.g. `x |> f` 等价于 `f(x)`)
+    - `<|`: 反向管道 (e.g. `f <| x` 等价于 `f(x)`)
+    - `|?>`: 安全管道 (e.g. `x |?> f`, 若 `x` 为 `nil` 则返回 `nil`)
+- **空值处理**:
+    - `??`: 空值合并 (e.g. `a ?? b` 等价于 `a == nil and b or a`)
+    - `?.`: 可选链 (e.g. `obj?.prop`, 若 `obj` 为 `nil` 则不访问 `prop`)
+
+### 2. 字符串增强 (Enhanced Strings)
+
+- **插值字符串**: 使用 `"` 或 `'` 包裹，支持 `${var}` 和 `${[expr]}`。
+    - 示例: `"Hello, ${name}!"`, `"Result: ${[a + b]}"`
+- **原生字符串**: 使用 `_raw` 前缀，不处理转义字符。
+    - 示例: `_raw"Path\to\file"`, `_raw[[...]]`
+
+### 3. 函数特性 (Function Features)
+
+- **箭头函数**: `(args) => expr` 或 `(args) => { stat }`
+    - 示例: `map(list, (x) => x * 2)`
+    - 语句形式: `-> { ... }` (等价于 `function() ... end`)
+- **Lambda 表达式**: `lambda(args) expr` 或 `lambda(args) => stat`
+- **泛型函数**: `function<T>(...)` 或 `function(...) requires expr`
+- **Async/Await**: `async function foo() ... end`, `await task`
+- **C 风格定义**: `int add(int a, int b) { return a + b; }`
+
+### 4. 面向对象编程 (OOP)
+
+支持完整的类和接口系统：
+
+- **类定义**: `class Name [extends Base] [implements Iface] ... end`
+- **成员修饰符**: `public`, `private`, `protected`, `static`, `abstract`, `final`, `sealed`
+- **属性访问器**: `get prop() ... end`, `set prop(v) ... end`
+- **实例化**: `new Class(...)` 或 `onew Class(...)`
+- **父类访问**: `super.method(...)` 或 `osuper:method(...)`
+
+### 5. 结构体与类型 (Structs & Types)
+
+- **结构体**: `struct Name { Type field; ... }`
+- **泛型结构体**: `struct Box(T) { T value; }`
+- **超级结构体**: `superstruct Name [ key: value, ... ]` (元数据/原型)
+- **枚举**: `enum Color { Red, Green, Blue }`
+- **类型标注**: 支持 `int`, `float`, `bool`, `string`, `void`, `char`, `long` 等。
+
+### 6. 控制流扩展 (Control Flow)
+
+- **Switch**: `switch (exp) { case v: ... }` 或 `switch (exp) do case ... end`
+    - 支持作为表达式: `local x = switch(v) case 1: 10 case 2: 20 end`
+- **Try-Catch**: `try ... catch(e) ... finally ... end`
+- **Defer**: `defer statement` 或 `defer do ... end` (作用域结束时执行)
+- **Namespace**: `namespace Name { ... }`, `using namespace Name;`
+- **Using**: `using Name::Member;`
+- **Continue**: `continue` 关键字
+- **When**: `when cond then ... case cond2 then ... else ... end`
+
+### 7. 元编程 (Metaprogramming)
+
+- **自定义命令**: `command Name(args) ... end`
+- **自定义关键字**: `keyword Name(args) ... end`
+- **自定义运算符**: `operator op (args) ... end` (支持 `++`, `**` 等)
+- **宏调用**: `$Name(args)` 或 `$Name`
+
+### 8. 内联汇编 (Inline ASM)
+
+支持 `asm` 块直接编写虚拟机指令：
+
+```lua
+asm(
+    LOADI 0 100  ; R[0] = 100
+    RETURN 0 1
+)
+```
+
+支持伪指令: `newreg`, `def`, `_if`, `junk` 等。
+
+### 9. 预处理器 (Preprocessor)
+
+支持类 C 预处理指令 (使用 `$` 前缀):
+- `$if`, `$else`, `$elseif`, `$end`
+- `$define`, `$include`, `$alias`
+- `$haltcompiler`
+
 ## 系统要求
 
 - **编译器**: GCC（支持 C11/C23 标准）
