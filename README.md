@@ -64,49 +64,96 @@ LXCLUA-NCore 引入了大量现代语言特性和语法糖，极大地扩展了 
 ### 1. 扩展运算符 (Extended Operators)
 
 - **复合赋值**: `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `&=`, `|=`, `~=`, `>>=`, `<<=`, `..=`
-- **自增**: `++` (e.g. `i++` 后缀自增)
+- **自增/自减**: `++` (e.g. `i++` 后缀自增), `--` (e.g. `i--` 后缀自减)
 - **比较**: `!=` (等价于 `~=`), `<=>` (三路比较)
+- **空值处理**: `??` (空值合并), `?.` (可选链)
+- **管道操作**: `|>` (正向), `<|` (反向), `|?>` (安全正向)
 
 ```lua
+-- 复合赋值与自增
 local a = 10
-a += 5  -- a = 15
-a++     -- a = 16
+a += 5          -- a = 15
+a++             -- a = 16
+
+-- 三路比较 (spaceship operator)
+-- 返回 -1 (小于), 0 (等于), 1 (大于)
+local cmp = 10 <=> 20  -- -1
+
+-- 空值合并 (Null Coalescing)
+local val = nil
+local res = val ?? "default"  -- "default"
+
+-- 可选链 (Optional Chaining)
+local config = { server = { port = 8080 } }
+local port = config?.server?.port  -- 8080
+local timeout = config?.client?.timeout  -- nil (不会报错)
+
+-- 管道操作符 (Pipe Operator)
+-- x |> f 等价于 f(x)
+local result = "hello" |> string.upper |> print  -- HELLO
+
+-- 安全管道 (Safe Pipe)
+-- x |?> f 等价于 x and f(x)
+local maybe_nil = nil
+maybe_nil |?> print  -- (什么都不打印)
 ```
-- **管道操作**:
-    - `|>`: 前向管道 (e.g. `x |> f` 等价于 `f(x)`)
-    - `<|`: 反向管道 (e.g. `f <| x` 等价于 `f(x)`)
-    - `|?>`: 安全管道 (e.g. `x |?> f`, 若 `x` 为 `nil` 则返回 `nil`)
-- **空值处理**:
-    - `??`: 空值合并 (e.g. `a ?? b` 等价于 `a == nil and b or a`)
-    - `?.`: 可选链 (e.g. `obj?.prop`, 若 `obj` 为 `nil` 则不访问 `prop`)
 
 ### 2. 字符串增强 (Enhanced Strings)
 
 - **插值字符串**: 使用 `"` 或 `'` 包裹，支持 `${var}` 和 `${[expr]}`。
-    - 示例: `"Hello, ${name}!"`, `"Result: ${[a + b]}"`
 - **原生字符串**: 使用 `_raw` 前缀，不处理转义字符。
-    - 示例: `_raw"Path\to\file"`, `_raw[[...]]`
+
+```lua
+local name = "World"
+local age = 25
+
+-- 简单变量插值
+print("Hello, ${name}!")  -- Hello, World!
+
+-- 表达式插值
+print("Next year: ${[age + 1]}")  -- Next year: 26
+
+-- 原始字符串 (Raw String)
+local path = _raw"C:\Windows\System32"  -- C:\Windows\System32
+```
 
 ### 3. 函数特性 (Function Features)
 
 - **箭头函数**: `(args) => expr` 或 `(args) => { stat }`
-    - 示例: `map(list, (x) => x * 2)`
-    - 语句形式: `-> { ... }` (等价于 `function() ... end`)
-- **Lambda 表达式**: `lambda(args) expr` 或 `lambda(args) => stat`
+- **Lambda 表达式**: `lambda(args) => expr`
+- **C 风格定义**: `int add(int a, int b) { ... }`
+- **泛型函数**: `function<T>(x) ... end`
+- **Async/Await**: `async function`, `await`
 
 ```lua
--- 箭头函数
-local f = (x) => x * 2
-print(f(10)) -- 20
+-- 箭头函数 (表达式形式)
+local add = (a, b) => a + b
+print(add(10, 20))  -- 30
+
+-- 箭头函数 (语句块形式)
+local log = (msg) => {
+    print("[LOG]: " .. msg)
+}
 
 -- Lambda 表达式
-local l = lambda(x, y): x + y
-print(l(10, 20)) -- 30
-```
+local sq = lambda(x) => x * x
 
-- **泛型函数**: `function<T>(...)` 或 `function(...) requires expr`
-- **Async/Await**: `async function foo() ... end`, `await task`
-- **C 风格定义**: `int add(int a, int b) { return a + b; }`
+-- C 风格强类型函数
+int sum(int a, int b) {
+    return a + b;
+}
+
+-- 泛型函数
+function<T> identity(x)
+    return x
+end
+
+-- 异步函数
+async function fetchData(url)
+    local data = await http.get(url)
+    return data
+end
+```
 
 ### 4. 面向对象编程 (OOP)
 
@@ -115,120 +162,189 @@ print(l(10, 20)) -- 30
 - **类定义**: `class Name [extends Base] [implements Iface] ... end`
 - **成员修饰符**: `public`, `private`, `protected`, `static`, `abstract`, `final`, `sealed`
 - **属性访问器**: `get prop() ... end`, `set prop(v) ... end`
-- **实例化**: `new Class(...)` 或 `onew Class(...)`
-- **父类访问**: `super.method(...)` 或 `osuper:method(...)`
+- **实例化**: `new Class(...)` (或 `onew`)
+- **父类访问**: `super.method(...)` (或 `osuper`)
 
 ```lua
-class Point
-    public x = 0
-    public y = 0
+interface Drawable
+    function draw()
+end
 
-    function __init__(x, y)
-        self.x = x
-        self.y = y
-    end
-
-    function move(dx, dy)
-        self.x += dx
-        self.y += dy
+class Shape implements Drawable
+    function draw()
+        print("Drawing shape")
     end
 end
 
-local p = new Point(10, 20)
-p:move(5, 5)
-print(p.x, p.y) -- 15, 25
+class Circle extends Shape
+    private _radius = 0
+
+    -- 构造函数
+    function __init__(r)
+        self._radius = r
+    end
+
+    -- Getter 属性
+    public get radius()
+        return self._radius
+    end
+
+    -- Setter 属性
+    public set radius(v)
+        if v >= 0 then self._radius = v end
+    end
+
+    -- 重写方法
+    function draw()
+        super.draw()  -- 调用父类方法
+        print("Drawing circle: " .. self._radius)
+    end
+
+    -- 静态方法
+    static function create(r)
+        return new Circle(r)
+    end
+end
+
+local c = Circle.create(10)
+c.radius = 20
+print(c.radius)  -- 20
+c:draw()
 ```
 
 ### 5. 结构体与类型 (Structs & Types)
 
 - **结构体**: `struct Name { Type field; ... }`
 - **泛型结构体**: `struct Box(T) { T value; }`
-- **超级结构体**: `superstruct Name [ key: value, ... ]` (元数据/原型)
+- **枚举**: `enum Name { A, B=10 }`
+- **强类型变量**: `int`, `float`, `bool`, `string` 等
+- **解构赋值**: `local take { ... } = expr`
 
 ```lua
-struct Vector3 {
-    float x;
-    float y;
-    float z;
+-- 定义结构体
+struct Point {
+    int x;
+    int y;
 }
 
-local v = Vector3()
-v.x = 1.0
-v.y = 2.0
-v.z = 3.0
+-- 实例化结构体
+local p = Point()
+p.x = 10
+p.y = 20
+
+-- 定义枚举
+enum Color {
+    Red,
+    Green,
+    Blue = 10
+}
+print(Color.Red)   -- 0
+print(Color.Blue)  -- 10
+
+-- 强类型变量声明
+int counter = 100;
+string message = "Hello";
+
+-- 解构赋值 (Destructuring)
+local data = { x = 1, y = 2 }
+local take { x, y } = data
+print(x, y)  -- 1, 2
 ```
-- **枚举**: `enum Color { Red, Green, Blue }`
-- **类型标注**: 支持 `int`, `float`, `bool`, `string`, `void`, `char`, `long` 等。
 
 ### 6. 控制流扩展 (Control Flow)
 
-- **Switch**: `switch (exp) { case v: ... }` 或 `switch (exp) do case ... end`
-    - 支持作为表达式: `local x = switch(v) case 1: 10 case 2: 20 end`
-
-```lua
-switch(val) do
-    case 1:
-        print("Case 1")
-    default:
-        print("Default")
-end
-
--- 表达式形式 (需要显式 return)
-local res = switch(val) do
-    case 1: return "One"
-    case 2: return "Two"
-end
-```
-
+- **Switch**: `switch (exp) { case v: ... }` 或 `switch (exp) do ... end`
 - **Try-Catch**: `try ... catch(e) ... finally ... end`
-- **Defer**: `defer statement` 或 `defer do ... end` (作用域结束时执行)
-
-```lua
-do
-    defer print("Cleanup")
-    print("Working...")
-end
--- Output: Working... Cleanup
-```
-
+- **Defer**: `defer statement` 或 `defer do ... end`
+- **When**: 类似于 `if-elseif-else` 的语法糖
 - **Namespace**: `namespace Name { ... }`, `using namespace Name;`
 
 ```lua
+-- Switch 语句
+switch (val) do
+    case 1:
+        print("One")
+    case "test":
+        print("Test string")
+    default:
+        print("Other")
+end
+
+-- Switch 表达式
+local res = switch(val) do
+    case 1: return "A"
+    case 2: return "B"
+end
+
+-- Try-Catch 异常处理
+try
+    error("Something went wrong")
+catch(e)
+    print("Caught error: " .. e)
+finally
+    print("Cleanup resource")
+end
+
+-- Defer 延迟执行 (当前作用域结束时触发)
+local f = io.open("file.txt", "r")
+if f then
+    defer f:close() end  -- 自动关闭文件
+    -- read file...
+end
+
+-- Namespace 命名空间
 namespace MyLib {
-    int value = 42;
+    int version = 1;
+    function test() print("test") end
 }
-print(MyLib.value)
+MyLib::test()
+
+using namespace MyLib;
+print(version)  -- 1
 ```
-- **Using**: `using Name::Member;`
-- **Continue**: `continue` 关键字
-- **When**: `when cond then ... case cond2 then ... else ... end`
 
 ### 7. 元编程 (Metaprogramming)
 
-- **自定义命令**: `command Name(args) ... end`
-- **自定义关键字**: `keyword Name(args) ... end`
-- **自定义运算符**: `operator op (args) ... end` (支持 `++`, `**` 等)
-- **宏调用**: `$Name(args)` 或 `$Name`
+- **自定义命令 (command)**: 定义 Shell 风格调用的函数
+- **自定义关键字 (keyword)**: 定义新的关键字语法
+- **自定义运算符 (operator)**: 重载或定义新运算符
+- **预处理指令**: `$if`, `$define`, `$include` 等
+
+```lua
+-- 自定义命令
+command echo(msg)
+    print(msg)
+end
+echo "Hello World"  -- 等价于 echo("Hello World")
+
+-- 自定义运算符 (++ 前缀/后缀)
+operator ++ (x)
+    return x + 1
+end
+-- 调用: $$++(val)
+
+-- 预处理指令
+$define DEBUG 1
+
+$if DEBUG
+    print("Debug mode on")
+$else
+    print("Debug mode off")
+$end
+```
 
 ### 8. 内联汇编 (Inline ASM)
 
-支持 `asm` 块直接编写虚拟机指令：
+支持 `asm` 块直接编写虚拟机指令，用于极致优化或底层操作。
 
 ```lua
 asm(
-    LOADI 0 100  ; R[0] = 100
-    RETURN 0 1
+    LOADI 0 100   ; R[0] = 100
+    LOADI 1 200   ; R[1] = 200
+    ADD 2 0 1     ; R[2] = R[0] + R[1]
+    _print "Result: " 2 ; 打印 R[2] 的值
 )
 ```
-
-支持伪指令: `newreg`, `def`, `_if`, `junk` 等。
-
-### 9. 预处理器 (Preprocessor)
-
-支持类 C 预处理指令 (使用 `$` 前缀):
-- `$if`, `$else`, `$elseif`, `$end`
-- `$define`, `$include`, `$alias`
-- `$haltcompiler`
 
 ## 系统要求
 
