@@ -86,9 +86,11 @@ local val = nil
 local res = val ?? "default"  -- "default"
 
 -- 可选链 (Optional Chaining)
-local config = { server = { port = 8080 } }
-local port = config?.server?.port  -- 8080
-local timeout = config?.client?.timeout  -- nil (不会报错)
+do
+    local config = { server = { port = 8080 } }
+    local port = config?.server?.port  -- 8080
+    local timeout = config?.client?.timeout  -- nil (不会报错)
+end
 
 -- 管道操作符 (Pipe Operator)
 -- x |> f 等价于 f(x) 但返回 x (Tap 语义)
@@ -96,7 +98,6 @@ local result = "hello" |> string.upper |> print  -- 打印 HELLO, result 为 "he
 
 -- 安全管道 (Safe Pipe)
 -- x |?> f 等价于 x and f(x)
--- 注意: 这是一个表达式，需要接收返回值或使用
 local maybe_nil = nil
 local _ = maybe_nil |?> print  -- (什么都不打印)
 
@@ -125,26 +126,33 @@ local path = _raw"C:\Windows\System32"  -- C:\Windows\System32
 
 ### 3. 函数特性 (Function Features)
 
-- **箭头函数**: `(args) => expr` 或 `->(args) { stat }`
-- **Lambda 表达式**: `lambda(args) => expr`
+- **箭头函数**:
+    - `(args) => expr`: 表达式形式，隐式返回结果。
+    - `->(args) { stat }`: 语句块形式，必须使用 `{}` 包裹代码块。
+- **Lambda 表达式**: `lambda(args) => stat` 或 `lambda(args): expr`。
 - **C 风格定义**: `int add(int a, int b) { ... }`
 - **泛型函数**: `function(T)(x) ... end`
 - **Async/Await**: `async function`, `await`
 
 ```lua
--- 箭头函数 (表达式形式)
+-- 箭头函数 (表达式形式 =>)
 local add = (a, b) => a + b
 print(add(10, 20))  -- 30
 
--- 箭头函数 (语句块形式，使用 do ... end)
-local log = (msg) => do print("[LOG]: " .. msg) end
+-- 箭头函数 (语句块形式 ->)
+-- 注意: -> 必须使用 { } 包裹语句块
+local log = ->(msg) { print("[LOG]: " .. msg) }
+log("test")
 
--- 箭头函数 (-> 语法，支持 {})
-local fast_add = ->(a, b) { return a + b }
+-- 无参数 -> (返回包含 "Action" 的表，因为 { } 被视为表构造器)
+-- 若要执行语句块，请使用 lambda 或 function
 local simple_action = -> { print("Action") }
+simple_action()
 
--- Lambda 表达式
+-- Lambda 表达式 (lambda)
+-- 支持 => do ... end 语法
 local sq = lambda(x): x * x
+print(sq(10)) -- 100
 
 -- C 风格强类型函数
 int sum(int a, int b) {
@@ -152,10 +160,12 @@ int sum(int a, int b) {
 }
 
 -- 泛型函数 (带约束)
--- 注意: 需作为表达式赋值给变量
-local f = function(T)(x) requires type(x) == "number"
+-- 注意: requires 约束检查的是类型参数 T
+local f = function(T)(x) requires type(T) == "number"
     return x
 end
+local inner = f(10) -- T=10 (pass)
+print(inner("hello"))
 
 -- 函数属性 (nodiscard: 忽略返回值时警告)
 -- 语法: function Name() <nodiscard> ... end
@@ -183,11 +193,11 @@ end
 
 ```lua
 interface Drawable
-    function draw()
+    function draw(self)
 end
 
 class Shape implements Drawable
-    function draw()
+    function draw(self)
         print("Drawing shape")
     end
 end
@@ -196,23 +206,23 @@ class Circle extends Shape
     private _radius = 0
 
     -- 构造函数
-    function __init__(r)
+    function __init__(self, r)
         self._radius = r
     end
 
     -- Getter 属性
-    public get radius()
+    public get radius(self)
         return self._radius
     end
 
     -- Setter 属性 (自动绑定 self)
-    public set radius(v)
+    public set radius(self, v)
         if v >= 0 then self._radius = v end
     end
 
     -- 重写方法
-    function draw()
-        super.draw()  -- 调用父类方法
+    function draw(self)
+        super.draw(self)  -- 调用父类方法
         print("Drawing circle: " .. self._radius)
     end
 
@@ -305,13 +315,14 @@ local sub3 = t[1:5:2] -- {10, 30, 50}
 - **Switch**: `switch (exp) { case v: ... }` 或 `switch (exp) do ... end`
 - **Try-Catch**: `try ... catch(e) ... finally ... end`
 - **Defer**: `defer statement` 或 `defer do ... end`
-- **When**: 类似于 `if-elseif-else` 的语法糖
-- **Namespace**: `namespace Name { ... }`, `using namespace Name;`
+- **When**: 类似于 `if-elseif-else` 的语法糖。**注意**: 建议包裹在 `do ... end` 中以限定作用域。
+- **Namespace**: `namespace Name { ... }`, `using namespace Name;`。**注意**: `namespace` 会隔离 `_ENV`，若需使用外部全局变量（如 `print`），需先捕获。
 - **Continue**: `continue` 跳过循环当前迭代
 - **With**: `with (expr) { ... }` 临时进入对象作用域
 
 ```lua
 -- Switch 语句
+local val = 1
 switch (val) do
     case 1:
         print("One")
@@ -329,14 +340,16 @@ local res = switch(val) do
     case 2: return "B"
 end
 
--- When 语句
-local x = 10
-when x == 1
-    print("x is 1")
-case x == 10
-    print("x is 10")
-else
-    print("other")
+-- When 语句 (建议包裹在 do...end 中)
+do
+    local x = 10
+    when x == 1
+        print("x is 1")
+    case x == 10
+        print("x is 10")
+    else
+        print("other")
+end
 
 -- Try-Catch 异常处理
 try
@@ -348,13 +361,15 @@ finally
 end
 
 -- Defer 延迟执行 (当前作用域结束时触发)
-local f = io.open("file.txt", "r")
+-- defer 接受单个语句，若需多条语句请用 do ... end
+local f = { close = function() print("closed") end }
 if f then
-    defer f:close() end  -- 自动关闭文件
-    -- read file...
+    defer do f:close() end
+    print("reading...")
 end
 
 -- Namespace 命名空间
+local print = print -- 捕获全局变量
 namespace MyLib {
     int version = 1;
     function test() print("test") end
@@ -422,8 +437,8 @@ asm(
     LOADI 0 100
     LOADI 1 200
     ADD 2 0 1
-    _print "Result: " 2 ; 编译时打印
-    MOVE 3 2             ; 使用标准 Lua 操作码名称
+    _print "Result: " 2
+    MOVE 3 2
 )
 ```
 
@@ -462,6 +477,7 @@ print(obj.x) -- 10
 使用 `$$` 前缀可以直接调用已定义的运算符函数（需要先定义 `operator`）。
 
 ```lua
+_OPERATORS = {}
 operator + (a, b)
     return a + b
 end
@@ -474,8 +490,8 @@ print(res) -- 30
 `lambda` 支持使用 `:` 作为 `return` 的简写。
 
 ```lua
-local double = lambda(x): x * 2
-print(double(10)) -- 20
+local dbl = lambda(x): x * 2
+print(dbl(10)) -- 20
 ```
 
 #### 概念表达式 (Concept Expression)
@@ -535,16 +551,40 @@ local http = require "http"
 ```lua
 local thread = require "thread"
 
--- 创建并运行线程
+-- 创建并运行线程 (参数传递给 create)
 local t = thread.create(function(a, b)
     return a + b
-end)
+end, 10, 20)
 
 -- 等待线程结束并获取结果
-local res = t:join(10, 20)
+local res = t:join()
 print("Thread result: " .. tostring(res))  -- 30
 ```
 
+### 13. 预处理器指令 (Preprocessor Directives)
+
+LXCLUA-NCore 包含一个内置的预处理器，支持编译时逻辑。
+
+*   `$define NAME [VALUE]`: 定义编译时常量。
+*   `$if NAME`: 条件编译，如果 `NAME` 已定义且非 false/0。
+*   `$else`, `$elseif`, `$end`: 条件分支。
+*   `$include "filename"`: 包含另一个文件。
+*   `$alias NAME = tokens...`: 定义宏别名。
+*   `$type Name = ...`: 定义编译时类型别名。
+*   `$declare ...`: 声明全局变量或类型。
+
+### 14. 汇编扩展指令 (ASM Extensions)
+
+`asm(...)` 块支持以下扩展指令：
+
+*   `_print "msg" [val]`: 编译时/运行时打印信息。
+*   `_assert cond ["msg"]`: 汇编级断言。
+*   `_if`, `_else`, `_endif`: 汇编级条件执行。
+*   `rep count { ... }`: 重复生成指令块。
+*   `junk "string" | count`: 插入垃圾数据或 NOP 指令用于混淆。
+*   `db`, `dw`, `dd`: 直接插入字节/字/双字数据。
+*   `newreg Name`: 分配并命一个新的寄存器。
+*   `getglobal reg "name"`, `setglobal reg "name"`: 访问全局变量的便捷指令。
 
 ## 系统要求
 
