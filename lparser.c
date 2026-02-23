@@ -2031,21 +2031,11 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
            int j;
            for (j = 0; j < MAX_TYPE_DESCS; j++) {
               if (vd->vd.hint->descs[j].type == LVT_NAME && vd->vd.hint->descs[j].typename) {
-                 expdesc f_check;
-                 singlevaraux(&new_fs, luaS_newliteral(ls->L, "__check_type"), &f_check, 1);
-                 if (f_check.k == VVOID) {
-                    expdesc key;
-                    singlevaraux(&new_fs, ls->envn, &f_check, 1);
-                    codestring(&key, luaS_newliteral(ls->L, "__check_type"));
-                    luaK_indexed(&new_fs, &f_check, &key);
-                 }
-
-                 luaK_exp2nextreg(&new_fs, &f_check);
-                 int base = f_check.u.info;
-
+                 /* Using OP_CHECKTYPE A B C */
                  expdesc e_val;
                  init_var(&new_fs, &e_val, i);
-                 luaK_exp2nextreg(&new_fs, &e_val);
+                 luaK_exp2anyreg(&new_fs, &e_val);
+                 int val_reg = e_val.u.info;
 
                  expdesc e_type;
                  singlevaraux(&new_fs, vd->vd.hint->descs[j].typename, &e_type, 1);
@@ -2056,13 +2046,13 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
                     luaK_indexed(&new_fs, &e_type, &key);
                  }
                  luaK_exp2nextreg(&new_fs, &e_type);
+                 int type_reg = e_type.u.info;
 
-                 expdesc e_name;
-                 codestring(&e_name, vd->vd.name);
-                 luaK_exp2nextreg(&new_fs, &e_name);
+                 int name_k = luaK_stringK(&new_fs, vd->vd.name);
 
-                 luaK_codeABC(&new_fs, OP_CALL, base, 4, 1);
-                 new_fs.freereg = base;
+                 luaK_codeABC(&new_fs, OP_CHECKTYPE, val_reg, type_reg, name_k);
+
+                 new_fs.freereg = type_reg; /* Free type_reg */
               }
            }
         }
@@ -2122,21 +2112,11 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
                int j;
                for (j = 0; j < MAX_TYPE_DESCS; j++) {
                   if (vd->vd.hint->descs[j].type == LVT_NAME && vd->vd.hint->descs[j].typename) {
-                     expdesc f_check;
-                     singlevaraux(&impl_fs, luaS_newliteral(ls->L, "__check_type"), &f_check, 1);
-                     if (f_check.k == VVOID) {
-                        expdesc key;
-                        singlevaraux(&impl_fs, ls->envn, &f_check, 1);
-                        codestring(&key, luaS_newliteral(ls->L, "__check_type"));
-                        luaK_indexed(&impl_fs, &f_check, &key);
-                     }
-
-                     luaK_exp2nextreg(&impl_fs, &f_check);
-                     int base = f_check.u.info;
-
+                 /* Using OP_CHECKTYPE A B C */
                      expdesc e_val;
                      init_var(&impl_fs, &e_val, i);
-                     luaK_exp2nextreg(&impl_fs, &e_val);
+                 luaK_exp2anyreg(&impl_fs, &e_val);
+                 int val_reg = e_val.u.info;
 
                      expdesc e_type;
                      singlevaraux(&impl_fs, vd->vd.hint->descs[j].typename, &e_type, 1);
@@ -2147,13 +2127,13 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
                         luaK_indexed(&impl_fs, &e_type, &key);
                      }
                      luaK_exp2nextreg(&impl_fs, &e_type);
+                 int type_reg = e_type.u.info;
 
-                     expdesc e_name;
-                     codestring(&e_name, vd->vd.name);
-                     luaK_exp2nextreg(&impl_fs, &e_name);
+                 int name_k = luaK_stringK(&impl_fs, vd->vd.name);
 
-                     luaK_codeABC(&impl_fs, OP_CALL, base, 4, 1);
-                     impl_fs.freereg = base;
+                 luaK_codeABC(&impl_fs, OP_CHECKTYPE, val_reg, type_reg, name_k);
+
+                 impl_fs.freereg = type_reg;
                   }
                }
             }
@@ -2239,26 +2219,16 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
 
       /* Now we are in Parent */
       /* e contains Factory closure */
-      /* Generate __generic_wrap call */
+      /* Generate OP_GENERICWRAP */
       FuncState *fs = ls->fs;
       int factory_reg = luaK_exp2anyreg(fs, e);
 
-      expdesc wrap;
-      singlevaraux(fs, luaS_newliteral(ls->L, "__generic_wrap"), &wrap, 1);
-      if (wrap.k == VVOID) {
-          expdesc key;
-          singlevaraux(fs, ls->envn, &wrap, 1);
-          codestring(&key, luaS_newliteral(ls->L, "__generic_wrap"));
-          luaK_indexed(fs, &wrap, &key);
-      }
-      int wrap_reg = fs->freereg;
-      luaK_reserveregs(fs, 1);
-      luaK_exp2reg(fs, &wrap, wrap_reg);
+      int base_args = fs->freereg;
+      luaK_reserveregs(fs, 3);
 
-      luaK_checkstack(fs, 3);
-      int arg1 = wrap_reg + 1;
-      int arg2 = wrap_reg + 2;
-      int arg3 = wrap_reg + 3;
+      int arg1 = base_args;
+      int arg2 = base_args + 1;
+      int arg3 = base_args + 2;
 
       /* Arg 1: Factory */
       luaK_codeABC(fs, OP_MOVE, arg1, factory_reg, 0);
@@ -2299,10 +2269,10 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
       }
       luaK_settablesize(fs, pc_arg3, arg3, nmappings, 0);
 
-      fs->freereg = arg3 + 1;
+      luaK_codeABC(fs, OP_GENERICWRAP, base_args, base_args, 0);
 
-      init_exp(e, VCALL, luaK_codeABC(fs, OP_CALL, wrap_reg, 4, 2));
-      fs->freereg = wrap_reg + 1;
+      init_exp(e, VNONRELOC, base_args);
+      fs->freereg = base_args + 1;
       return;
   }
 
@@ -2544,21 +2514,11 @@ static void parse_generic_arrow_body(LexState *ls, FuncState *factory_fs, expdes
              int j;
              for (j = 0; j < MAX_TYPE_DESCS; j++) {
                 if (vd->vd.hint->descs[j].type == LVT_NAME && vd->vd.hint->descs[j].typename) {
-                   expdesc f_check;
-                   singlevaraux(&impl_fs, luaS_newliteral(ls->L, "__check_type"), &f_check, 1);
-                   if (f_check.k == VVOID) {
-                      expdesc key;
-                      singlevaraux(&impl_fs, ls->envn, &f_check, 1);
-                      codestring(&key, luaS_newliteral(ls->L, "__check_type"));
-                      luaK_indexed(&impl_fs, &f_check, &key);
-                   }
-
-                   luaK_exp2nextreg(&impl_fs, &f_check);
-                   int base = f_check.u.info;
-
+                 /* Using OP_CHECKTYPE A B C */
                    expdesc e_val;
                    init_var(&impl_fs, &e_val, i);
-                   luaK_exp2nextreg(&impl_fs, &e_val);
+                 luaK_exp2anyreg(&impl_fs, &e_val);
+                 int val_reg = e_val.u.info;
 
                    expdesc e_type;
                    singlevaraux(&impl_fs, vd->vd.hint->descs[j].typename, &e_type, 1);
@@ -2569,13 +2529,13 @@ static void parse_generic_arrow_body(LexState *ls, FuncState *factory_fs, expdes
                       luaK_indexed(&impl_fs, &e_type, &key);
                    }
                    luaK_exp2nextreg(&impl_fs, &e_type);
+                 int type_reg = e_type.u.info;
 
-                   expdesc e_name;
-                   codestring(&e_name, vd->vd.name);
-                   luaK_exp2nextreg(&impl_fs, &e_name);
+                 int name_k = luaK_stringK(&impl_fs, vd->vd.name);
 
-                   luaK_codeABC(&impl_fs, OP_CALL, base, 4, 1);
-                   impl_fs.freereg = base;
+                 luaK_codeABC(&impl_fs, OP_CHECKTYPE, val_reg, type_reg, name_k);
+
+                 impl_fs.freereg = type_reg;
                 }
              }
           }
@@ -2639,26 +2599,16 @@ static void parse_generic_arrow_body(LexState *ls, FuncState *factory_fs, expdes
     close_func(ls);
     /* Now ls->fs is Parent */
 
-    /* Generate __generic_wrap call */
+    /* Generate OP_GENERICWRAP */
     FuncState *fs = ls->fs;
     int factory_reg = luaK_exp2anyreg(fs, &factory_e);
 
-    expdesc wrap;
-    singlevaraux(fs, luaS_newliteral(ls->L, "__generic_wrap"), &wrap, 1);
-    if (wrap.k == VVOID) {
-        expdesc key;
-        singlevaraux(fs, ls->envn, &wrap, 1);
-        codestring(&key, luaS_newliteral(ls->L, "__generic_wrap"));
-        luaK_indexed(fs, &wrap, &key);
-    }
-    int wrap_reg = fs->freereg;
-    luaK_reserveregs(fs, 1);
-    luaK_exp2reg(fs, &wrap, wrap_reg);
+    int base_args = fs->freereg;
+    luaK_reserveregs(fs, 3);
 
-    luaK_checkstack(fs, 3);
-    int arg1 = wrap_reg + 1;
-    int arg2 = wrap_reg + 2;
-    int arg3 = wrap_reg + 3;
+    int arg1 = base_args;
+    int arg2 = base_args + 1;
+    int arg3 = base_args + 2;
 
     /* Arg 1: Factory */
     luaK_codeABC(fs, OP_MOVE, arg1, factory_reg, 0);
@@ -2695,10 +2645,10 @@ static void parse_generic_arrow_body(LexState *ls, FuncState *factory_fs, expdes
     }
     luaK_settablesize(fs, pc_arg3, arg3, nmappings, 0);
 
-    fs->freereg = arg3 + 1;
+    luaK_codeABC(fs, OP_GENERICWRAP, base_args, base_args, 0);
 
-    init_exp(v, VCALL, luaK_codeABC(fs, OP_CALL, wrap_reg, 4, 2));
-    fs->freereg = wrap_reg + 1;
+    init_exp(v, VNONRELOC, base_args);
+    fs->freereg = base_args + 1;
 }
 
 static void primaryexp (LexState *ls, expdesc *v) {
@@ -3064,21 +3014,10 @@ static void primaryexp (LexState *ls, expdesc *v) {
       
       luaX_next(ls);  /* 跳过运算符符号 */
       
-      /* 获取 _OPERATORS 表 (via helper) */
-      expdesc get_func;
-      singlevaraux(fs, luaS_newliteral(ls->L, "__lxc_get_ops"), &get_func, 1);
-      if (get_func.k == VVOID) {
-        /* fallback to _ENV */
-        expdesc env_key;
-        singlevaraux(fs, ls->envn, &get_func, 1);
-        codestring(&env_key, luaS_newliteral(ls->L, "__lxc_get_ops"));
-        luaK_indexed(fs, &get_func, &env_key);
-      }
-      luaK_exp2nextreg(fs, &get_func);
-      int base = get_func.u.info;
-      luaK_codeABC(fs, OP_CALL, base, 1, 2);
-      init_exp(&operators_table, VNONRELOC, base);
-      fs->freereg = base + 1;
+      /* 获取 _OPERATORS 表 (via opcode) */
+      init_exp(&operators_table, VNONRELOC, fs->freereg);
+      luaK_codeABC(fs, OP_GETOPS, fs->freereg, 0, 0);
+      luaK_reserveregs(fs, 1);
       
       /* 获取 _OPERATORS[运算符] */
       luaK_exp2anyreg(fs, &operators_table);
@@ -9121,20 +9060,10 @@ static void commandstat (LexState *ls, int line) {
     FuncState *fs = ls->fs;
     expdesc cmds_table, key_exp, val_exp;
     
-    /* 获取 _CMDS 表 (via helper) */
-    expdesc get_func;
-    singlevaraux(fs, luaS_newliteral(ls->L, "__lxc_get_cmds"), &get_func, 1);
-    if (get_func.k == VVOID) {
-      expdesc env_key;
-      singlevaraux(fs, ls->envn, &get_func, 1);
-      codestring(&env_key, luaS_newliteral(ls->L, "__lxc_get_cmds"));
-      luaK_indexed(fs, &get_func, &env_key);
-    }
-    luaK_exp2nextreg(fs, &get_func);
-    int base = get_func.u.info;
-    luaK_codeABC(fs, OP_CALL, base, 1, 2);
-    init_exp(&cmds_table, VNONRELOC, base);
-    fs->freereg = base + 1;
+    /* 获取 _CMDS 表 (via opcode) */
+    init_exp(&cmds_table, VNONRELOC, fs->freereg);
+    luaK_codeABC(fs, OP_GETCMDS, fs->freereg, 0, 0);
+    luaK_reserveregs(fs, 1);
     
     /* 设置 _CMDS[命令名] = true */
     luaK_exp2anyregup(fs, &cmds_table);
@@ -9230,6 +9159,7 @@ static void keywordstat (LexState *ls, int line) {
 */
 static void operatorstat (LexState *ls, int line) {
   /* operatorstat -> OPERATOR <符号> body */
+  /* printf("Parsing operatorstat\n"); */
   expdesc b;
   TString *opname = NULL;
   FuncState *fs = ls->fs;
@@ -9301,20 +9231,10 @@ static void operatorstat (LexState *ls, int line) {
   {
     expdesc operators_table, key_exp;
     
-    /* 获取 _OPERATORS 表 (via helper) */
-    expdesc get_func;
-    singlevaraux(fs, luaS_newliteral(ls->L, "__lxc_get_ops"), &get_func, 1);
-    if (get_func.k == VVOID) {
-      expdesc env_key;
-      singlevaraux(fs, ls->envn, &get_func, 1);
-      codestring(&env_key, luaS_newliteral(ls->L, "__lxc_get_ops"));
-      luaK_indexed(fs, &get_func, &env_key);
-    }
-    luaK_exp2nextreg(fs, &get_func);
-    int base = get_func.u.info;
-    luaK_codeABC(fs, OP_CALL, base, 1, 2);
-    init_exp(&operators_table, VNONRELOC, base);
-    fs->freereg = base + 1;
+    /* 获取 _OPERATORS 表 (via opcode) */
+    init_exp(&operators_table, VNONRELOC, fs->freereg);
+    luaK_codeABC(fs, OP_GETOPS, fs->freereg, 0, 0);
+    luaK_reserveregs(fs, 1);
     
     /* 确保函数在寄存器中 */
     luaK_exp2anyreg(fs, &b);
@@ -9389,25 +9309,17 @@ static void funcstat (LexState *ls, int line, int isasync) {
   body(ls, &b, ismethod, line);
 
   if (isasync) {
-      expdesc wrap;
       FuncState *fs = ls->fs;
-      singlevaraux(fs, luaS_newliteral(ls->L, "__async_wrap"), &wrap, 1);
-      if (wrap.k == VVOID) {
-          expdesc key;
-          singlevaraux(fs, ls->envn, &wrap, 1);
-          codestring(&key, luaS_newliteral(ls->L, "__async_wrap"));
-          luaK_indexed(fs, &wrap, &key);
-      }
-
+      /* Using OP_ASYNCWRAP */
       int func_reg = fs->freereg;
       luaK_reserveregs(fs, 1);
-      luaK_exp2reg(fs, &wrap, func_reg);
 
-      int arg_reg = fs->freereg;
-      luaK_reserveregs(fs, 1);
-      luaK_exp2reg(fs, &b, arg_reg);
+      luaK_exp2nextreg(fs, &b); /* put function in next reg */
+      int b_reg = b.u.info;
 
-      init_exp(&b, VCALL, luaK_codeABC(fs, OP_CALL, func_reg, 2, 2));
+      luaK_codeABC(fs, OP_ASYNCWRAP, func_reg, b_reg, 0);
+
+      init_exp(&b, VNONRELOC, func_reg);
       fs->freereg = func_reg + 1;
   }
 
