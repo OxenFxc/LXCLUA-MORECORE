@@ -107,7 +107,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, 0, 0, 0, iABx)		/* OP_ERRNNIL */
  ,opmode(0, 0, 1, 0, 1, iABC)		/* OP_VARARGPREP */
  ,opmode(0, 0, 0, 1, 0, iABC)		/* OP_IS */
- ,opmode(0, 0, 0, 1, 0, iABC)		/* OP_TESTNIL */
+ ,opmode(0, 0, 0, 1, 1, iABC)		/* OP_TESTNIL */
  /* 面向对象系统操作码 */
  ,opmode(0, 0, 0, 0, 1, iABx)		/* OP_NEWCLASS */
  ,opmode(0, 0, 0, 0, 0, iABC)		/* OP_INHERIT */
