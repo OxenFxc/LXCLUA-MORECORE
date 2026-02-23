@@ -396,6 +396,12 @@ OP_NEWSUPER,/*	A Bx	R[A] := newsuperstruct(K[Bx])			*/
 
 OP_SETSUPER,/*	A B C	R[A][B] := R[C]					*/
 
+OP_GETCMDS,/*	A	R[A] := LXC_CMDS				*/
+OP_GETOPS,/*	A	R[A] := LXC_OPERATORS				*/
+OP_ASYNCWRAP,/*	A B	R[A] := async_wrap(R[B])			*/
+OP_GENERICWRAP,/* A B	R[A] := generic_wrap(R[B], R[B+1], R[B+2])	*/
+OP_CHECKTYPE,/*	A B C	if (check_type(R[A], R[B]) != true) error(K[C])	*/
+
 OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 } OpCode;
 

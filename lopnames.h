@@ -122,6 +122,11 @@ static const char *const opnames[] = {
   "LINKNAMESPACE",
   "NEWSUPER",
   "SETSUPER",
+  "GETCMDS",
+  "GETOPS",
+  "ASYNCWRAP",
+  "GENERICWRAP",
+  "CHECKTYPE",
   "EXTRAARG",
   NULL
 };

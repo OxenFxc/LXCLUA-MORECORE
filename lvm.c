@@ -58,6 +58,232 @@
 #include "lnamespace.h"
 #include "lsuper.h"
 #include "lbigint.h"
+#include "lauxlib.h"
+
+/* Helper functions for new opcodes */
+
+static int check_subtype_internal(lua_State *L, const TValue *val, const TValue *type_obj) {
+    lua_lock(L);
+    setobj2s(L, L->top.p, val);
+    L->top.p++;
+    setobj2s(L, L->top.p, type_obj);
+    L->top.p++;
+    lua_unlock(L);
+
+    int val_idx = -2;
+    int type_idx = -1;
+
+    int res = 0;
+    if (lua_type(L, type_idx) == LUA_TSTRING) {
+        const char *tname = lua_tostring(L, type_idx);
+        if (strcmp(tname, "any") == 0) res = 1;
+        else if (strcmp(tname, "int") == 0 || strcmp(tname, "integer") == 0) res = lua_isinteger(L, val_idx);
+        else if (strcmp(tname, "number") == 0) res = (lua_type(L, val_idx) == LUA_TNUMBER);
+        else if (strcmp(tname, "float") == 0) res = (lua_type(L, val_idx) == LUA_TNUMBER);
+        else if (strcmp(tname, "string") == 0) res = (lua_type(L, val_idx) == LUA_TSTRING);
+        else if (strcmp(tname, "boolean") == 0) res = (lua_type(L, val_idx) == LUA_TBOOLEAN);
+        else if (strcmp(tname, "table") == 0) res = (lua_type(L, val_idx) == LUA_TTABLE);
+        else if (strcmp(tname, "function") == 0) res = (lua_type(L, val_idx) == LUA_TFUNCTION);
+        else if (strcmp(tname, "thread") == 0) res = (lua_type(L, val_idx) == LUA_TTHREAD);
+        else if (strcmp(tname, "userdata") == 0) res = (lua_type(L, val_idx) == LUA_TUSERDATA);
+        else if (strcmp(tname, "nil") == 0 || strcmp(tname, "void") == 0) res = (lua_type(L, val_idx) == LUA_TNIL);
+    }
+    else if (lua_type(L, type_idx) == LUA_TTABLE) {
+        lua_getglobal(L, "string");
+        if (lua_rawequal(L, -1, type_idx)) {
+            lua_pop(L, 1);
+            res = (lua_type(L, val_idx) == LUA_TSTRING);
+        } else {
+            lua_pop(L, 1);
+            lua_getglobal(L, "table");
+            if (lua_rawequal(L, -1, type_idx)) {
+                lua_pop(L, 1);
+                res = (lua_type(L, val_idx) == LUA_TTABLE);
+            } else {
+                lua_pop(L, 1);
+                res = luaC_instanceof(L, val_idx, type_idx);
+            }
+        }
+    }
+    else if (lua_type(L, type_idx) == LUA_TFUNCTION) {
+        lua_pushvalue(L, type_idx);
+        lua_pushvalue(L, val_idx);
+        if (lua_pcall(L, 1, 1, 0) == 0) {
+            res = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+        } else {
+            lua_pop(L, 1);
+            res = 0;
+        }
+    }
+
+    lua_pop(L, 2); /* pop val and type */
+    return res;
+}
+
+static int lvm_async_start(lua_State *L) {
+    int n = lua_gettop(L);
+    lua_State *co = lua_newthread(L);
+    lua_insert(L, 1);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, "_ASYNC_LAZY_WRAPPER");
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        if (luaL_dostring(L, "return function(f, ...) coroutine.yield(); return f(...) end") != LUA_OK) {
+            return lua_error(L);
+        }
+        lua_call(L, 0, 1); /* call chunk to get the wrapper function */
+        lua_pushvalue(L, -1);
+        lua_setfield(L, LUA_REGISTRYINDEX, "_ASYNC_LAZY_WRAPPER");
+    }
+    lua_xmove(L, co, 1);
+
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_xmove(L, co, 1);
+
+    lua_xmove(L, co, n);
+
+    int nres;
+    int status = lua_resume(co, L, n + 1, &nres);
+
+    if (status != LUA_YIELD) {
+        if (status != LUA_OK) {
+            lua_xmove(co, L, 1);
+            return lua_error(L);
+        }
+    }
+
+    if (nres > 0) {
+        lua_pop(co, nres);
+    }
+
+    return 1;
+}
+
+static int lvm_generic_call (lua_State *L) {
+    /* Upvalues: 1:factory, 2:params, 3:mapping */
+    int nargs = lua_gettop(L) - 1; /* Skip self */
+    int base = 2;
+    int is_specialization = 0;
+
+    if (nargs >= 1) {
+        int t = lua_type(L, base);
+        if (t == LUA_TSTRING) {
+            const char *s = lua_tostring(L, base);
+            if (strcmp(s, "number")==0 || strcmp(s, "string")==0 ||
+                strcmp(s, "boolean")==0 || strcmp(s, "table")==0 ||
+                strcmp(s, "function")==0 || strcmp(s, "thread")==0 ||
+                strcmp(s, "userdata")==0 || strcmp(s, "nil_type")==0) {
+                is_specialization = 1;
+            }
+        } else if (t == LUA_TTABLE) {
+            lua_getglobal(L, "string");
+            if (lua_rawequal(L, -1, base)) is_specialization = 1;
+            lua_pop(L, 1);
+
+            if (!is_specialization) {
+                lua_getglobal(L, "table");
+                if (lua_rawequal(L, -1, base)) is_specialization = 1;
+                lua_pop(L, 1);
+            }
+
+            if (!is_specialization) {
+                lua_getfield(L, base, "__name");
+                if (!lua_isnil(L, -1)) is_specialization = 1;
+                lua_pop(L, 1);
+            }
+        }
+    }
+
+    if (is_specialization) {
+        lua_pushvalue(L, lua_upvalueindex(1)); /* factory */
+        for (int i = 0; i < nargs; i++) {
+            lua_pushvalue(L, base + i);
+        }
+        lua_call(L, nargs, LUA_MULTRET);
+        return lua_gettop(L) - (nargs + 1);
+    }
+
+    lua_newtable(L); /* inferred map */
+    int inferred_idx = lua_gettop(L);
+
+    int nmapping = (int)luaL_len(L, lua_upvalueindex(3));
+    for (int i = 0; i < nargs && i < nmapping; i++) {
+        lua_rawgeti(L, lua_upvalueindex(3), i + 1);
+        const char *param_type_name = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        if (param_type_name) {
+            int nparams = (int)luaL_len(L, lua_upvalueindex(2));
+            int is_generic = 0;
+            for (int j = 1; j <= nparams; j++) {
+                lua_rawgeti(L, lua_upvalueindex(2), j);
+                const char *gp = lua_tostring(L, -1);
+                lua_pop(L, 1);
+                if (gp && strcmp(gp, param_type_name) == 0) {
+                    is_generic = 1;
+                    break;
+                }
+            }
+
+            if (is_generic) {
+                lua_pushvalue(L, base + i);
+                if (lua_type(L, -1) == LUA_TSTRUCT) {
+                    const TValue *o = s2v(L->top.p - 1);
+                    Struct *s = structvalue(o);
+                    lua_lock(L);
+                    sethvalue(L, s2v(L->top.p), s->def);
+                    L->top.p++;
+                    lua_unlock(L);
+                    lua_remove(L, -2);
+                } else {
+                    lua_pushstring(L, luaL_typename(L, -1));
+                    lua_remove(L, -2);
+                }
+
+                lua_pushstring(L, param_type_name);
+                lua_rawget(L, inferred_idx);
+                if (!lua_isnil(L, -1)) {
+                    if (!lua_compare(L, -1, -2, LUA_OPEQ)) {
+                        return luaL_error(L, "type inference failed: inconsistent types for '%s'", param_type_name);
+                    }
+                    lua_pop(L, 2);
+                } else {
+                    lua_pop(L, 1);
+                    lua_pushstring(L, param_type_name);
+                    lua_pushvalue(L, -2);
+                    lua_rawset(L, inferred_idx);
+                    lua_pop(L, 1);
+                }
+            }
+        }
+    }
+
+    int nparams = (int)luaL_len(L, lua_upvalueindex(2));
+    lua_pushvalue(L, lua_upvalueindex(1));
+
+    for (int j = 1; j <= nparams; j++) {
+        lua_rawgeti(L, lua_upvalueindex(2), j);
+        const char *gp = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        lua_pushstring(L, gp);
+        lua_rawget(L, inferred_idx);
+        if (lua_isnil(L, -1)) {
+            return luaL_error(L, "could not infer type for '%s'", gp);
+        }
+    }
+
+    lua_call(L, nparams, 1); /* impl */
+
+    int impl_idx = lua_gettop(L);
+    lua_pushvalue(L, impl_idx);
+    for (int i = 0; i < nargs; i++) {
+       lua_pushvalue(L, base + i);
+    }
+    lua_call(L, nargs, LUA_MULTRET);
+    return lua_gettop(L) - impl_idx;
+}
 
 static int try_add(lua_Integer a, lua_Integer b, lua_Integer *r) {
     if ((b > 0 && a > LUA_MAXINTEGER - b) || (b < 0 && a < LUA_MININTEGER - b)) return 0;
@@ -3513,6 +3739,167 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         /* t[2] = RC */
         luaH_setint(L, t, 2, &rc);
         checkGC(L, ra + 1);
+        vmbreak;
+      }
+      vmcase(OP_GETCMDS) {
+        luaD_checkstack(L, 1);
+        updatebase(ci);
+        StkId ra = RA(i);
+        Table *reg = hvalue(&G(L)->l_registry);
+        TString *key = luaS_newliteral(L, "LXC_CMDS");
+        setsvalue2s(L, L->top.p, key); /* anchor key */
+        L->top.p++;
+        const TValue *res = luaH_getstr(reg, key);
+        if (!isempty(res)) {
+          setobj2s(L, ra, res);
+          L->top.p--;
+        } else {
+          Table *t = luaH_new(L);
+          updatebase(ci);
+          ra = RA(i);
+          sethvalue2s(L, ra, t);
+          TValue val; sethvalue(L, &val, t);
+          l_rwlock_wrlock(&reg->lock);
+          luaH_set(L, reg, s2v(L->top.p - 1), &val);
+          luaC_barrierback(L, obj2gco(reg), &val);
+          l_rwlock_unlock(&reg->lock);
+          L->top.p--;
+          checkGC(L, ra + 1);
+        }
+        vmbreak;
+      }
+      vmcase(OP_GETOPS) {
+        luaD_checkstack(L, 1);
+        updatebase(ci);
+        StkId ra = RA(i);
+        Table *reg = hvalue(&G(L)->l_registry);
+        TString *key = luaS_newliteral(L, "LXC_OPERATORS");
+        setsvalue2s(L, L->top.p, key); /* anchor key */
+        L->top.p++;
+        const TValue *res;
+        l_rwlock_rdlock(&reg->lock);
+        res = luaH_getstr(reg, key);
+        if (!isempty(res)) {
+          setobj2s(L, ra, res);
+          l_rwlock_unlock(&reg->lock);
+          L->top.p--;
+        } else {
+          l_rwlock_unlock(&reg->lock);
+          Table *t = luaH_new(L);
+          updatebase(ci);
+          ra = RA(i);
+          sethvalue2s(L, ra, t);
+          TValue val; sethvalue(L, &val, t);
+          l_rwlock_wrlock(&reg->lock);
+          luaH_set(L, reg, s2v(L->top.p - 1), &val);
+          luaC_barrierback(L, obj2gco(reg), &val);
+          l_rwlock_unlock(&reg->lock);
+          L->top.p--;
+          checkGC(L, ra + 1);
+        }
+        vmbreak;
+      }
+      vmcase(OP_ASYNCWRAP) {
+        int b = GETARG_B(i);
+        lua_getglobal(L, "__async_wrap");
+        if (ttisfunction(s2v(L->top.p - 1))) {
+           updatebase(ci);
+           TValue *rb = s2v(base + b);
+           setobj2s(L, L->top.p, rb);
+           L->top.p++;
+           lua_call(L, 1, 1);
+           updatebase(ci);
+           StkId ra = RA(i);
+           setobj2s(L, ra, s2v(L->top.p - 1));
+           L->top.p--;
+           checkGC(L, ra + 1);
+        } else {
+           lua_pop(L, 1);
+           CClosure *ncl = luaF_newCclosure(L, 1);
+           ncl->f = lvm_async_start;
+           updatebase(ci); /* stack might have moved */
+           StkId ra = RA(i);
+           TValue *rb = s2v(base + b);
+           setclCvalue(L, s2v(ra), ncl);
+           setobj(L, &ncl->upvalue[0], rb);
+           checkGC(L, ra + 1);
+        }
+        vmbreak;
+      }
+      vmcase(OP_GENERICWRAP) {
+        luaD_checkstack(L, 5);
+        updatebase(ci);
+        int b = GETARG_B(i);
+
+        /* 1. Create Closure */
+        CClosure *ncl = luaF_newCclosure(L, 3);
+        ncl->f = lvm_generic_call;
+
+        updatebase(ci); /* stack might have moved */
+        StkId base_args = base + b;
+        setobj(L, &ncl->upvalue[0], s2v(base_args));
+        setobj(L, &ncl->upvalue[1], s2v(base_args + 1));
+        setobj(L, &ncl->upvalue[2], s2v(base_args + 2));
+
+        StkId ra = RA(i);
+        setclCvalue(L, s2v(ra), ncl); /* Anchor ncl in ra */
+
+        /* 2. Create Proxy Table */
+        Table *proxy = luaH_new(L);
+        sethvalue2s(L, L->top.p, proxy); /* Anchor proxy in stack top */
+        L->top.p++;
+
+        /* 3. Create Metatable */
+        Table *mt = luaH_new(L);
+        sethvalue2s(L, L->top.p, mt); /* Anchor mt in stack top */
+        L->top.p++;
+
+        /* Link: proxy.mt = mt */
+        proxy->metatable = obj2gco(mt);
+
+        /* Link: mt.__call = ncl */
+        setsvalue2s(L, L->top.p, luaS_newliteral(L, "__call")); /* anchor key */
+        L->top.p++;
+        /* ncl is in ra. */
+        luaH_set(L, mt, s2v(L->top.p - 1), s2v(ra));
+        L->top.p--; /* pop key */
+        /* no barrier needed as mt is new (white) and ncl is new (white) */
+
+        /* Link: mt.__is_generic = true */
+        setsvalue2s(L, L->top.p, luaS_newliteral(L, "__is_generic")); /* anchor key */
+        L->top.p++;
+        TValue val_true;
+        setbtvalue(&val_true);
+        luaH_set(L, mt, s2v(L->top.p - 1), &val_true);
+        L->top.p--; /* pop key */
+
+        /* Move proxy to ra */
+        setobj2s(L, ra, s2v(L->top.p - 2));
+
+        /* Pop proxy and mt */
+        L->top.p -= 2;
+
+        checkGC(L, ra + 1);
+        vmbreak;
+      }
+      vmcase(OP_CHECKTYPE) {
+        StkId ra = RA(i);
+        TValue *rb = vRB(i);
+        TValue *rc = KC(i);
+
+        if (!check_subtype_internal(L, s2v(ra), rb)) {
+           const char *name = getstr(tsvalue(rc));
+           const char *expected = "unknown";
+           if (ttisstring(rb)) expected = getstr(tsvalue(rb));
+           else if (ttistable(rb)) {
+                Table *h = hvalue(rb);
+                TString *key_name = luaS_newliteral(L, "__name");
+                const TValue *res = luaH_getstr(h, key_name);
+                if (ttisstring(res)) expected = getstr(tsvalue(res));
+           }
+           luaG_runerror(L, "Type mismatch for argument '%s': expected %s, got %s",
+                          name, expected, luaT_objtypename(L, s2v(ra)));
+        }
         vmbreak;
       }
       vmcase(OP_EXTRAARG) {
