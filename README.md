@@ -17,6 +17,7 @@ A high-performance embedded scripting engine based on **Lua 5.5 (Custom)** with 
 - **Secure Compilation**: Dynamic OPcode mapping, timestamp encryption, SHA-256 integrity verification.
 - **Custom VM**: Implements XCLUA instruction set with optimized dispatch.
 - **Syntax Extensions**: Modern language features including Classes, Switch, Try-Catch, Arrow Functions, Pipe Operators, and more.
+- **Shell-like Conditions**: Built-in support for shell-style test expressions (e.g., `[ -f "file.txt" ]`).
 
 ### Extension Modules
 
@@ -63,9 +64,10 @@ local port = config?.server?.port  -- 8080
 local timeout = config?.client?.timeout  -- nil
 
 -- Pipe Operator
-local result = "hello" |> string.upper  -- "HELLO"
+local function double(x) return x * 2 end
+local result = 10 |> double  -- 20
 
--- Safe Pipe
+-- Safe Pipe (skips if nil)
 local maybe_nil = nil
 local _ = maybe_nil |?> print  -- (does nothing)
 
@@ -84,6 +86,8 @@ end
 ```lua
 local name = "World"
 print("Hello, ${name}!")  -- Hello, World!
+
+local calc = "1 + 1 = ${[1+1]}"  -- 1 + 1 = 2
 
 local path = _raw"C:\Windows\System32"
 ```
@@ -113,8 +117,8 @@ local obj = Factory("int")(99)
 
 -- Async/Await
 async function fetchData(url)
-    local data = await http.get(url)
-    return data
+    -- local data = await http.get(url) -- (Requires async runtime)
+    return "data"
 end
 ```
 
@@ -209,7 +213,7 @@ switch (val) do
         print("Other")
 end
 
--- When Statement
+-- When Statement (Pattern Matching)
 do
     when x == 1
         print("x is 1")
@@ -231,6 +235,12 @@ end
 -- Defer
 defer do print("Executes at scope exit") end
 
+-- With Statement
+local ctx = { val = 10 }
+with (ctx) {
+    print(val) -- 10
+}
+
 -- Namespace & Using
 namespace MyLib {
     function test() return "test" end
@@ -238,7 +248,25 @@ namespace MyLib {
 using namespace MyLib;
 ```
 
-### 7. Metaprogramming & Macros
+### 7. Shell-like Tests
+
+Built-in conditional tests using `[ ... ]` syntax.
+
+```lua
+if [ -f "config.lua" ] then
+    print("Config file exists")
+end
+
+if [ "a" == "a" ] then
+    print("Strings match")
+end
+
+if [ 10 -gt 5 ] then
+    print("10 > 5")
+end
+```
+
+### 8. Metaprogramming & Macros
 
 ```lua
 -- Custom Command
@@ -265,7 +293,7 @@ local x = 10
 local obj = $object(x) -- {x=10}
 ```
 
-### 8. Inline ASM
+### 9. Inline ASM
 
 Write VM instructions directly. Use `newreg` to allocate registers safely.
 

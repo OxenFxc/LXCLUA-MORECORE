@@ -4,45 +4,46 @@
 [![C Standard](https://img.shields.io/badge/C-C23-blue.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Cross--Platform-green.svg)]()
 
-基于 **Lua 5.5 (Custom)** 深度定制的高性能嵌入式脚本引擎，提供增强的安全特性、扩展库支持和优化的字节码编译。
+基于 **Lua 5.5 (Custom)** 的高性能嵌入式脚本引擎，增强了安全性、扩展库和优化的字节码编译。
 
 [English Documentation](README.md)
 
 ---
 
-## 特性 (Features)
+## 功能特性
 
-### 核心增强 (Core Enhancements)
+### 核心增强
 
-- **安全编译 (Secure Compilation)**: 动态 OPcode 映射、时间戳加密、SHA-256 完整性验证。
-- **自定义 VM (Custom VM)**: 实现 XCLUA 指令集与解释器，优化分发性能。
-- **语法扩展 (Syntax Extensions)**: 引入类 (Class)、Switch、Try-Catch、箭头函数、管道操作符等现代语言特性。
+- **安全编译**：动态操作码映射、时间戳加密、SHA-256 完整性校验。
+- **自定义 VM**：实现 XCLUA 指令集，优化调度。
+- **语法扩展**：包含类、Switch、Try-Catch、箭头函数、管道操作符等现代语言特性。
+- **Shell 风格条件测试**：内置支持 Shell 风格的测试表达式（例如 `[ -f "file.txt" ]`）。
 
-### 扩展模块 (Extension Modules)
+### 扩展模块
 
-| 模块 (Module) | 描述 (Description) |
+| 模块 | 描述 |
 |--------|------------------------|
-| `json` | 内置 JSON 解析与序列化 |
-| `lclass` | 面向对象编程支持 (类、继承、接口) |
-| `lbitlib` | 位运算库 |
-| `lboolib` | 布尔类型增强 |
+| `json` | 内置 JSON 解析/序列化 |
+| `lclass` | OOP 支持（类、继承、接口） |
+| `lbitlib` | 位运算 |
+| `lboolib` | 布尔增强 |
 | `ludatalib` | 二进制数据序列化 |
 | `lsmgrlib` | 内存管理工具 |
 | `process` | 进程管理 (仅限 Linux) |
-| `http` | HTTP 客户端/服务端与 Socket |
+| `http` | HTTP 客户端/服务端 & Socket |
 | `thread` | 多线程支持 |
 | `fs` | 文件系统操作 |
-| `struct` | C 风格结构体与强类型数组 |
+| `struct` | C 风格结构体 & 数组 |
 
 ---
 
-## 语法扩展 (Syntax Extensions)
+## 语法扩展
 
-LXCLUA-NCore 引入了大量现代语言特性，极大地扩展了 Lua 5.5 的能力。
+LXCLUA-NCore 引入了现代语言特性以扩展 Lua 5.5。
 
-### 1. 扩展运算符 (Extended Operators)
+### 1. 扩展操作符
 
-支持复合赋值、自增/自减、三路比较 (Spaceship)、空值合并、可选链、管道操作符以及 Walrus 赋值操作符。
+支持复合赋值、自增/自减、太空船操作符、空值合并、可选链、管道操作符和海象操作符。
 
 ```lua
 -- 复合赋值与自增
@@ -50,7 +51,7 @@ local a = 10
 a += 5          -- a = 15
 a++             -- a = 16
 
--- 三路比较 (-1, 0, 1)
+-- 太空船操作符 (-1, 0, 1)
 local cmp = 10 <=> 20  -- -1
 
 -- 空值合并
@@ -63,34 +64,37 @@ local port = config?.server?.port  -- 8080
 local timeout = config?.client?.timeout  -- nil
 
 -- 管道操作符
-local result = "hello" |> string.upper  -- "HELLO"
+local function double(x) return x * 2 end
+local result = 10 |> double  -- 20
 
--- 安全管道
+-- 安全管道 (如果为 nil 则跳过)
 local maybe_nil = nil
-local _ = maybe_nil |?> print  -- (什么都不做)
+local _ = maybe_nil |?> print  -- (不执行)
 
--- Walrus 赋值表达式
+-- 海象操作符 (赋值表达式)
 local x
 if (x := 100) > 50 then
     print(x) -- 100
 end
 ```
 
-### 2. 字符串增强 (Enhanced Strings)
+### 2. 增强字符串
 
-- **插值 (Interpolation)**: 字符串中使用 `${var}` 或 `${[expr]}`。
-- **原生字符串 (Raw Strings)**: 使用 `_raw` 前缀，忽略转义序列。
+- **插值**：字符串内使用 `${var}` 或 `${[expr]}`。
+- **原生字符串**：前缀为 `_raw`，忽略转义序列。
 
 ```lua
 local name = "World"
 print("Hello, ${name}!")  -- Hello, World!
 
+local calc = "1 + 1 = ${[1+1]}"  -- 1 + 1 = 2
+
 local path = _raw"C:\Windows\System32"
 ```
 
-### 3. 函数特性 (Function Features)
+### 3. 函数特性
 
-支持箭头函数、Lambda 表达式、C 风格定义、泛型函数和 Async/Await。
+支持箭头函数、Lambda、C 风格定义、泛型和 async/await。
 
 ```lua
 -- 箭头函数
@@ -111,16 +115,16 @@ local function Factory(T)(val)
 end
 local obj = Factory("int")(99)
 
--- 异步函数 (Async/Await)
+-- Async/Await
 async function fetchData(url)
-    local data = await http.get(url)
-    return data
+    -- local data = await http.get(url) -- (需要异步运行时)
+    return "data"
 end
 ```
 
 ### 4. 面向对象编程 (OOP)
 
-完整的类和接口系统，支持访问修饰符 (`private`, `public`, `static`, `final`, `abstract`, `sealed`) 和属性 (`get`/`set`)。
+完整的类和接口系统，支持修饰符（`private`、`public`、`static`、`final`、`abstract`、`sealed`）和属性（`get`/`set`）。
 
 ```lua
 interface Drawable
@@ -129,7 +133,7 @@ end
 
 class Shape implements Drawable
     function draw(self)
-        -- 类似抽象方法
+        -- 类似抽象方法的行为
     end
 end
 
@@ -140,7 +144,7 @@ class Circle extends Shape
         self._radius = r
     end
 
-    -- 属性 Getter/Setter
+    -- 带 Getter/Setter 的属性
     get radius(self)
         return self._radius
     end
@@ -164,7 +168,7 @@ c.radius = 20
 print(c.radius)  -- 20
 ```
 
-### 5. 结构体与类型 (Structs & Types)
+### 5. 结构体与类型
 
 ```lua
 -- 结构体
@@ -175,7 +179,7 @@ struct Point {
 local p = Point()
 p.x = 10
 
--- 超结构体 (SuperStruct - 增强表定义)
+-- SuperStruct (增强表定义)
 superstruct MetaPoint [
     x: 0,
     y: 0,
@@ -197,7 +201,7 @@ local data = { x = 1, y = 2 }
 local take { x, y } = data
 ```
 
-### 6. 控制流 (Control Flow)
+### 6. 控制流
 
 ```lua
 -- Switch 语句
@@ -209,7 +213,7 @@ switch (val) do
         print("Other")
 end
 
--- When 语句 (模式匹配风格)
+-- When 语句 (模式匹配)
 do
     when x == 1
         print("x is 1")
@@ -219,7 +223,7 @@ do
         print("other")
 end
 
--- Try-Catch-Finally 异常处理
+-- Try-Catch-Finally
 try
     error("Error")
 catch(e)
@@ -228,17 +232,41 @@ finally
     print("Cleanup")
 end
 
--- Defer 延迟执行
+-- Defer
 defer do print("Executes at scope exit") end
 
--- 命名空间 (Namespace) 与 Using
+-- With 语句
+local ctx = { val = 10 }
+with (ctx) {
+    print(val) -- 10
+}
+
+-- 命名空间 & Using
 namespace MyLib {
     function test() return "test" end
 }
 using namespace MyLib;
 ```
 
-### 7. 元编程与宏 (Metaprogramming & Macros)
+### 7. Shell 风格测试
+
+内置使用 `[ ... ]` 语法的条件测试。
+
+```lua
+if [ -f "config.lua" ] then
+    print("Config file exists")
+end
+
+if [ "a" == "a" ] then
+    print("Strings match")
+end
+
+if [ 10 -gt 5 ] then
+    print("10 > 5")
+end
+```
+
+### 8. 元编程 & 宏
 
 ```lua
 -- 自定义命令
@@ -247,14 +275,14 @@ command echo(msg)
 end
 echo "Hello World"
 
--- 自定义运算符
+-- 自定义操作符
 operator ++ (x)
     return x + 1
 end
 -- 使用 $$ 前缀调用
 local res = $$++(10)
 
--- 预处理指令
+-- 预处理器
 $define DEBUG 1
 $if DEBUG
     print("Debug mode")
@@ -265,9 +293,9 @@ local x = 10
 local obj = $object(x) -- {x=10}
 ```
 
-### 8. 内联汇编 (Inline ASM)
+### 9. 内联汇编 (Inline ASM)
 
-直接编写虚拟机指令。请使用 `newreg` 安全地分配寄存器。
+直接编写 VM 指令。使用 `newreg` 安全分配寄存器。
 
 ```lua
 asm(
@@ -279,9 +307,9 @@ asm(
 
 ---
 
-## 编译与测试 (Build & Test)
+## 构建与测试
 
-### 编译 (Build)
+### 构建
 
 ```bash
 # Linux
@@ -291,16 +319,16 @@ make linux
 make mingw
 ```
 
-### 验证 (Verification)
+### 验证
 
-运行测试套件以验证所有特性：
+运行测试套件以验证所有功能：
 
 ```bash
 ./lxclua tests/verify_docs_full.lua
 ./lxclua tests/test_parser_features.lua
 ```
 
-## 许可证 (License)
+## 许可证
 
 [MIT License](LICENSE).
 Lua original code Copyright © PUC-Rio.
