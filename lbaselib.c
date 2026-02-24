@@ -1348,16 +1348,20 @@ static int luaB_defer (lua_State *L) {
   lua_setiuservalue(L, -2, 1);
   
   // 创建元表
-  lua_createtable(L, 0, 1);
+  lua_createtable(L, 0, 2);
   
   // 定义__gc元方法
   lua_pushcfunction(L, defer_gc_callback);
   lua_setfield(L, -2, "__gc");
+
+  // 定义__close元方法 (使defer确定性执行)
+  lua_pushcfunction(L, defer_gc_callback);
+  lua_setfield(L, -2, "__close");
   
   // 设置元表
   lua_setmetatable(L, -2);
   
-  return 0;
+  return 1;
 }
 
 // 模块信息结构体

@@ -3291,8 +3291,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         ** Format: OP_NEWCLASS A Bx
         ** Function: R[A] := create new class with name K[Bx]
         */
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 1);
         updatebase(ci);
         TString *classname = tsvalue(&k[GETARG_Bx(i)]);
@@ -3740,8 +3740,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_CASE) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 2);
         updatebase(ci);
         StkId ra = RA(i);
@@ -3766,8 +3766,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETCMDS) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 1);
         updatebase(ci);
         StkId ra = RA(i);
@@ -3795,8 +3795,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETOPS) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 1);
         updatebase(ci);
         StkId ra = RA(i);
@@ -3828,8 +3828,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_ASYNCWRAP) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 1);
         updatebase(ci);
         int b = GETARG_B(i);
@@ -3859,8 +3859,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GENERICWRAP) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 5);
         updatebase(ci);
         int b = GETARG_B(i);
@@ -3942,8 +3942,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_CHECKTYPE) {
-        if (L->top.p < base + cl->p->maxstacksize)
-             L->top.p = base + cl->p->maxstacksize;
+        while (L->top.p < base + cl->p->maxstacksize)
+             setnilvalue(s2v(L->top.p++));
         luaD_checkstack(L, 2);
         updatebase(ci);
         StkId ra = RA(i);
