@@ -1939,23 +1939,7 @@ void luaK_posfix (FuncState *fs, BinOpr opr,
       break;
     }
     case OPR_PIPE: {
-      /* 管道运算符：x |> f 等价于 f(x) */
-      /* 将左侧表达式转换为寄存器 */
-      luaK_exp2anyreg(fs, e1);
-      
-      /* 将右侧函数转换为寄存器 */
-      luaK_exp2anyreg(fs, e2);
-      
-      /* 生成函数调用指令：OP_CALL, func_reg, nparams+1, nresults */
-      /* nparams+1: 1个参数 + 函数本身 */
-      /* nresults: 2表示返回1个结果（Lua VM中nresults是返回值数量+1） */
-      luaK_codeABC(fs, OP_CALL, e2->u.info, 2, 2);  /* 调用函数，传入左侧作为参数 */
-      
-      /* 更新结果描述符为函数调用的结果 */
-      e1->k = VCALL;  /* 函数调用结果 */
-      e1->u.info = fs->pc - 1;
-      e1->t = NO_JUMP;
-      e1->f = NO_JUMP;
+      luaK_pipe(fs, e1, e2);
       break;
     }
     case OPR_CASE: {
@@ -2044,7 +2028,7 @@ void luaK_pipe (FuncState *fs, expdesc *e1, expdesc *e2) {
   int func_reg, arg_reg;
   int e1_reg = -1;
   int saved_freereg;
-  
+
   /*
    * 管道运算符实现：x |> f 等价于 f(x)
    * 
@@ -2062,7 +2046,7 @@ void luaK_pipe (FuncState *fs, expdesc *e1, expdesc *e2) {
   if (e1->k == VNONRELOC) {
     e1_reg = e1->u.info;
   }
-  
+
   /* 步骤2：根据 e1 是否在寄存器中，选择不同策略 */
   if (e1_reg >= 0) {
     /*
