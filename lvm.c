@@ -2524,6 +2524,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         pc++;  /* skip extra argument */
         L->top.p = ra + 1;  /* correct top in case of emergency GC */
         t = luaH_new(L);  /* memory allocation */
+        updatebase(ci);
+        ra = RA(i);
         sethvalue2s(L, ra, t);
         if (b != 0 || c != 0)
           luaH_resize(L, t, c, b);  /* idem */
@@ -3899,11 +3901,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 
         /* 2. Create Proxy Table */
         Table *proxy = luaH_new(L);
+        updatebase(ci);
+        ra = RA(i);
         sethvalue2s(L, L->top.p, proxy); /* Anchor proxy in stack top */
         L->top.p++;
 
         /* 3. Create Metatable */
         Table *mt = luaH_new(L);
+        updatebase(ci);
+        ra = RA(i);
         sethvalue2s(L, L->top.p, mt); /* Anchor mt in stack top */
         L->top.p++;
 
