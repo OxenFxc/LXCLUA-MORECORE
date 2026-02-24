@@ -3742,6 +3742,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETCMDS) {
+        if (L->top.p < base + cl->p->maxstacksize)
+             L->top.p = base + cl->p->maxstacksize;
         luaD_checkstack(L, 1);
         updatebase(ci);
         StkId ra = RA(i);
@@ -3769,6 +3771,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETOPS) {
+        if (L->top.p < base + cl->p->maxstacksize)
+             L->top.p = base + cl->p->maxstacksize;
         luaD_checkstack(L, 1);
         updatebase(ci);
         StkId ra = RA(i);
