@@ -721,17 +721,6 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
 
         case OP_TFORLOOP: {
             int bx = GETARG_Bx(i);
-            add_fmt(B, "    if (!lua_isnil(L, %d)) {\n", a + 4); /* R[A+4] is first result from TFORCALL? No, A+1 relative to A? */
-            /* Standard Lua: if R[A+1] ~= nil then R[A]=R[A+1]; pc -= bx */
-            /* But TFORLOOP argument A is base. */
-            /* The control variable is at R[A+1] (which is the first return value from TFORCALL, if TFORCALL used R[A]). */
-            /* Wait, let's verify register mapping. */
-            /* TFORCALL A C: R[A+3+1]... = R[A](R[A+1], R[A+2]) */
-            /* So results start at R[A+4]. */
-            /* TFORLOOP A Bx: if R[A+1] ~= nil ... */
-            /* My previous analysis said R[A+2]. lopcodes.h says R[A+2]. */
-            /* Let's trust lopcodes.h: "if R[A+2] ~= nil". */
-            /* R[A+2] in 1-based indexing is a + 3. */
             add_fmt(B, "    if (!lua_isnil(L, %d)) {\n", a + 3);
             add_fmt(B, "        lua_pushvalue(L, %d);\n", a + 3);
             add_fmt(B, "        lua_replace(L, %d);\n", a + 1);
@@ -850,19 +839,6 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
 
         case OP_INSTANCEOF: {
             int b = GETARG_B(i);
-            int c = GETARG_C(i); // Unused? OP_INSTANCEOF A B C k.
-            // C is unused in lvm.c (checks R[B] against R[C]... wait)
-            // lvm.c: TValue *rb = vRB(i); res = luaC_instanceof(L, -2, -1).
-            // A is object? No.
-            // lvm.c:
-            // StkId ra = RA(i); // object?
-            // TValue *rb = vRB(i); // class?
-            // luaC_instanceof(L, -2, -1) -> L, ra, rb?
-            // lvm.c code:
-            // setobj2s(L, top, ra); top++;
-            // setobj2s(L, top, rb); top++;
-            // luaC_instanceof(L, -2, -1);
-            // So RA is object, RB is class.
             int k = GETARG_k(i);
             add_fmt(B, "    lua_pushvalue(L, %d);\n", a + 1);
             add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
@@ -911,8 +887,122 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
             int c = GETARG_C(i);
             add_fmt(B, "    lua_pushvalue(L, %d); /* type */\n", b + 1);
             emit_loadk(B, p, c); /* name */
-            add_fmt(B, "    tcc_checktype(L, %d, lua_gettop(L)-1, lua_tostring(L, -1));\n", a + 1);
+            add_fmt(B, "    lua_checktype(L, %d, lua_tostring(L, -1));\n", a + 1);
             add_fmt(B, "    lua_pop(L, 2);\n");
+            break;
+        }
+
+        case OP_SPACESHIP: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushinteger(L, lua_spaceship(L, %d, %d));\n", b + 1, c + 1);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_IS: {
+            int b = GETARG_B(i);
+            int k = GETARG_k(i);
+            emit_loadk(B, p, b); // Push type name K[B]
+            add_fmt(B, "    if (lua_is(L, %d, lua_tostring(L, -1)) != %d) goto Label_%d;\n", a + 1, k, pc + 1 + 2);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_NEWNAMESPACE: {
+            int bx = GETARG_Bx(i);
+            emit_loadk(B, p, bx);
+            add_fmt(B, "    lua_newnamespace(L, lua_tostring(L, -1));\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_LINKNAMESPACE: {
+            int b = GETARG_B(i);
+            add_fmt(B, "    lua_linknamespace(L, %d, %d);\n", a + 1, b + 1);
+            break;
+        }
+
+        case OP_NEWSUPER: {
+            int bx = GETARG_Bx(i);
+            emit_loadk(B, p, bx);
+            add_fmt(B, "    lua_newsuperstruct(L, lua_tostring(L, -1));\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_SETSUPER: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_setsuper(L, %d, %d, %d);\n", a + 1, b + 1, c + 1);
+            break;
+        }
+
+        case OP_SLICE: {
+            int b = GETARG_B(i);
+            add_fmt(B, "    lua_slice(L, %d, %d, %d, %d);\n", b + 1, b + 2, b + 3, b + 4);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_SETIFACEFLAG: {
+            add_fmt(B, "    lua_setifaceflag(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_ADDMETHOD: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            emit_loadk(B, p, b); // method name
+            add_fmt(B, "    lua_addmethod(L, %d, lua_tostring(L, -1), %d);\n", a + 1, c);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_GETCMDS: {
+            add_fmt(B, "    lua_getcmds(L);\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_GETOPS: {
+            add_fmt(B, "    lua_getops(L);\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_ERRNNIL: {
+            int bx = GETARG_Bx(i);
+            emit_loadk(B, p, bx - 1); // global name
+            add_fmt(B, "    lua_errnnil(L, %d, lua_tostring(L, -1));\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_TBC: {
+            add_fmt(B, "    lua_toclose(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_CASE: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_createtable(L, 2, 0);\n");
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            add_fmt(B, "    lua_rawseti(L, -2, 1);\n");
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1);
+            add_fmt(B, "    lua_rawseti(L, -2, 2);\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_IN: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushinteger(L, tcc_in(L, %d, %d));\n", b + 1, c + 1);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
             break;
         }
 
@@ -943,7 +1033,7 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         }
 
         case OP_CLOSE: {
-            add_fmt(B, "    lua_toclose(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_closeslot(L, %d);\n", a + 1);
             break;
         }
 
@@ -1036,45 +1126,20 @@ static int tcc_compile(lua_State *L) {
     add_fmt(&B, "#include \"lauxlib.h\"\n");
     add_fmt(&B, "#include <string.h>\n\n");
 
-    // Helper function for OP_CHECKTYPE
-    add_fmt(&B, "static void tcc_checktype(lua_State *L, int val_idx, int type_idx, const char *arg_name) {\n");
+    // Helper function for OP_IN
+    add_fmt(&B, "static int tcc_in(lua_State *L, int val_idx, int container_idx) {\n");
     add_fmt(&B, "    int res = 0;\n");
-    add_fmt(&B, "    int type = lua_type(L, type_idx);\n");
-    add_fmt(&B, "    if (type == LUA_TSTRING) {\n");
-    add_fmt(&B, "        const char *tname = lua_tostring(L, type_idx);\n");
-    add_fmt(&B, "        if (strcmp(tname, \"any\") == 0) res = 1;\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"int\") == 0 || strcmp(tname, \"integer\") == 0) res = lua_isinteger(L, val_idx);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"number\") == 0 || strcmp(tname, \"float\") == 0) res = (lua_type(L, val_idx) == LUA_TNUMBER);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"string\") == 0) res = (lua_type(L, val_idx) == LUA_TSTRING);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"boolean\") == 0) res = (lua_type(L, val_idx) == LUA_TBOOLEAN);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"table\") == 0) res = (lua_type(L, val_idx) == LUA_TTABLE);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"function\") == 0) res = (lua_type(L, val_idx) == LUA_TFUNCTION);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"thread\") == 0) res = (lua_type(L, val_idx) == LUA_TTHREAD);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"userdata\") == 0) res = (lua_type(L, val_idx) == LUA_TUSERDATA);\n");
-    add_fmt(&B, "        else if (strcmp(tname, \"nil\") == 0 || strcmp(tname, \"void\") == 0) res = (lua_type(L, val_idx) == LUA_TNIL);\n");
-    add_fmt(&B, "    } else if (type == LUA_TTABLE) {\n");
-    add_fmt(&B, "        lua_getglobal(L, \"string\");\n");
-    add_fmt(&B, "        if (lua_rawequal(L, -1, type_idx)) {\n");
-    add_fmt(&B, "            lua_pop(L, 1);\n");
-    add_fmt(&B, "            res = (lua_type(L, val_idx) == LUA_TSTRING);\n");
-    add_fmt(&B, "        } else {\n");
-    add_fmt(&B, "            lua_pop(L, 1);\n");
-    add_fmt(&B, "            lua_getglobal(L, \"table\");\n");
-    add_fmt(&B, "            if (lua_rawequal(L, -1, type_idx)) {\n");
-    add_fmt(&B, "                lua_pop(L, 1);\n");
-    add_fmt(&B, "                res = (lua_type(L, val_idx) == LUA_TTABLE);\n");
-    add_fmt(&B, "            } else {\n");
-    add_fmt(&B, "                lua_pop(L, 1);\n");
-    add_fmt(&B, "                lua_pushvalue(L, val_idx);\n");
-    add_fmt(&B, "                lua_pushvalue(L, type_idx);\n");
-    add_fmt(&B, "                res = lua_instanceof(L, -2, -1);\n");
-    add_fmt(&B, "                lua_pop(L, 2);\n");
-    add_fmt(&B, "            }\n");
-    add_fmt(&B, "        }\n");
+    add_fmt(&B, "    if (lua_type(L, container_idx) == LUA_TTABLE) {\n");
+    add_fmt(&B, "        lua_pushvalue(L, val_idx);\n");
+    add_fmt(&B, "        lua_gettable(L, container_idx);\n");
+    add_fmt(&B, "        if (!lua_isnil(L, -1)) res = 1;\n");
+    add_fmt(&B, "        lua_pop(L, 1);\n");
+    add_fmt(&B, "    } else if (lua_isstring(L, container_idx) && lua_isstring(L, val_idx)) {\n");
+    add_fmt(&B, "        const char *s = lua_tostring(L, container_idx);\n");
+    add_fmt(&B, "        const char *sub = lua_tostring(L, val_idx);\n");
+    add_fmt(&B, "        if (strstr(s, sub)) res = 1;\n");
     add_fmt(&B, "    }\n");
-    add_fmt(&B, "    if (!res) {\n");
-    add_fmt(&B, "        luaL_error(L, \"Type mismatch for argument '%%s'\", arg_name);\n");
-    add_fmt(&B, "    }\n");
+    add_fmt(&B, "    return res;\n");
     add_fmt(&B, "}\n\n");
 
     // Forward declarations
