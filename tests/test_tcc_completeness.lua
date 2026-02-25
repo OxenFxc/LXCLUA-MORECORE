@@ -54,7 +54,7 @@ local tests = {
         ]],
         patterns = {
             "if (!lua_toboolean(L,", -- LFALSESKIP
-            "lua_toclose(L,",        -- CLOSE
+            "lua_closeslot(L,",      -- CLOSE
         }
     }
 }

@@ -1689,6 +1689,20 @@ LUA_API int   (lua_instanceof) (lua_State *L, int obj_idx, int class_idx);
 LUA_API void  (lua_implement) (lua_State *L, int class_idx, int interface_idx);
 LUA_API void  (lua_getsuper) (lua_State *L, int obj_idx, const char *name);
 
+LUA_API int   (lua_spaceship) (lua_State *L, int idx1, int idx2);
+LUA_API int   (lua_is) (lua_State *L, int idx, const char *type_name);
+LUA_API void  (lua_checktype) (lua_State *L, int idx, const char *type_name);
+LUA_API void  (lua_newnamespace) (lua_State *L, const char *name);
+LUA_API void  (lua_linknamespace) (lua_State *L, int idx1, int idx2);
+LUA_API void  (lua_newsuperstruct) (lua_State *L, const char *name);
+LUA_API void  (lua_setsuper) (lua_State *L, int idx, int key_idx, int val_idx);
+LUA_API void  (lua_slice) (lua_State *L, int idx, int start_idx, int end_idx, int step_idx);
+LUA_API void  (lua_setifaceflag) (lua_State *L, int idx);
+LUA_API void  (lua_addmethod) (lua_State *L, int idx, const char *name, int nparams);
+LUA_API void  (lua_getcmds) (lua_State *L);
+LUA_API void  (lua_getops) (lua_State *L);
+LUA_API void  (lua_errnnil) (lua_State *L, int idx, const char *msg);
+
 
 /******************************************************************************
 * Copyright (C) 1994-2025 Lua.org, PUC-Rio.

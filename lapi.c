@@ -32,6 +32,7 @@
 #include "lobfuscate.h"
 #include "lthread.h"
 #include "lclass.h"
+#include "lnamespace.h"
 
 
 
@@ -2438,4 +2439,292 @@ LUA_API void lua_upvaluejoin (lua_State *L, int fidx1, int n1,
   api_check(L, *up1 != NULL && *up2 != NULL, "invalid upvalue index");
   *up1 = *up2;
   luaC_objbarrier(L, f1, *up1);
+}
+
+/*
+** New API functions for tcc support
+*/
+
+/* Helper for string comparison with embedded zeros */
+static int l_strcmp_api (const TString *ts1, const TString *ts2) {
+  const char *s1 = getstr(ts1);
+  size_t rl1 = tsslen(ts1);
+  const char *s2 = getstr(ts2);
+  size_t rl2 = tsslen(ts2);
+  for (;;) {
+    int temp = strcoll(s1, s2);
+    if (temp != 0) return temp;
+    else {
+      size_t zl1 = strlen(s1);
+      size_t zl2 = strlen(s2);
+      if (zl2 == rl2) return (zl1 == rl1) ? 0 : 1;
+      else if (zl1 == rl1) return -1;
+      zl1++; zl2++;
+      s1 += zl1; rl1 -= zl1; s2 += zl2; rl2 -= zl2;
+    }
+  }
+}
+
+LUA_API int lua_spaceship (lua_State *L, int idx1, int idx2) {
+  int result = 0;
+  lua_lock(L);
+  const TValue *rb = index2value(L, idx1);
+  const TValue *rc = index2value(L, idx2);
+
+  if (ttisinteger(rb) && ttisinteger(rc)) {
+    lua_Integer ib = ivalue(rb);
+    lua_Integer ic = ivalue(rc);
+    result = (ib < ic) ? -1 : ((ib > ic) ? 1 : 0);
+  } else if (ttisnumber(rb) && ttisnumber(rc)) {
+    lua_Number nb, nc;
+    nb = ttisinteger(rb) ? cast_num(ivalue(rb)) : fltvalue(rb);
+    nc = ttisinteger(rc) ? cast_num(ivalue(rc)) : fltvalue(rc);
+    result = (nb < nc) ? -1 : ((nb > nc) ? 1 : 0);
+  } else if (ttisstring(rb) && ttisstring(rc)) {
+    int cmp = l_strcmp_api(tsvalue(rb), tsvalue(rc));
+    result = (cmp < 0) ? -1 : ((cmp > 0) ? 1 : 0);
+  } else {
+    luaG_ordererror(L, rb, rc);
+  }
+  lua_unlock(L);
+  return result;
+}
+
+LUA_API int lua_is (lua_State *L, int idx, const char *type_name) {
+  int cond;
+  lua_lock(L);
+  TValue *ra = index2value(L, idx);
+  const char *actual;
+  const TValue *tm = luaT_gettmbyobj(L, ra, TM_TYPE);
+  if (!notm(tm) && ttisstring(tm)) {
+    actual = getstr(tsvalue(tm));
+  } else {
+    actual = luaT_objtypename(L, ra);
+  }
+  cond = (strcmp(actual, type_name) == 0);
+  lua_unlock(L);
+  return cond;
+}
+
+LUA_API void lua_checktype (lua_State *L, int idx, const char *type_name) {
+  lua_lock(L);
+  TValue *val = index2value(L, idx);
+  int res = 0;
+
+  if (strcmp(type_name, "any") == 0) res = 1;
+  else if (strcmp(type_name, "int") == 0 || strcmp(type_name, "integer") == 0) res = ttisinteger(val);
+  else if (strcmp(type_name, "number") == 0 || strcmp(type_name, "float") == 0) res = ttisnumber(val);
+  else if (strcmp(type_name, "string") == 0) res = ttisstring(val);
+  else if (strcmp(type_name, "boolean") == 0) res = ttisboolean(val);
+  else if (strcmp(type_name, "table") == 0) res = ttistable(val);
+  else if (strcmp(type_name, "function") == 0) res = ttisfunction(val);
+  else if (strcmp(type_name, "thread") == 0) res = ttisthread(val);
+  else if (strcmp(type_name, "userdata") == 0) res = checktype(val, LUA_TUSERDATA);
+  else if (strcmp(type_name, "nil") == 0 || strcmp(type_name, "void") == 0) res = ttisnil(val);
+
+  lua_unlock(L);
+
+  if (!res) {
+      luaG_runerror(L, "Type mismatch for argument: expected %s", type_name);
+  }
+}
+
+LUA_API void lua_newnamespace (lua_State *L, const char *name) {
+  lua_lock(L);
+  Namespace *ns = luaN_new(L, luaS_new(L, name));
+  setnsvalue(L, s2v(L->top.p), ns);
+  api_incr_top(L);
+  luaC_checkGC(L);
+  lua_unlock(L);
+}
+
+LUA_API void lua_linknamespace (lua_State *L, int idx1, int idx2) {
+  lua_lock(L);
+  TValue *o1 = index2value(L, idx1);
+  TValue *o2 = index2value(L, idx2);
+  if (ttisnamespace(o1) && ttisnamespace(o2)) {
+     Namespace *ns = nsvalue(o1);
+     Namespace *target = nsvalue(o2);
+     ns->using_next = target;
+     luaC_objbarrier(L, ns, target);
+  } else if (ttistable(o1) && ttisnamespace(o2)) {
+     Table *t = hvalue(o1);
+     Namespace *target = nsvalue(o2);
+     t->using_next = target;
+     luaC_objbarrier(L, t, target);
+  }
+  lua_unlock(L);
+}
+
+LUA_API void lua_newsuperstruct (lua_State *L, const char *name) {
+  lua_lock(L);
+  SuperStruct *ss = luaS_newsuperstruct(L, luaS_new(L, name), 0);
+  setsuperstructvalue(L, s2v(L->top.p), ss);
+  api_incr_top(L);
+  luaC_checkGC(L);
+  lua_unlock(L);
+}
+
+LUA_API void lua_setsuper (lua_State *L, int idx, int key_idx, int val_idx) {
+  lua_lock(L);
+  TValue *o = index2value(L, idx);
+  TValue *k = index2value(L, key_idx);
+  TValue *v = index2value(L, val_idx);
+  if (ttissuperstruct(o)) {
+     SuperStruct *ss = superstructvalue(o);
+     luaS_setsuperstruct(L, ss, k, v);
+  }
+  lua_unlock(L);
+}
+
+LUA_API void lua_slice (lua_State *L, int idx, int start_idx, int end_idx, int step_idx) {
+  lua_lock(L);
+  TValue *src_table = index2value(L, idx);
+  TValue *start_val = index2value(L, start_idx);
+  TValue *end_val = index2value(L, end_idx);
+  TValue *step_val = index2value(L, step_idx);
+
+  if (!ttistable(src_table)) {
+    lua_unlock(L);
+    luaG_typeerror(L, src_table, "slice");
+    return;
+  }
+
+  Table *t = hvalue(src_table);
+  lua_Integer tlen = luaH_getn(t);
+  lua_Integer s, e, st;
+
+  /* Simple parsing logic */
+  if (ttisnil(start_val)) s = 1; else tointeger(start_val, &s);
+  if (ttisnil(end_val)) e = tlen; else tointeger(end_val, &e);
+  if (ttisnil(step_val)) st = 1; else tointeger(step_val, &st);
+
+  if (st == 0) {
+    lua_unlock(L);
+    luaG_runerror(L, "slice step cannot be 0");
+    return;
+  }
+
+  if (s < 0) s = tlen + s + 1;
+  if (e < 0) e = tlen + e + 1;
+
+  if (st > 0) {
+    if (s < 1) s = 1;
+    if (e > tlen) e = tlen;
+  } else {
+    if (s > tlen) s = tlen;
+    if (e < 1) e = 1;
+  }
+
+  Table *res = luaH_new(L);
+  sethvalue2s(L, L->top.p, res);
+  api_incr_top(L);
+
+  lua_Integer ridx = 1;
+  if (st > 0) {
+    for (lua_Integer i = s; i <= e; i += st) {
+      const TValue *val = luaH_getint(t, i);
+      if (!ttisnil(val)) {
+        TValue temp; setobj(L, &temp, val);
+        luaH_setint(L, res, ridx++, &temp);
+      }
+    }
+  } else {
+    for (lua_Integer i = s; i >= e; i += st) {
+      const TValue *val = luaH_getint(t, i);
+      if (!ttisnil(val)) {
+        TValue temp; setobj(L, &temp, val);
+        luaH_setint(L, res, ridx++, &temp);
+      }
+    }
+  }
+  luaC_checkGC(L);
+  lua_unlock(L);
+}
+
+LUA_API void lua_setifaceflag (lua_State *L, int idx) {
+  lua_lock(L);
+  TValue *o = index2value(L, idx);
+  if (ttistable(o)) {
+    Table *t = hvalue(o);
+    TValue key, val;
+    setsvalue(L, &key, luaS_newliteral(L, "__flags"));
+    const TValue *oldflags = luaH_getstr(t, tsvalue(&key));
+    lua_Integer flags = ttisinteger(oldflags) ? ivalue(oldflags) : 0;
+    flags |= CLASS_FLAG_INTERFACE;
+    setivalue(&val, flags);
+    luaH_set(L, t, &key, &val);
+  }
+  lua_unlock(L);
+}
+
+LUA_API void lua_addmethod (lua_State *L, int idx, const char *name, int nparams) {
+  lua_lock(L);
+  TValue *o = index2value(L, idx);
+  if (ttistable(o)) {
+    Table *t = hvalue(o);
+    TValue key;
+    setsvalue(L, &key, luaS_newliteral(L, "__methods"));
+    const TValue *methods_tv = luaH_getstr(t, tsvalue(&key));
+    if (ttistable(methods_tv)) {
+      Table *methods = hvalue(methods_tv);
+      TValue mk, mv;
+      setsvalue(L, &mk, luaS_new(L, name));
+      setivalue(&mv, nparams);
+      luaH_set(L, methods, &mk, &mv);
+    }
+  }
+  lua_unlock(L);
+}
+
+LUA_API void lua_getcmds (lua_State *L) {
+  lua_lock(L);
+  Table *reg = hvalue(&G(L)->l_registry);
+  TString *key = luaS_newliteral(L, "LXC_CMDS");
+  const TValue *res = luaH_getstr(reg, key);
+  if (!isempty(res)) {
+    setobj2s(L, L->top.p, res);
+  } else {
+    /* Create new */
+    Table *t = luaH_new(L);
+    sethvalue2s(L, L->top.p, t);
+    TValue val; sethvalue(L, &val, t);
+    TValue k; setsvalue(L, &k, key);
+    if (reg->is_shared) l_rwlock_wrlock(&reg->lock);
+    luaH_set(L, reg, &k, &val);
+    luaC_barrierback(L, obj2gco(reg), &val);
+    if (reg->is_shared) l_rwlock_unlock(&reg->lock);
+  }
+  api_incr_top(L);
+  lua_unlock(L);
+}
+
+LUA_API void lua_getops (lua_State *L) {
+  lua_lock(L);
+  Table *reg = hvalue(&G(L)->l_registry);
+  TString *key = luaS_newliteral(L, "LXC_OPERATORS");
+  const TValue *res = luaH_getstr(reg, key);
+  if (!isempty(res)) {
+    setobj2s(L, L->top.p, res);
+  } else {
+    Table *t = luaH_new(L);
+    sethvalue2s(L, L->top.p, t);
+    TValue val; sethvalue(L, &val, t);
+    TValue k; setsvalue(L, &k, key);
+    if (reg->is_shared) l_rwlock_wrlock(&reg->lock);
+    luaH_set(L, reg, &k, &val);
+    luaC_barrierback(L, obj2gco(reg), &val);
+    if (reg->is_shared) l_rwlock_unlock(&reg->lock);
+  }
+  api_incr_top(L);
+  lua_unlock(L);
+}
+
+LUA_API void lua_errnnil (lua_State *L, int idx, const char *msg) {
+  lua_lock(L);
+  TValue *o = index2value(L, idx);
+  if (!ttisnil(o)) {
+    luaG_runerror(L, "variable '%s' is not nil", msg);
+  }
+  lua_unlock(L);
 }
