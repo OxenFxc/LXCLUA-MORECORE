@@ -972,10 +972,10 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
 
         case OP_TFORLOOP: {
             int bx = GETARG_Bx(i);
-            add_fmt(B, "    if (!lua_isnil(L, %d)) {\n", a + 3);
-            add_fmt(B, "        lua_pushvalue(L, %d);\n", a + 3);
-            add_fmt(B, "        lua_replace(L, %d);\n", a + 1);
-            add_fmt(B, "        goto Label_%d;\n", pc + 1 - bx);
+            add_fmt(B, "    if (!lua_isnil(L, %d)) {\n", a + 5);
+            add_fmt(B, "        lua_pushvalue(L, %d);\n", a + 5);
+            add_fmt(B, "        lua_replace(L, %d);\n", a + 3);
+            add_fmt(B, "        goto Label_%d;\n", pc + 2 - bx);
             add_fmt(B, "    }\n");
             break;
         }
