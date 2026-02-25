@@ -54,6 +54,22 @@ static int get_proto_id(Proto *p, ProtoInfo *list, int count) {
     return -1;
 }
 
+/* Helper to escape and emit a string literal */
+static void emit_quoted_string(luaL_Buffer *B, const char *s, size_t len) {
+    add_fmt(B, "\"");
+    for (size_t i = 0; i < len; i++) {
+        unsigned char c = (unsigned char)s[i];
+        if (c == '"' || c == '\\' || c == '\n' || c == '\r' || c == '\t') {
+            add_fmt(B, "\\%c", c == '\n' ? 'n' : (c == '\r' ? 'r' : (c == '\t' ? 't' : c)));
+        } else if (c < 32 || c > 126) {
+            add_fmt(B, "\\x%02x", c);
+        } else {
+            luaL_addchar(B, c);
+        }
+    }
+    add_fmt(B, "\"");
+}
+
 /* Emit code to push a constant */
 static void emit_loadk(luaL_Buffer *B, Proto *p, int k_index) {
     TValue *k = &p->k[k_index];
@@ -73,20 +89,9 @@ static void emit_loadk(luaL_Buffer *B, Proto *p, int k_index) {
             break;
         case LUA_TSTRING: {
             TString *ts = tsvalue(k);
-            add_fmt(B, "    lua_pushlstring(L, \"");
-            const char *s = getstr(ts);
-            size_t len = tsslen(ts);
-            for (size_t i = 0; i < len; i++) {
-                unsigned char c = (unsigned char)s[i];
-                if (c == '"' || c == '\\' || c == '\n' || c == '\r' || c == '\t') {
-                    add_fmt(B, "\\%c", c == '\n' ? 'n' : (c == '\r' ? 'r' : (c == '\t' ? 't' : c)));
-                } else if (c < 32 || c > 126) {
-                    add_fmt(B, "\\x%02x", c);
-                } else {
-                    luaL_addchar(B, c);
-                }
-            }
-            add_fmt(B, "\", %llu);\n", (unsigned long long)len);
+            add_fmt(B, "    lua_pushlstring(L, ");
+            emit_quoted_string(B, getstr(ts), tsslen(ts));
+            add_fmt(B, ", %llu);\n", (unsigned long long)tsslen(ts));
             break;
         }
         default:
@@ -343,6 +348,201 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         case OP_MMBINK:
              add_fmt(B, "    /* MMBIN: ignored as lua_arith handles it */\n");
              break;
+
+        case OP_NEWTABLE: {
+            unsigned int b = GETARG_B(i);
+            unsigned int c = GETARG_C(i);
+            if (TESTARG_k(i)) {
+                if (pc + 1 < p->sizecode && GET_OPCODE(p->code[pc+1]) == OP_EXTRAARG) {
+                    int ax = GETARG_Ax(p->code[pc+1]);
+                    c += ax * (MAXARG_C + 1);
+                }
+            }
+            int nhash = (b > 0) ? (1 << (b - 1)) : 0;
+            add_fmt(B, "    lua_createtable(L, %d, %d);\n", c, nhash);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_GETTABLE: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1);
+            add_fmt(B, "    lua_gettable(L, -2);\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_SETTABLE: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", a + 1); // table
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1); // key
+            if (TESTARG_k(i)) emit_loadk(B, p, c); // value K
+            else add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1); // value R
+            add_fmt(B, "    lua_settable(L, -3);\n");
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_GETFIELD: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            TValue *k = &p->k[c];
+            if (ttisstring(k)) {
+                add_fmt(B, "    lua_getfield(L, -1, ");
+                emit_quoted_string(B, getstr(tsvalue(k)), tsslen(tsvalue(k)));
+                add_fmt(B, ");\n");
+            } else {
+                add_fmt(B, "    lua_pushnil(L);\n"); // Should not happen for GETFIELD
+            }
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_SETFIELD: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", a + 1); // table
+            if (TESTARG_k(i)) emit_loadk(B, p, c); // value K
+            else add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1); // value R
+            TValue *k = &p->k[b];
+            if (ttisstring(k)) {
+                add_fmt(B, "    lua_setfield(L, -2, ");
+                emit_quoted_string(B, getstr(tsvalue(k)), tsslen(tsvalue(k)));
+                add_fmt(B, ");\n");
+            } else {
+                add_fmt(B, "    lua_pop(L, 1);\n"); // pop value
+            }
+            add_fmt(B, "    lua_pop(L, 1);\n"); // pop table
+            break;
+        }
+
+        case OP_GETI: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            add_fmt(B, "    lua_geti(L, -1, %d);\n", c);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_SETI: {
+            int b = GETARG_B(i);
+            int c = GETARG_C(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", a + 1); // table
+            if (TESTARG_k(i)) emit_loadk(B, p, c); // value K
+            else add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1); // value R
+            add_fmt(B, "    lua_seti(L, -2, %d);\n", b);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_SETLIST: {
+            int n = GETARG_B(i);
+            unsigned int c = GETARG_C(i);
+            if (TESTARG_k(i)) {
+                if (pc + 1 < p->sizecode && GET_OPCODE(p->code[pc+1]) == OP_EXTRAARG) {
+                    int ax = GETARG_Ax(p->code[pc+1]);
+                    c += ax * (MAXARG_C + 1);
+                }
+            }
+
+            add_fmt(B, "    {\n");
+            add_fmt(B, "        int n = %d;\n", n);
+            add_fmt(B, "        if (n == 0) n = lua_gettop(L) - %d;\n", a + 1);
+            add_fmt(B, "        lua_pushvalue(L, %d); /* table */\n", a + 1);
+            add_fmt(B, "        for (int j = 1; j <= n; j++) {\n");
+            add_fmt(B, "            lua_pushvalue(L, %d + j);\n", a + 1);
+            add_fmt(B, "            lua_seti(L, -2, %d + j);\n", (c - 1) * LFIELDS_PER_FLUSH);
+            add_fmt(B, "        }\n");
+            add_fmt(B, "        lua_pop(L, 1);\n");
+            if (n == 0) {
+                 add_fmt(B, "        lua_settop(L, %d);\n", p->maxstacksize);
+            }
+            add_fmt(B, "    }\n");
+            break;
+        }
+
+        case OP_FORPREP: {
+            int bx = GETARG_Bx(i);
+            add_fmt(B, "    {\n");
+            add_fmt(B, "        lua_Integer step = lua_tointeger(L, %d);\n", a + 3);
+            add_fmt(B, "        lua_Integer init = lua_tointeger(L, %d);\n", a + 1);
+            add_fmt(B, "        lua_pushinteger(L, init - step);\n");
+            add_fmt(B, "        lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "        goto Label_%d;\n", pc + 1 + bx + 1);
+            add_fmt(B, "    }\n");
+            break;
+        }
+
+        case OP_FORLOOP: {
+            int bx = GETARG_Bx(i);
+            add_fmt(B, "    {\n");
+            add_fmt(B, "        lua_Integer step = lua_tointeger(L, %d);\n", a + 3);
+            add_fmt(B, "        lua_Integer limit = lua_tointeger(L, %d);\n", a + 2);
+            add_fmt(B, "        lua_Integer idx = lua_tointeger(L, %d) + step;\n", a + 1);
+            add_fmt(B, "        lua_pushinteger(L, idx);\n");
+            add_fmt(B, "        lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "        if ((step > 0) ? (idx <= limit) : (idx >= limit)) {\n");
+            add_fmt(B, "            lua_pushinteger(L, idx);\n");
+            add_fmt(B, "            lua_replace(L, %d);\n", a + 4);
+            add_fmt(B, "            goto Label_%d;\n", pc + 1 - bx);
+            add_fmt(B, "        }\n");
+            add_fmt(B, "    }\n");
+            break;
+        }
+
+        case OP_TEST: {
+            int k = GETARG_k(i);
+            add_fmt(B, "    if (lua_toboolean(L, %d) != %d) goto Label_%d;\n", a + 1, k, pc + 1 + 2);
+            break;
+        }
+
+        case OP_TESTSET: {
+            int b = GETARG_B(i);
+            int k = GETARG_k(i);
+            add_fmt(B, "    if (lua_toboolean(L, %d) != %d) goto Label_%d;\n", b + 1, k, pc + 1 + 2);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_NOT: {
+            int b = GETARG_B(i);
+            add_fmt(B, "    lua_pushboolean(L, !lua_toboolean(L, %d));\n", b + 1);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_LEN: {
+            int b = GETARG_B(i);
+            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+            add_fmt(B, "    lua_len(L, -1);\n");
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            add_fmt(B, "    lua_pop(L, 1);\n");
+            break;
+        }
+
+        case OP_CONCAT: {
+            int b = GETARG_B(i);
+            for (int k = 0; k < b; k++) {
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", a + 1 + k);
+            }
+            add_fmt(B, "    lua_concat(L, %d);\n", b);
+            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            break;
+        }
+
+        case OP_EXTRAARG:
+        case OP_NOP:
+            add_fmt(B, "    /* NOP/EXTRAARG */\n");
+            break;
 
         default:
             add_fmt(B, "    /* Unimplemented opcode: %s */\n", opnames[op]);
