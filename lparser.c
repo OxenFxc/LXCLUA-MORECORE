@@ -569,17 +569,9 @@ static void check_match (LexState *ls, int what, int who, int where) {
 }
 
 
-static TString *str_checkname (LexState *ls) {
-  TString *ts;
-  check(ls, TK_NAME);
-  ts = ls->t.seminfo.ts;
-  luaX_next(ls);
-  return ts;
-}
-
 static int is_type_token(int token);
 
-static TString *str_checkname_allow_types (LexState *ls) {
+static TString *str_checkname (LexState *ls) {
   TString *ts;
   if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {
      ts = ls->t.seminfo.ts;
@@ -972,7 +964,7 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
 ** too.
 */
 static void singlevar (LexState *ls, expdesc *var) {
-  TString *varname = str_checkname_allow_types(ls);
+  TString *varname = str_checkname(ls);
   FuncState *fs = ls->fs;
   singlevaraux(fs, varname, var, 1);
   if (var->k == VVOID) {  /* global name? */
@@ -1780,7 +1772,7 @@ static void recfield (LexState *ls, ConsControl *cc) {
   expdesc tab, key, val;
   if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {
     checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
-    TString *ts = str_checkname_allow_types(ls);
+    TString *ts = str_checkname(ls);
     codestring(&key, ts);
   }
   else  /* ls->t.token == '[' */
@@ -1930,7 +1922,7 @@ static void parlist (LexState *ls, TString **varargname) {
   if (ls->t.token != ')') {  /* is 'parlist' not empty? */
     do {
       if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {
-          int vidx = new_localvar(ls, str_checkname_allow_types(ls));
+          int vidx = new_localvar(ls, str_checkname(ls));
           getlocalvardesc(fs, vidx)->vd.hint = gettypehint(ls);
           nparams++;
       }
@@ -2329,7 +2321,7 @@ static void lambda_parlist(LexState *ls, TString **varargname) {
     if (ls->t.token == TK_NAME || ls->t.token == TK_DOTS || is_type_token(ls->t.token)) {
         do {
             if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {  /* param -> NAME */
-                new_localvar(ls, str_checkname_allow_types(ls));
+                new_localvar(ls, str_checkname(ls));
                 nparams++;
             }
             else if (ls->t.token == TK_DOTS) {  /* param -> '...' */
@@ -2691,7 +2683,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
          if (ls->t.token != ')') {
              do {
                 if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {
-                   new_localvar(ls, str_checkname_allow_types(ls));
+                   new_localvar(ls, str_checkname(ls));
                    nparams++;
                 } else if (ls->t.token == TK_DOTS) {
                    luaX_next(ls);
@@ -6192,7 +6184,7 @@ static void checktypehint (LexState *ls, TypeHint *th) {
        tname = "function";
        luaX_next(ls);
     } else {
-       ts = str_checkname_allow_types(ls);
+       ts = str_checkname(ls);
        tname = getstr(ts);
     }
 
@@ -11382,7 +11374,7 @@ static void constexprstat (LexState *ls) {
   }
   else if (strcmp(name, "type") == 0) {
      luaX_next(ls); /* skip 'type' */
-     TString *name = str_checkname_allow_types(ls);
+     TString *name = str_checkname(ls);
      checknext(ls, '=');
      TypeHint *th = typehint_new(ls);
      checktypehint(ls, th);
@@ -11395,7 +11387,7 @@ static void constexprstat (LexState *ls) {
   }
   else if (strcmp(name, "declare") == 0) {
      luaX_next(ls); /* skip 'declare' */
-     TString *name = str_checkname_allow_types(ls);
+     TString *name = str_checkname(ls);
      TypeHint *th = NULL;
      int nodiscard = 0;
 
@@ -11503,7 +11495,7 @@ static void cpp_parlist (LexState *ls) {
 
       switch (ls->t.token) {
         case TK_NAME: {
-          new_localvar(ls, str_checkname_allow_types(ls));
+          new_localvar(ls, str_checkname(ls));
           nparams++;
           break;
         }
@@ -11527,7 +11519,7 @@ static void declaration_stat (LexState *ls, int line) {
   /* Current token is a Type keyword. Skip it. */
   luaX_next(ls);
 
-  TString *name = str_checkname_allow_types(ls);
+  TString *name = str_checkname(ls);
 
   if (ls->t.token == '(') {
      /* Function definition: Type Name(...) { ... } */

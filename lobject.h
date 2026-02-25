@@ -1032,6 +1032,7 @@ typedef struct Table {
   struct GCObject *metatable; /**< Metatable pointer. */
   GCObject *gclist; /**< Garbage collector list. */
   lu_byte type;    /**< Custom type flag. */
+  lu_byte is_shared; /**< Lock enablement flag. */
   l_rwlock_t lock; /**< Lock for thread safety. */
   struct Namespace *using_next; /**< Used namespaces. */
 } Table;

@@ -747,7 +747,17 @@ static int t_sub_op (lua_State *L) {
   return 1;
 }
 
+static int t_share (lua_State *L) {
+  luaL_checktype(L, 1, LUA_TTABLE);
+  TValue *o = s2v(L->ci->func.p + 1);
+  Table *t = hvalue(o);
+  t->is_shared = 1;
+  lua_pushvalue(L, 1);
+  return 1;
+}
+
 static const luaL_Reg tab_funcs[] = {
+	{"share", t_share},
 	{"concat", tconcat},
 #if defined(LUA_COMPAT_FOREACH)
 	{"foreach", foreach},

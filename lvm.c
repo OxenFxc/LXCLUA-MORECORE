@@ -806,24 +806,24 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
             do {
                Table *nth = ns->data;
                if (nth) {
-                  l_rwlock_rdlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_rdlock(&nth->lock);
                   const TValue *res = luaH_get(nth, key);
                   if (!isempty(res)) {
                      setobj2s(L, val, res);
-                     l_rwlock_unlock(&nth->lock);
+                     if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                      return;
                   }
-                  l_rwlock_unlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                }
                ns = ns->using_next;
             } while (ns);
          }
 
-         l_rwlock_rdlock(&h->lock);
+         if (h->is_shared) l_rwlock_rdlock(&h->lock);
          const TValue *res = luaH_get(h, key);
          if (!isempty(res)) {
             setobj2s(L, val, res);
-            l_rwlock_unlock(&h->lock);
+            if (h->is_shared) l_rwlock_unlock(&h->lock);
             return;
          }
          tm = fasttm(L, h->metatable, TM_INDEX);
@@ -832,24 +832,24 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
             tm = fasttm(L, G(L)->mt[LUA_TTABLE], TM_INDEX);
          }
          if (tm == NULL) {
-            l_rwlock_unlock(&h->lock);
+            if (h->is_shared) l_rwlock_unlock(&h->lock);
             setnilvalue(s2v(val));
             return;
          }
-         l_rwlock_unlock(&h->lock);
+         if (h->is_shared) l_rwlock_unlock(&h->lock);
       } else if (ttisnamespace(t)) {
         Namespace *ns = nsvalue(t);
         do {
            Table *h = ns->data;
            if (h) {
-              l_rwlock_rdlock(&h->lock);
+              if (h->is_shared) l_rwlock_rdlock(&h->lock);
               const TValue *res = luaH_get(h, key);
               if (!isempty(res)) {
                  setobj2s(L, val, res);
-                 l_rwlock_unlock(&h->lock);
+                 if (h->is_shared) l_rwlock_unlock(&h->lock);
                  return;
               }
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            }
            ns = ns->using_next;
         } while (ns);
@@ -908,20 +908,20 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
          do {
             Table *nth = ns->data;
             if (nth) {
-               l_rwlock_rdlock(&nth->lock);
+               if (nth->is_shared) l_rwlock_rdlock(&nth->lock);
                const TValue *res = luaH_get(nth, key);
                if (!isempty(res)) {
                   setobj2s(L, val, res);
-                  l_rwlock_unlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                   return;
                }
-               l_rwlock_unlock(&nth->lock);
+               if (nth->is_shared) l_rwlock_unlock(&nth->lock);
             }
             ns = ns->using_next;
          } while (ns);
       }
 
-      l_rwlock_rdlock(&h->lock);
+      if (h->is_shared) l_rwlock_rdlock(&h->lock);
       tm = fasttm(L, h->metatable, TM_INDEX);  /* table's metamethod */
       if (tm == LUA_NULLPTR) /* no __index? try __mindex */
         tm = fasttm(L, h->metatable, TM_MINDEX);
@@ -929,11 +929,11 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
         tm = fasttm(L, G(L)->mt[LUA_TTABLE], TM_INDEX);
       }
       if (tm == LUA_NULLPTR) {  /* no metamethod? */
-        l_rwlock_unlock(&h->lock);
+        if (h->is_shared) l_rwlock_unlock(&h->lock);
         setnilvalue(s2v(val));  /* result is nil */
         return;
       }
-      l_rwlock_unlock(&h->lock);
+      if (h->is_shared) l_rwlock_unlock(&h->lock);
       /* else will try the metamethod */
     }
     if (ttisfunction(tm)) {  /* is metamethod a function? */
@@ -943,14 +943,14 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
     t = tm;  /* else try to access 'tm[key]' */
     if (ttistable(t)) {
       Table *h = hvalue(t);
-      l_rwlock_rdlock(&h->lock);
+      if (h->is_shared) l_rwlock_rdlock(&h->lock);
       const TValue *res = luaH_get(h, key);
       if (!isempty(res)) {
         setobj2s(L, val, res);
-        l_rwlock_unlock(&h->lock);
+        if (h->is_shared) l_rwlock_unlock(&h->lock);
         return;
       }
-      l_rwlock_unlock(&h->lock);
+      if (h->is_shared) l_rwlock_unlock(&h->lock);
     }
     /* else repeat (tail call 'luaV_finishget') */
   }
@@ -986,32 +986,32 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
          while (ns) {
             Table *nth = ns->data;
             if (nth) {
-               l_rwlock_rdlock(&nth->lock);
+               if (nth->is_shared) l_rwlock_rdlock(&nth->lock);
                const TValue *res = luaH_get(nth, key);
                if (!isempty(res) && !isabstkey(res)) {
-                  l_rwlock_unlock(&nth->lock);
-                  l_rwlock_wrlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_unlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_wrlock(&nth->lock);
                   res = luaH_get(nth, key);
                   if (!isempty(res) && !isabstkey(res)) {
                      setobj2t(L, cast(TValue *, res), val);
                      luaC_barrierback(L, obj2gco(nth), val);
-                     l_rwlock_unlock(&nth->lock);
+                     if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                      return;
                   }
-                  l_rwlock_unlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                } else {
-                  l_rwlock_unlock(&nth->lock);
+                  if (nth->is_shared) l_rwlock_unlock(&nth->lock);
                }
             }
             ns = ns->using_next;
          }
       }
 
-      l_rwlock_rdlock(&h->lock);
+      if (h->is_shared) l_rwlock_rdlock(&h->lock);
       tm = fasttm(L, h->metatable, TM_NEWINDEX);  /* get metamethod */
-      l_rwlock_unlock(&h->lock);
+      if (h->is_shared) l_rwlock_unlock(&h->lock);
       if (tm == LUA_NULLPTR) {  /* no metamethod? */
-        l_rwlock_wrlock(&h->lock); /* Lock for writing */
+        if (h->is_shared) l_rwlock_wrlock(&h->lock); /* Lock for writing */
         /* Re-check slot? Calling luaH_finishset which might re-search if slot is absent key? */
         /* luaH_finishset calls luaH_newkey if slot is abstract. */
         /* But slot was passed in. It might be invalid now if we unlocked? */
@@ -1028,7 +1028,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
         L->top.p--;
         invalidateTMcache(h);
         luaC_barrierback(L, obj2gco(h), val);
-        l_rwlock_unlock(&h->lock);
+        if (h->is_shared) l_rwlock_unlock(&h->lock);
         return;
       }
       /* else will try the metamethod */
@@ -1040,22 +1040,22 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
          while (ns) {
             Table *h = ns->data;
             if (h) {
-               l_rwlock_rdlock(&h->lock);
+               if (h->is_shared) l_rwlock_rdlock(&h->lock);
                const TValue *res = luaH_get(h, key);
                if (!isempty(res) && !isabstkey(res)) {
-                  l_rwlock_unlock(&h->lock);
+                  if (h->is_shared) l_rwlock_unlock(&h->lock);
                   /* Found existing key, update it */
-                  l_rwlock_wrlock(&h->lock);
+                  if (h->is_shared) l_rwlock_wrlock(&h->lock);
                   res = luaH_get(h, key); /* Re-check under write lock */
                   if (!isempty(res) && !isabstkey(res)) {
                      setobj2t(L, cast(TValue *, res), val);
                      luaC_barrierback(L, obj2gco(h), val);
-                     l_rwlock_unlock(&h->lock);
+                     if (h->is_shared) l_rwlock_unlock(&h->lock);
                      return;
                   }
-                  l_rwlock_unlock(&h->lock);
+                  if (h->is_shared) l_rwlock_unlock(&h->lock);
                } else {
-                  l_rwlock_unlock(&h->lock);
+                  if (h->is_shared) l_rwlock_unlock(&h->lock);
                }
             }
             ns = ns->using_next;
@@ -1064,10 +1064,10 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
          ns = first;
          if (ns && ns->data) {
             Table *h = ns->data;
-            l_rwlock_wrlock(&h->lock);
+            if (h->is_shared) l_rwlock_wrlock(&h->lock);
             luaH_set(L, h, key, val);
             luaC_barrierback(L, obj2gco(h), val);
-            l_rwlock_unlock(&h->lock);
+            if (h->is_shared) l_rwlock_unlock(&h->lock);
             return;
          }
          return;
@@ -1100,21 +1100,21 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       }
       else if (ttistable(t)) {
          Table *h = hvalue(t);
-         l_rwlock_wrlock(&h->lock);
+         if (h->is_shared) l_rwlock_wrlock(&h->lock);
          const TValue *res = luaH_get(h, key);
          if (!isempty(res) && !isabstkey(res)) {
             setobj2t(L, cast(TValue *, res), val);
             luaC_barrierback(L, obj2gco(h), val);
-            l_rwlock_unlock(&h->lock);
+            if (h->is_shared) l_rwlock_unlock(&h->lock);
             return;
          }
-         l_rwlock_unlock(&h->lock);
+         if (h->is_shared) l_rwlock_unlock(&h->lock);
          // Empty, check TM
-         l_rwlock_rdlock(&h->lock);
+         if (h->is_shared) l_rwlock_rdlock(&h->lock);
          tm = fasttm(L, h->metatable, TM_NEWINDEX);
-         l_rwlock_unlock(&h->lock);
+         if (h->is_shared) l_rwlock_unlock(&h->lock);
          if (tm == NULL) {
-            l_rwlock_wrlock(&h->lock);
+            if (h->is_shared) l_rwlock_wrlock(&h->lock);
             const TValue *newslot = luaH_get(h, key);
             sethvalue2s(L, L->top.p, h);
             L->top.p++;
@@ -1122,7 +1122,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
             L->top.p--;
             invalidateTMcache(h);
             luaC_barrierback(L, obj2gco(h), val);
-            l_rwlock_unlock(&h->lock);
+            if (h->is_shared) l_rwlock_unlock(&h->lock);
             return;
          }
       } else {
@@ -1139,16 +1139,16 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     t = tm;  /* else repeat assignment over 'tm' */
     if (ttistable(t)) {
        Table *h = hvalue(t);
-       l_rwlock_wrlock(&h->lock);
+       if (h->is_shared) l_rwlock_wrlock(&h->lock);
        const TValue *res = luaH_get(h, key);
        if (!isempty(res) && !isabstkey(res)) {
           /* luaV_finishfastset just does setobj2t and barrier */
           setobj2t(L, cast(TValue *, res), val);
           luaC_barrierback(L, obj2gco(h), val);
-          l_rwlock_unlock(&h->lock);
+          if (h->is_shared) l_rwlock_unlock(&h->lock);
           return;
        }
-       l_rwlock_unlock(&h->lock);
+       if (h->is_shared) l_rwlock_unlock(&h->lock);
        /* else loop */
     }
     /* else 'return luaV_finishset(L, t, key, val, slot)' (loop) */
@@ -2321,13 +2321,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TString *key = tsvalue(rc);  /* key must be a short string */
         if (ttistable(upval)) {
            Table *h = hvalue(upval);
-           l_rwlock_rdlock(&h->lock);
+           if (h->is_shared) l_rwlock_rdlock(&h->lock);
            const TValue *res = luaH_getshortstr(h, key);
            if (!isempty(res)) {
               setobj2s(L, ra, res);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishget(L, upval, rc, ra, NULL));
            }
         }
@@ -2341,13 +2341,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = vRC(i);
         if (ttistable(rb)) {
            Table *h = hvalue(rb);
-           l_rwlock_rdlock(&h->lock);
+           if (h->is_shared) l_rwlock_rdlock(&h->lock);
            const TValue *res = luaH_get_optimized(h, rc);
            if (!isempty(res)) {
               setobj2s(L, ra, res);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishget(L, rb, rc, ra, NULL));
            }
         }
@@ -2361,13 +2361,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int c = GETARG_C(i);
         if (ttistable(rb)) {
            Table *h = hvalue(rb);
-           l_rwlock_rdlock(&h->lock);
+           if (h->is_shared) l_rwlock_rdlock(&h->lock);
            const TValue *res = luaH_getint(h, c);
            if (!isempty(res)) {
               setobj2s(L, ra, res);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               TValue key;
               setivalue(&key, c);
               Protect(luaV_finishget(L, rb, &key, ra, NULL));
@@ -2405,13 +2405,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TString *key = tsvalue(rc);  /* key must be a short string */
         if (ttistable(rb)) {
            Table *h = hvalue(rb);
-           l_rwlock_rdlock(&h->lock);
+           if (h->is_shared) l_rwlock_rdlock(&h->lock);
            const TValue *res = luaH_getshortstr(h, key);
            if (!isempty(res)) {
               setobj2s(L, ra, res);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishget(L, rb, rc, ra, NULL));
            }
         }
@@ -2426,14 +2426,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TString *key = tsvalue(rb);  /* key must be a short string */
         if (ttistable(upval)) {
            Table *h = hvalue(upval);
-           l_rwlock_wrlock(&h->lock);
+           if (h->is_shared) l_rwlock_wrlock(&h->lock);
            const TValue *res = luaH_getshortstr(h, key);
            if (!isempty(res) && !isabstkey(res)) {
               setobj2t(L, cast(TValue *, res), rc);
               luaC_barrierback(L, obj2gco(h), rc);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishset(L, upval, rb, rc, NULL));
            }
         }
@@ -2447,14 +2447,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = RKC(i);  /* value */
         if (ttistable(s2v(ra))) {
            Table *h = hvalue(s2v(ra));
-           l_rwlock_wrlock(&h->lock);
+           if (h->is_shared) l_rwlock_wrlock(&h->lock);
            const TValue *res = luaH_get_optimized(h, rb);
            if (!isempty(res) && !isabstkey(res)) {
               setobj2t(L, cast(TValue *, res), rc);
               luaC_barrierback(L, obj2gco(h), rc);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishset(L, s2v(ra), rb, rc, NULL));
            }
         }
@@ -2468,14 +2468,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = RKC(i);
         if (ttistable(s2v(ra))) {
            Table *h = hvalue(s2v(ra));
-           l_rwlock_wrlock(&h->lock);
+           if (h->is_shared) l_rwlock_wrlock(&h->lock);
            const TValue *res = luaH_getint(h, c);
            if (!isempty(res) && !isabstkey(res)) {
               setobj2t(L, cast(TValue *, res), rc);
               luaC_barrierback(L, obj2gco(h), rc);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               TValue key;
               setivalue(&key, c);
               Protect(luaV_finishset(L, s2v(ra), &key, rc, NULL));
@@ -2494,14 +2494,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TString *key = tsvalue(rb);  /* key must be a short string */
         if (ttistable(s2v(ra))) {
            Table *h = hvalue(s2v(ra));
-           l_rwlock_wrlock(&h->lock);
+           if (h->is_shared) l_rwlock_wrlock(&h->lock);
            const TValue *res = luaH_getshortstr(h, key);
            if (!isempty(res) && !isabstkey(res)) {
               setobj2t(L, cast(TValue *, res), rc);
               luaC_barrierback(L, obj2gco(h), rc);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishset(L, s2v(ra), rb, rc, NULL));
            }
         }
@@ -2565,7 +2565,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         setobj2s(L, ra + 1, rb);
         if (ttistable(rb)) {
            Table *h = hvalue(rb);
-           l_rwlock_rdlock(&h->lock);
+           if (h->is_shared) l_rwlock_rdlock(&h->lock);
            const TValue *res;
            if (key->tt == LUA_VSHRSTR) {
              res = luaH_getshortstr(h, key);
@@ -2574,9 +2574,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
            }
            if (!isempty(res)) {
               setobj2s(L, ra, res);
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
            } else {
-              l_rwlock_unlock(&h->lock);
+              if (h->is_shared) l_rwlock_unlock(&h->lock);
               Protect(luaV_finishget(L, rb, rc, ra, NULL));
            }
         }
@@ -3785,10 +3785,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           ra = RA(i);
           sethvalue2s(L, ra, t);
           TValue val; sethvalue(L, &val, t);
-          l_rwlock_wrlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_wrlock(&reg->lock);
           luaH_set(L, reg, s2v(L->top.p - 1), &val);
           luaC_barrierback(L, obj2gco(reg), &val);
-          l_rwlock_unlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_unlock(&reg->lock);
           L->top.p--;
           checkGC(L, ra + 1);
         }
@@ -3805,23 +3805,23 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         setsvalue2s(L, L->top.p, key); /* anchor key */
         L->top.p++;
         const TValue *res;
-        l_rwlock_rdlock(&reg->lock);
+        if (reg->is_shared) l_rwlock_rdlock(&reg->lock);
         res = luaH_getstr(reg, key);
         if (!isempty(res)) {
           setobj2s(L, ra, res);
-          l_rwlock_unlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_unlock(&reg->lock);
           L->top.p--;
         } else {
-          l_rwlock_unlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_unlock(&reg->lock);
           Table *t = luaH_new(L);
           updatebase(ci);
           ra = RA(i);
           sethvalue2s(L, ra, t);
           TValue val; sethvalue(L, &val, t);
-          l_rwlock_wrlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_wrlock(&reg->lock);
           luaH_set(L, reg, s2v(L->top.p - 1), &val);
           luaC_barrierback(L, obj2gco(reg), &val);
-          l_rwlock_unlock(&reg->lock);
+          if (reg->is_shared) l_rwlock_unlock(&reg->lock);
           L->top.p--;
           checkGC(L, ra + 1);
         }
