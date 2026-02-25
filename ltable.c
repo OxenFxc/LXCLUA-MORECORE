@@ -1248,6 +1248,7 @@ Table *luaH_new (lua_State *L) {
   t->array = NULL;
   t->alimit = 0;
   t->using_next = NULL;
+  t->is_shared = 0;
   l_rwlock_init(&t->lock);
   setnodevector(L, t, 0);
   return t;
