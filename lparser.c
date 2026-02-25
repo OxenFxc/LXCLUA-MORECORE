@@ -11620,6 +11620,37 @@ static void namespacestat (LexState *ls, int line) {
   init_exp(&ns, VRELOC, luaK_codeABx(fs, OP_NEWNAMESPACE, 0, name_k));
   luaK_exp2nextreg(fs, &ns);
 
+  /* Check for optional argument list: namespace Name (var1, var2) */
+  if (ls->t.token == '(') {
+    luaX_next(ls);
+    while (ls->t.token != ')' && ls->t.token != TK_EOS) {
+      TString *argname = str_checkname(ls);
+
+      expdesc val;
+      singlevaraux(fs, argname, &val, 1);
+      if (val.k == VVOID) {
+        expdesc key;
+        singlevaraux(fs, ls->envn, &val, 1);
+        codestring(&key, argname);
+        luaK_indexed(fs, &val, &key);
+      }
+
+      luaK_exp2nextreg(fs, &val);
+
+      /* ns[argname] = val */
+      expdesc ns_tmp = ns;
+      expdesc key;
+      codestring(&key, argname);
+      luaK_indexed(fs, &ns_tmp, &key);
+      luaK_storevar(fs, &ns_tmp, &val);
+
+      if (ls->t.token == ',') {
+        luaX_next(ls);
+      }
+    }
+    checknext(ls, ')');
+  }
+
   /* Store in global variable */
   buildglobal(ls, name, &v);
   luaK_storevar(fs, &v, &ns);
