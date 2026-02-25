@@ -182,7 +182,7 @@ static void emit_loadk(luaL_Buffer *B, Proto *p, int k_index) {
     }
 }
 
-static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, ProtoInfo *protos, int proto_count) {
+static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, ProtoInfo *protos, int proto_count, int use_pure_c) {
     OpCode op = GET_OPCODE(i);
     int a = GETARG_A(i);
 
@@ -329,24 +329,51 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         case OP_SHL: case OP_SHR: {
             int b = GETARG_B(i);
             int c = GETARG_C(i);
-            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-            add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1);
-            int op_enum = -1;
-            if (op == OP_ADD) op_enum = LUA_OPADD;
-            else if (op == OP_SUB) op_enum = LUA_OPSUB;
-            else if (op == OP_MUL) op_enum = LUA_OPMUL;
-            else if (op == OP_DIV) op_enum = LUA_OPDIV;
-            else if (op == OP_IDIV) op_enum = LUA_OPIDIV;
-            else if (op == OP_MOD) op_enum = LUA_OPMOD;
-            else if (op == OP_POW) op_enum = LUA_OPPOW;
-            else if (op == OP_BAND) op_enum = LUA_OPBAND;
-            else if (op == OP_BOR) op_enum = LUA_OPBOR;
-            else if (op == OP_BXOR) op_enum = LUA_OPBXOR;
-            else if (op == OP_SHL) op_enum = LUA_OPSHL;
-            else if (op == OP_SHR) op_enum = LUA_OPSHR;
+            if (use_pure_c) {
+                const char *op_str = NULL;
+                int is_int = 0;
+                int is_pow = 0;
+                if (op == OP_ADD) op_str = "+";
+                else if (op == OP_SUB) op_str = "-";
+                else if (op == OP_MUL) op_str = "*";
+                else if (op == OP_DIV) op_str = "/";
+                else if (op == OP_IDIV) { op_str = "/"; is_int = 1; }
+                else if (op == OP_MOD) { op_str = "%"; is_int = 1; }
+                else if (op == OP_POW) is_pow = 1;
+                else if (op == OP_BAND) { op_str = "&"; is_int = 1; }
+                else if (op == OP_BOR) { op_str = "|"; is_int = 1; }
+                else if (op == OP_BXOR) { op_str = "^"; is_int = 1; }
+                else if (op == OP_SHL) { op_str = "<<"; is_int = 1; }
+                else if (op == OP_SHR) { op_str = ">>"; is_int = 1; }
 
-            add_fmt(B, "    lua_arith(L, %d);\n", op_enum);
-            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+                if (is_pow) {
+                    add_fmt(B, "    lua_pushnumber(L, pow(lua_tonumber(L, %d), lua_tonumber(L, %d)));\n", b + 1, c + 1);
+                } else if (is_int) {
+                    add_fmt(B, "    lua_pushinteger(L, (lua_Integer)lua_tointeger(L, %d) %s (lua_Integer)lua_tointeger(L, %d));\n", b + 1, op_str, c + 1);
+                } else {
+                    add_fmt(B, "    lua_pushnumber(L, (lua_Number)lua_tonumber(L, %d) %s (lua_Number)lua_tonumber(L, %d));\n", b + 1, op_str, c + 1);
+                }
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            } else {
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", c + 1);
+                int op_enum = -1;
+                if (op == OP_ADD) op_enum = LUA_OPADD;
+                else if (op == OP_SUB) op_enum = LUA_OPSUB;
+                else if (op == OP_MUL) op_enum = LUA_OPMUL;
+                else if (op == OP_DIV) op_enum = LUA_OPDIV;
+                else if (op == OP_IDIV) op_enum = LUA_OPIDIV;
+                else if (op == OP_MOD) op_enum = LUA_OPMOD;
+                else if (op == OP_POW) op_enum = LUA_OPPOW;
+                else if (op == OP_BAND) op_enum = LUA_OPBAND;
+                else if (op == OP_BOR) op_enum = LUA_OPBOR;
+                else if (op == OP_BXOR) op_enum = LUA_OPBXOR;
+                else if (op == OP_SHL) op_enum = LUA_OPSHL;
+                else if (op == OP_SHR) op_enum = LUA_OPSHR;
+
+                add_fmt(B, "    lua_arith(L, %d);\n", op_enum);
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            }
             break;
         }
 
@@ -355,22 +382,53 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         case OP_BANDK: case OP_BORK: case OP_BXORK: {
             int b = GETARG_B(i);
             int c = GETARG_C(i);
-            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-            emit_loadk(B, p, c);
-            int op_enum = -1;
-            if (op == OP_ADDK) op_enum = LUA_OPADD;
-            else if (op == OP_SUBK) op_enum = LUA_OPSUB;
-            else if (op == OP_MULK) op_enum = LUA_OPMUL;
-            else if (op == OP_MODK) op_enum = LUA_OPMOD;
-            else if (op == OP_POWK) op_enum = LUA_OPPOW;
-            else if (op == OP_DIVK) op_enum = LUA_OPDIV;
-            else if (op == OP_IDIVK) op_enum = LUA_OPIDIV;
-            else if (op == OP_BANDK) op_enum = LUA_OPBAND;
-            else if (op == OP_BORK) op_enum = LUA_OPBOR;
-            else if (op == OP_BXORK) op_enum = LUA_OPBXOR;
+            if (use_pure_c) {
+                const char *op_str = NULL;
+                int is_int = 0;
+                int is_pow = 0;
+                if (op == OP_ADDK) op_str = "+";
+                else if (op == OP_SUBK) op_str = "-";
+                else if (op == OP_MULK) op_str = "*";
+                else if (op == OP_DIVK) op_str = "/";
+                else if (op == OP_IDIVK) { op_str = "/"; is_int = 1; }
+                else if (op == OP_MODK) { op_str = "%"; is_int = 1; }
+                else if (op == OP_POWK) is_pow = 1;
+                else if (op == OP_BANDK) { op_str = "&"; is_int = 1; }
+                else if (op == OP_BORK) { op_str = "|"; is_int = 1; }
+                else if (op == OP_BXORK) { op_str = "^"; is_int = 1; }
 
-            add_fmt(B, "    lua_arith(L, %d);\n", op_enum);
-            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+                TValue *k = &p->k[c];
+                char k_str[64];
+                if (ttisinteger(k)) snprintf(k_str, sizeof(k_str), "%lld", (long long)ivalue(k));
+                else if (ttisnumber(k)) snprintf(k_str, sizeof(k_str), "%f", fltvalue(k));
+                else snprintf(k_str, sizeof(k_str), "0");
+
+                if (is_pow) {
+                     add_fmt(B, "    lua_pushnumber(L, pow(lua_tonumber(L, %d), %s));\n", b + 1, k_str);
+                } else if (is_int) {
+                     add_fmt(B, "    lua_pushinteger(L, (lua_Integer)lua_tointeger(L, %d) %s (lua_Integer)%s);\n", b + 1, op_str, k_str);
+                } else {
+                     add_fmt(B, "    lua_pushnumber(L, (lua_Number)lua_tonumber(L, %d) %s (lua_Number)%s);\n", b + 1, op_str, k_str);
+                }
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            } else {
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                emit_loadk(B, p, c);
+                int op_enum = -1;
+                if (op == OP_ADDK) op_enum = LUA_OPADD;
+                else if (op == OP_SUBK) op_enum = LUA_OPSUB;
+                else if (op == OP_MULK) op_enum = LUA_OPMUL;
+                else if (op == OP_MODK) op_enum = LUA_OPMOD;
+                else if (op == OP_POWK) op_enum = LUA_OPPOW;
+                else if (op == OP_DIVK) op_enum = LUA_OPDIV;
+                else if (op == OP_IDIVK) op_enum = LUA_OPIDIV;
+                else if (op == OP_BANDK) op_enum = LUA_OPBAND;
+                else if (op == OP_BORK) op_enum = LUA_OPBOR;
+                else if (op == OP_BXORK) op_enum = LUA_OPBXOR;
+
+                add_fmt(B, "    lua_arith(L, %d);\n", op_enum);
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            }
             break;
         }
 
@@ -406,46 +464,71 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         case OP_ADDI: { // R[A] := R[B] + sC
              int b = GETARG_B(i);
              int sc = GETARG_sC(i);
-             add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-             add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
-             add_fmt(B, "    lua_arith(L, LUA_OPADD);\n");
-             add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             if (use_pure_c) {
+                 add_fmt(B, "    lua_pushinteger(L, (lua_Integer)lua_tointeger(L, %d) + %d);\n", b + 1, sc);
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             } else {
+                 add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                 add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
+                 add_fmt(B, "    lua_arith(L, LUA_OPADD);\n");
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             }
              break;
         }
 
         case OP_SHLI: { // R[A] := sC << R[B]
              int b = GETARG_B(i);
              int sc = GETARG_sC(i);
-             add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
-             add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-             add_fmt(B, "    lua_arith(L, LUA_OPSHL);\n");
-             add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             if (use_pure_c) {
+                 add_fmt(B, "    lua_pushinteger(L, (lua_Integer)%d << (lua_Integer)lua_tointeger(L, %d));\n", sc, b + 1);
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             } else {
+                 add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
+                 add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                 add_fmt(B, "    lua_arith(L, LUA_OPSHL);\n");
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             }
              break;
         }
 
         case OP_SHRI: { // R[A] := R[B] >> sC
              int b = GETARG_B(i);
              int sc = GETARG_sC(i);
-             add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-             add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
-             add_fmt(B, "    lua_arith(L, LUA_OPSHR);\n");
-             add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             if (use_pure_c) {
+                 add_fmt(B, "    lua_pushinteger(L, (lua_Integer)lua_tointeger(L, %d) >> %d);\n", b + 1, sc);
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             } else {
+                 add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                 add_fmt(B, "    lua_pushinteger(L, %d);\n", sc);
+                 add_fmt(B, "    lua_arith(L, LUA_OPSHR);\n");
+                 add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+             }
              break;
         }
 
         case OP_UNM: {
             int b = GETARG_B(i);
-            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-            add_fmt(B, "    lua_arith(L, LUA_OPUNM);\n");
-            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            if (use_pure_c) {
+                add_fmt(B, "    lua_pushnumber(L, -(lua_Number)lua_tonumber(L, %d));\n", b + 1);
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            } else {
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                add_fmt(B, "    lua_arith(L, LUA_OPUNM);\n");
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            }
             break;
         }
 
         case OP_BNOT: {
             int b = GETARG_B(i);
-            add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
-            add_fmt(B, "    lua_arith(L, LUA_OPBNOT);\n");
-            add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            if (use_pure_c) {
+                add_fmt(B, "    lua_pushinteger(L, ~(lua_Integer)lua_tointeger(L, %d));\n", b + 1);
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            } else {
+                add_fmt(B, "    lua_pushvalue(L, %d);\n", b + 1);
+                add_fmt(B, "    lua_arith(L, LUA_OPBNOT);\n");
+                add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
+            }
             break;
         }
 
@@ -1215,7 +1298,7 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
     }
 }
 
-static void process_proto(luaL_Buffer *B, Proto *p, int id, ProtoInfo *protos, int proto_count) {
+static void process_proto(luaL_Buffer *B, Proto *p, int id, ProtoInfo *protos, int proto_count, int use_pure_c) {
     add_fmt(B, "\n/* Proto %d */\n", id);
     add_fmt(B, "static int function_%d(lua_State *L) {\n", id);
 
@@ -1227,7 +1310,7 @@ static void process_proto(luaL_Buffer *B, Proto *p, int id, ProtoInfo *protos, i
 
     // Iterate instructions
     for (int i = 0; i < p->sizecode; i++) {
-        emit_instruction(B, p, i, p->code[i], protos, proto_count);
+        emit_instruction(B, p, i, p->code[i], protos, proto_count, use_pure_c);
     }
 
     // Fallback return if no return op
@@ -1241,8 +1324,19 @@ static void process_proto(luaL_Buffer *B, Proto *p, int id, ProtoInfo *protos, i
 static int tcc_compile(lua_State *L) {
     size_t len;
     const char *code = luaL_checklstring(L, 1, &len);
-    const char *modname = luaL_optstring(L, 2, "module");
+    const char *modname = "module";
+    int use_pure_c = 0;
 
+    if (lua_gettop(L) >= 2) {
+        if (lua_type(L, 2) == LUA_TBOOLEAN) {
+            use_pure_c = lua_toboolean(L, 2);
+        } else {
+            modname = luaL_checkstring(L, 2);
+            if (lua_gettop(L) >= 3) {
+                 use_pure_c = lua_toboolean(L, 3);
+            }
+        }
+    }
     // Compile Lua code to Bytecode
     if (luaL_loadbuffer(L, code, len, modname) != LUA_OK) {
         return lua_error(L);
@@ -1269,7 +1363,11 @@ static int tcc_compile(lua_State *L) {
 
     add_fmt(&B, "#include \"lua.h\"\n");
     add_fmt(&B, "#include \"lauxlib.h\"\n");
-    add_fmt(&B, "#include <string.h>\n\n");
+    add_fmt(&B, "#include <string.h>\n");
+    if (use_pure_c) {
+        add_fmt(&B, "#include <math.h>\n");
+    }
+    add_fmt(&B, "\n");
 
     // Helpers (now provided by lapi.c/ltcc.c via LUA_API)
 
@@ -1280,7 +1378,7 @@ static int tcc_compile(lua_State *L) {
 
     // Implementations
     for (int i = 0; i < count; i++) {
-        process_proto(&B, protos[i].p, protos[i].id, protos, count);
+        process_proto(&B, protos[i].p, protos[i].id, protos, count, use_pure_c);
     }
 
     // Main entry point
