@@ -17,6 +17,7 @@
 #include "lundump.h"
 #include "ltcc.h"
 #include "lopnames.h"
+#include "lobfuscate.h"
 
 /*
 ** tcc support functions (Library API)
@@ -1462,6 +1463,8 @@ static int tcc_compile(lua_State *L) {
     const char *modname = "module";
     int use_pure_c = 0;
     int obfuscate = 0;
+    int flatten = 0;
+    int str_encrypt = 0;
     int seed = 0;
 
     if (lua_gettop(L) >= 2) {
@@ -1473,6 +1476,14 @@ static int tcc_compile(lua_State *L) {
 
              lua_getfield(L, 2, "obfuscate");
              if (!lua_isnil(L, -1)) obfuscate = lua_toboolean(L, -1);
+             lua_pop(L, 1);
+
+             lua_getfield(L, 2, "flatten");
+             if (!lua_isnil(L, -1)) flatten = lua_toboolean(L, -1);
+             lua_pop(L, 1);
+
+             lua_getfield(L, 2, "string_encryption");
+             if (!lua_isnil(L, -1)) str_encrypt = lua_toboolean(L, -1);
              lua_pop(L, 1);
 
              lua_getfield(L, 2, "seed");
@@ -1491,6 +1502,14 @@ static int tcc_compile(lua_State *L) {
 
                      lua_getfield(L, 3, "obfuscate");
                      if (!lua_isnil(L, -1)) obfuscate = lua_toboolean(L, -1);
+                     lua_pop(L, 1);
+
+                     lua_getfield(L, 3, "flatten");
+                     if (!lua_isnil(L, -1)) flatten = lua_toboolean(L, -1);
+                     lua_pop(L, 1);
+
+                     lua_getfield(L, 3, "string_encryption");
+                     if (!lua_isnil(L, -1)) str_encrypt = lua_toboolean(L, -1);
                      lua_pop(L, 1);
 
                      lua_getfield(L, 3, "seed");
@@ -1523,6 +1542,21 @@ static int tcc_compile(lua_State *L) {
     int count = 0;
     ProtoInfo *protos = (ProtoInfo *)malloc(capacity * sizeof(ProtoInfo));
     collect_protos(p, &count, &protos, &capacity);
+
+    // Apply obfuscation if requested
+    int obfuscate_flags = 0;
+    if (flatten) obfuscate_flags |= OBFUSCATE_CFF;
+    if (str_encrypt) obfuscate_flags |= OBFUSCATE_STR_ENCRYPT;
+
+    if (obfuscate_flags != 0) {
+        for (int i = 0; i < count; i++) {
+             /* Use different seed for each proto to vary obfuscation */
+             if (luaO_flatten(L, protos[i].p, obfuscate_flags, seed + protos[i].id, NULL) != 0) {
+                 free(protos);
+                 return luaL_error(L, "Failed to obfuscate proto %d", protos[i].id);
+             }
+        }
+    }
 
     // Start generating C code
     luaL_Buffer B;
