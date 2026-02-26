@@ -15,14 +15,16 @@ A high-performance embedded scripting engine based on **Lua 5.5 (Custom)** with 
 ### Core Enhancements
 
 - **Secure Compilation**: Dynamic OPcode mapping, timestamp encryption, SHA-256 integrity verification.
-- **Custom VM**: Implements XCLUA instruction set with optimized dispatch.
+- **Custom VM**: Implements XCLUA instruction set with 64-bit instruction format and optimized dispatch.
 - **Syntax Extensions**: Modern language features including Classes, Switch, Try-Catch, Arrow Functions, Pipe Operators, and more.
 - **Shell-like Conditions**: Built-in support for shell-style test expressions (e.g., `[ -f "file.txt" ]`).
+- **Code Obfuscation**: Control flow flattening, block shuffling, bogus blocks, VM protection, and string encryption.
+- **JIT Compilation**: Built-in TCC (Tiny C Compiler) integration for runtime C code compilation.
 
 ### Extension Modules
 
 | Module | Description |
-|--------|------------------------|
+|--------|-------------|
 | `json` | Built-in JSON parsing/serialization |
 | `lclass` | OOP support (classes, inheritance, interfaces) |
 | `lbitlib` | Bitwise operations |
@@ -31,9 +33,15 @@ A high-performance embedded scripting engine based on **Lua 5.5 (Custom)** with 
 | `lsmgrlib` | Memory management utilities |
 | `process` | Process management (Linux only) |
 | `http` | HTTP client/server & Socket |
-| `thread` | Multithreading support |
+| `thread` | Multithreading support with mutex, condition variables, and read-write locks |
 | `fs` | File system operations |
 | `struct` | C-style structs & arrays |
+| `ptr` | Pointer operations library |
+| `vm` | VM introspection and bytecode manipulation |
+| `tcc` | Runtime C code compilation via TCC |
+| `ByteCode` | Bytecode manipulation and analysis |
+| `vmprotect` | VM-based code protection |
+| `translator` | Code translation utilities |
 
 ---
 
@@ -124,7 +132,7 @@ end
 
 ### 4. Object-Oriented Programming (OOP)
 
-Complete class and interface system with modifiers (`private`, `public`, `static`, `final`, `abstract`, `sealed`) and properties (`get`/`set`).
+Complete class and interface system with modifiers (`private`, `public`, `protected`, `static`, `final`, `abstract`, `sealed`) and properties (`get`/`set`).
 
 ```lua
 interface Drawable
@@ -140,6 +148,7 @@ end
 -- Sealed Class (cannot be extended)
 sealed class Circle extends Shape
     private _radius = 0
+    protected _id = 0
 
     function __init__(self, r)
         self._radius = r
@@ -167,6 +176,11 @@ end
 local c = Circle.create(10)
 c.radius = 20
 print(c.radius)  -- 20
+
+-- instanceof check
+if c instanceof Circle then
+    print("c is a Circle")
+end
 ```
 
 ### 5. Structs & Types
@@ -337,6 +351,248 @@ asm(
 )
 ```
 
+### 10. Slice Operations
+
+Python-style slice syntax for tables and strings.
+
+```lua
+local arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+local slice1 = arr[1:5]      -- {1, 2, 3, 4, 5}
+local slice2 = arr[1:10:2]   -- {1, 3, 5, 7, 9}
+local slice3 = arr[5:]       -- {5, 6, 7, 8, 9, 10}
+local slice4 = arr[:5]       -- {1, 2, 3, 4, 5}
+local slice5 = arr[::-1]     -- {10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+```
+
+### 11. `in` Operator
+
+Check if a value exists in a container.
+
+```lua
+local arr = {1, 2, 3, 4, 5}
+if 3 in arr then
+    print("3 is in arr")
+end
+
+local str = "Hello World"
+if "World" in str then
+    print("Found 'World'")
+end
+```
+
+### 12. Type Hints
+
+Support for type annotations and type checking.
+
+```lua
+local function greet(name: string): string
+    return "Hello, " .. name
+end
+
+local x: int = 10
+local y: float = 3.14
+local flag: bool = true
+```
+
+---
+
+## Security Features
+
+### Code Obfuscation
+
+LXCLUA-NCore provides multiple obfuscation techniques:
+
+| Flag | Description |
+|------|-------------|
+| `OBFUSCATE_CFF` | Control Flow Flattening |
+| `OBFUSCATE_BLOCK_SHUFFLE` | Randomize basic block order |
+| `OBFUSCATE_BOGUS_BLOCKS` | Insert bogus basic blocks |
+| `OBFUSCATE_STATE_ENCODE` | Obfuscate state variable values |
+| `OBFUSCATE_NESTED_DISPATCHER` | Multi-layered dispatcher |
+| `OBFUSCATE_OPAQUE_PREDICATES` | Opaque predicates |
+| `OBFUSCATE_FUNC_INTERLEAVE` | Function interleaving |
+| `OBFUSCATE_VM_PROTECT` | VM protection (custom instruction set) |
+| `OBFUSCATE_BINARY_DISPATCHER` | Binary search dispatcher |
+| `OBFUSCATE_RANDOM_NOP` | Insert random NOP instructions |
+| `OBFUSCATE_STR_ENCRYPT` | String constant encryption |
+
+```lua
+-- Obfuscate bytecode
+local obfuscated = string.dump(func, false, OBFUSCATE_CFF | OBFUSCATE_STR_ENCRYPT)
+```
+
+### AES Encryption
+
+Built-in AES encryption support (ECB, CBC, CTR modes).
+
+```lua
+local aes = require("aes")
+local key = "16-byte-key-1234"
+local iv = "initial-vector-16"
+local encrypted = aes.encrypt_cbc(plaintext, key, iv)
+local decrypted = aes.decrypt_cbc(encrypted, key, iv)
+```
+
+### SHA-256 Hashing
+
+```lua
+local sha256 = require("sha256")
+local hash = sha256.hash("Hello World")
+```
+
+---
+
+## Threading Support
+
+Full multithreading support with synchronization primitives.
+
+```lua
+local thread = require("thread")
+
+-- Mutex
+local m = thread.mutex()
+m:lock()
+-- critical section
+m:unlock()
+
+-- Condition Variable
+local cond = thread.cond()
+cond:wait(m)
+cond:signal()
+cond:broadcast()
+
+-- Read-Write Lock
+local rwlock = thread.rwlock()
+rwlock:rdlock()  -- read lock
+rwlock:wrlock()  -- write lock
+rwlock:unlock()
+
+-- Thread Creation
+local t = thread.create(function()
+    print("Running in thread")
+end)
+t:join()
+```
+
+---
+
+## TCC Integration (JIT Compilation)
+
+Compile and execute C code at runtime.
+
+```lua
+local tcc = require("tcc")
+
+local code = [[
+    int add(int a, int b) {
+        return a + b;
+    }
+]]
+
+local state = tcc.new()
+state:compile(code)
+local add = state:get_symbol("add")
+print(add(1, 2))  -- 3
+```
+
+---
+
+## Extended Types
+
+LXCLUA-NCore extends Lua with additional types:
+
+| Type | Description |
+|------|-------------|
+| `LUA_TSTRUCT` | C-style struct |
+| `LUA_TPOINTER` | Raw pointer type |
+| `LUA_TCONCEPT` | Type predicate concept |
+| `LUA_TNAMESPACE` | Namespace type |
+| `LUA_TSUPERSTRUCT` | Enhanced table definition |
+
+---
+
+## Big Integer Support
+
+Arbitrary precision integer arithmetic.
+
+```lua
+local bigint = require("bigint")
+
+local a = bigint.new("12345678901234567890")
+local b = bigint.new("98765432109876543210")
+local c = a + b
+print(c:tostring())  -- 111111111011111111100
+```
+
+---
+
+## HTTP & Networking
+
+```lua
+local http = require("http")
+
+-- HTTP GET
+local response = http.get("https://api.example.com/data")
+print(response.body)
+
+-- HTTP POST
+local result = http.post("https://api.example.com/submit", {
+    headers = { ["Content-Type"] = "application/json" },
+    body = '{"key": "value"}'
+})
+
+-- Socket operations
+local sock = http.socket()
+sock:connect("example.com", 80)
+sock:send("GET / HTTP/1.0\r\n\r\n")
+local data = sock:recv(1024)
+sock:close()
+```
+
+---
+
+## File System Operations
+
+```lua
+local fs = require("fs")
+
+-- File operations
+local content = fs.read("file.txt")
+fs.write("output.txt", "Hello World")
+fs.append("log.txt", "New entry\n")
+
+-- Directory operations
+local files = fs.listdir("/path/to/dir")
+fs.mkdir("/path/to/new/dir")
+fs.rmdir("/path/to/dir")
+
+-- Path utilities
+local exists = fs.exists("file.txt")
+local is_dir = fs.isdir("path")
+local is_file = fs.isfile("file.txt")
+local size = fs.size("file.txt")
+```
+
+---
+
+## Bytecode Manipulation
+
+```lua
+local bytecode = require("ByteCode")
+
+-- Dump function to bytecode
+local bc = bytecode.dump(function() print("Hello") end)
+
+-- Load bytecode back
+local func = bytecode.load(bc)
+
+-- Analyze bytecode
+local info = bytecode.analyze(func)
+print("Instructions:", info.num_instructions)
+print("Constants:", info.num_constants)
+```
+
 ---
 
 ## Build & Test
@@ -349,6 +605,9 @@ make linux
 
 # Windows (MinGW)
 make mingw
+
+# Android
+make android
 ```
 
 ### Verification
@@ -360,6 +619,43 @@ Run the test suite to verify all features:
 ./lxclua tests/test_parser_features.lua
 ./lxclua tests/test_advanced_parser.lua
 ```
+
+---
+
+## API Reference
+
+### Object-Oriented API
+
+```c
+// Class creation and manipulation
+void lua_newclass(lua_State *L, const char *name);
+void lua_inherit(lua_State *L, int child_idx, int parent_idx);
+void lua_newobject(lua_State *L, int class_idx, int nargs);
+void lua_setmethod(lua_State *L, int class_idx, const char *name, int func_idx);
+void lua_setstatic(lua_State *L, int class_idx, const char *name, int value_idx);
+void lua_getprop(lua_State *L, int obj_idx, const char *key);
+void lua_setprop(lua_State *L, int obj_idx, const char *key, int value_idx);
+int  lua_instanceof(lua_State *L, int obj_idx, int class_idx);
+void lua_implement(lua_State *L, int class_idx, int interface_idx);
+```
+
+### Obfuscation API
+
+```c
+int lua_dump_obfuscated(lua_State *L, lua_Writer writer, void *data,
+                        int strip, int obfuscate_flags, unsigned int seed,
+                        const char *log_path);
+```
+
+### Enhanced Memory API
+
+```c
+size_t lua_getmemoryusage(lua_State *L);
+void   lua_gc_force(lua_State *L);
+void   lua_table_iextend(lua_State *L, int idx, int n);
+```
+
+---
 
 ## License
 

@@ -15,14 +15,16 @@
 ### 核心增强
 
 - **安全编译**：动态操作码映射、时间戳加密、SHA-256 完整性校验。
-- **自定义 VM**：实现 XCLUA 指令集，优化调度。
+- **自定义 VM**：实现 XCLUA 指令集，采用 64 位指令格式，优化调度。
 - **语法扩展**：包含类、Switch、Try-Catch、箭头函数、管道操作符等现代语言特性。
 - **Shell 风格条件测试**：内置支持 Shell 风格的测试表达式（例如 `[ -f "file.txt" ]`）。
+- **代码混淆**：控制流扁平化、基本块洗牌、虚假块、VM 保护和字符串加密。
+- **JIT 编译**：内置 TCC (Tiny C Compiler) 集成，支持运行时 C 代码编译。
 
 ### 扩展模块
 
 | 模块 | 描述 |
-|--------|------------------------|
+|--------|-------------|
 | `json` | 内置 JSON 解析/序列化 |
 | `lclass` | OOP 支持（类、继承、接口） |
 | `lbitlib` | 位运算 |
@@ -31,9 +33,15 @@
 | `lsmgrlib` | 内存管理工具 |
 | `process` | 进程管理 (仅限 Linux) |
 | `http` | HTTP 客户端/服务端 & Socket |
-| `thread` | 多线程支持 |
+| `thread` | 多线程支持，包含互斥锁、条件变量和读写锁 |
 | `fs` | 文件系统操作 |
 | `struct` | C 风格结构体 & 数组 |
+| `ptr` | 指针操作库 |
+| `vm` | VM 内省和字节码操作 |
+| `tcc` | 通过 TCC 进行运行时 C 代码编译 |
+| `ByteCode` | 字节码操作和分析 |
+| `vmprotect` | 基于 VM 的代码保护 |
+| `translator` | 代码翻译工具 |
 
 ---
 
@@ -124,7 +132,7 @@ end
 
 ### 4. 面向对象编程 (OOP)
 
-完整的类和接口系统，支持修饰符（`private`、`public`、`static`、`final`、`abstract`、`sealed`）和属性（`get`/`set`）。
+完整的类和接口系统，支持修饰符（`private`、`public`、`protected`、`static`、`final`、`abstract`、`sealed`）和属性（`get`/`set`）。
 
 ```lua
 interface Drawable
@@ -140,6 +148,7 @@ end
 -- 密封类 (不可被继承)
 sealed class Circle extends Shape
     private _radius = 0
+    protected _id = 0
 
     function __init__(self, r)
         self._radius = r
@@ -167,6 +176,11 @@ end
 local c = Circle.create(10)
 c.radius = 20
 print(c.radius)  -- 20
+
+-- instanceof 检查
+if c instanceof Circle then
+    print("c is a Circle")
+end
 ```
 
 ### 5. 结构体与类型
@@ -337,6 +351,248 @@ asm(
 )
 ```
 
+### 10. 切片操作
+
+Python 风格的切片语法，支持表和字符串。
+
+```lua
+local arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+local slice1 = arr[1:5]      -- {1, 2, 3, 4, 5}
+local slice2 = arr[1:10:2]   -- {1, 3, 5, 7, 9}
+local slice3 = arr[5:]       -- {5, 6, 7, 8, 9, 10}
+local slice4 = arr[:5]       -- {1, 2, 3, 4, 5}
+local slice5 = arr[::-1]     -- {10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+```
+
+### 11. `in` 操作符
+
+检查值是否存在于容器中。
+
+```lua
+local arr = {1, 2, 3, 4, 5}
+if 3 in arr then
+    print("3 is in arr")
+end
+
+local str = "Hello World"
+if "World" in str then
+    print("Found 'World'")
+end
+```
+
+### 12. 类型提示
+
+支持类型注解和类型检查。
+
+```lua
+local function greet(name: string): string
+    return "Hello, " .. name
+end
+
+local x: int = 10
+local y: float = 3.14
+local flag: bool = true
+```
+
+---
+
+## 安全特性
+
+### 代码混淆
+
+LXCLUA-NCore 提供多种混淆技术：
+
+| 标志 | 描述 |
+|------|------|
+| `OBFUSCATE_CFF` | 控制流扁平化 |
+| `OBFUSCATE_BLOCK_SHUFFLE` | 随机化基本块顺序 |
+| `OBFUSCATE_BOGUS_BLOCKS` | 插入虚假基本块 |
+| `OBFUSCATE_STATE_ENCODE` | 混淆状态变量值 |
+| `OBFUSCATE_NESTED_DISPATCHER` | 多层调度器 |
+| `OBFUSCATE_OPAQUE_PREDICATES` | 不透明谓词 |
+| `OBFUSCATE_FUNC_INTERLEAVE` | 函数交错 |
+| `OBFUSCATE_VM_PROTECT` | VM 保护（自定义指令集） |
+| `OBFUSCATE_BINARY_DISPATCHER` | 二分查找调度器 |
+| `OBFUSCATE_RANDOM_NOP` | 插入随机 NOP 指令 |
+| `OBFUSCATE_STR_ENCRYPT` | 字符串常量加密 |
+
+```lua
+-- 混淆字节码
+local obfuscated = string.dump(func, false, OBFUSCATE_CFF | OBFUSCATE_STR_ENCRYPT)
+```
+
+### AES 加密
+
+内置 AES 加密支持（ECB、CBC、CTR 模式）。
+
+```lua
+local aes = require("aes")
+local key = "16-byte-key-1234"
+local iv = "initial-vector-16"
+local encrypted = aes.encrypt_cbc(plaintext, key, iv)
+local decrypted = aes.decrypt_cbc(encrypted, key, iv)
+```
+
+### SHA-256 哈希
+
+```lua
+local sha256 = require("sha256")
+local hash = sha256.hash("Hello World")
+```
+
+---
+
+## 多线程支持
+
+完整的多线程支持，包含同步原语。
+
+```lua
+local thread = require("thread")
+
+-- 互斥锁
+local m = thread.mutex()
+m:lock()
+-- 临界区
+m:unlock()
+
+-- 条件变量
+local cond = thread.cond()
+cond:wait(m)
+cond:signal()
+cond:broadcast()
+
+-- 读写锁
+local rwlock = thread.rwlock()
+rwlock:rdlock()  -- 读锁
+rwlock:wrlock()  -- 写锁
+rwlock:unlock()
+
+-- 线程创建
+local t = thread.create(function()
+    print("Running in thread")
+end)
+t:join()
+```
+
+---
+
+## TCC 集成 (JIT 编译)
+
+运行时编译和执行 C 代码。
+
+```lua
+local tcc = require("tcc")
+
+local code = [[
+    int add(int a, int b) {
+        return a + b;
+    }
+]]
+
+local state = tcc.new()
+state:compile(code)
+local add = state:get_symbol("add")
+print(add(1, 2))  -- 3
+```
+
+---
+
+## 扩展类型
+
+LXCLUA-NCore 扩展了 Lua 的类型系统：
+
+| 类型 | 描述 |
+|------|------|
+| `LUA_TSTRUCT` | C 风格结构体 |
+| `LUA_TPOINTER` | 原始指针类型 |
+| `LUA_TCONCEPT` | 类型谓词概念 |
+| `LUA_TNAMESPACE` | 命名空间类型 |
+| `LUA_TSUPERSTRUCT` | 增强表定义 |
+
+---
+
+## 大整数支持
+
+任意精度整数运算。
+
+```lua
+local bigint = require("bigint")
+
+local a = bigint.new("12345678901234567890")
+local b = bigint.new("98765432109876543210")
+local c = a + b
+print(c:tostring())  -- 111111111011111111100
+```
+
+---
+
+## HTTP & 网络
+
+```lua
+local http = require("http")
+
+-- HTTP GET
+local response = http.get("https://api.example.com/data")
+print(response.body)
+
+-- HTTP POST
+local result = http.post("https://api.example.com/submit", {
+    headers = { ["Content-Type"] = "application/json" },
+    body = '{"key": "value"}'
+})
+
+-- Socket 操作
+local sock = http.socket()
+sock:connect("example.com", 80)
+sock:send("GET / HTTP/1.0\r\n\r\n")
+local data = sock:recv(1024)
+sock:close()
+```
+
+---
+
+## 文件系统操作
+
+```lua
+local fs = require("fs")
+
+-- 文件操作
+local content = fs.read("file.txt")
+fs.write("output.txt", "Hello World")
+fs.append("log.txt", "New entry\n")
+
+-- 目录操作
+local files = fs.listdir("/path/to/dir")
+fs.mkdir("/path/to/new/dir")
+fs.rmdir("/path/to/dir")
+
+-- 路径工具
+local exists = fs.exists("file.txt")
+local is_dir = fs.isdir("path")
+local is_file = fs.isfile("file.txt")
+local size = fs.size("file.txt")
+```
+
+---
+
+## 字节码操作
+
+```lua
+local bytecode = require("ByteCode")
+
+-- 将函数转储为字节码
+local bc = bytecode.dump(function() print("Hello") end)
+
+-- 加载字节码
+local func = bytecode.load(bc)
+
+-- 分析字节码
+local info = bytecode.analyze(func)
+print("Instructions:", info.num_instructions)
+print("Constants:", info.num_constants)
+```
+
 ---
 
 ## 构建与测试
@@ -349,6 +605,9 @@ make linux
 
 # Windows (MinGW)
 make mingw
+
+# Android
+make android
 ```
 
 ### 验证
@@ -360,6 +619,43 @@ make mingw
 ./lxclua tests/test_parser_features.lua
 ./lxclua tests/test_advanced_parser.lua
 ```
+
+---
+
+## API 参考
+
+### 面向对象 API
+
+```c
+// 类创建和操作
+void lua_newclass(lua_State *L, const char *name);
+void lua_inherit(lua_State *L, int child_idx, int parent_idx);
+void lua_newobject(lua_State *L, int class_idx, int nargs);
+void lua_setmethod(lua_State *L, int class_idx, const char *name, int func_idx);
+void lua_setstatic(lua_State *L, int class_idx, const char *name, int value_idx);
+void lua_getprop(lua_State *L, int obj_idx, const char *key);
+void lua_setprop(lua_State *L, int obj_idx, const char *key, int value_idx);
+int  lua_instanceof(lua_State *L, int obj_idx, int class_idx);
+void lua_implement(lua_State *L, int class_idx, int interface_idx);
+```
+
+### 混淆 API
+
+```c
+int lua_dump_obfuscated(lua_State *L, lua_Writer writer, void *data,
+                        int strip, int obfuscate_flags, unsigned int seed,
+                        const char *log_path);
+```
+
+### 增强内存 API
+
+```c
+size_t lua_getmemoryusage(lua_State *L);
+void   lua_gc_force(lua_State *L);
+void   lua_table_iextend(lua_State *L, int idx, int n);
+```
+
+---
 
 ## 许可证
 
