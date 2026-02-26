@@ -610,11 +610,29 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
                 }
             } else {
                  /* Variable number of arguments from stack (B=0) */
-                 /* Function is at R[A] (a+1), arguments are from R[A+1] (a+2) to top */
-                 add_fmt(B, "    lua_call(L, lua_gettop(L) - %d, %d);\n", a + 1, nresults);
+                 if (p->is_vararg) {
+                     add_fmt(B, "    if (vtab_idx == lua_gettop(L)) {\n");
+                     add_fmt(B, "        int r = luaL_ref(L, LUA_REGISTRYINDEX);\n");
+                     add_fmt(B, "        lua_call(L, lua_gettop(L) - %d, %d);\n", a + 1, nresults);
+                     add_fmt(B, "        lua_rawgeti(L, LUA_REGISTRYINDEX, r);\n");
+                     add_fmt(B, "        luaL_unref(L, LUA_REGISTRYINDEX, r);\n");
+                     add_fmt(B, "        vtab_idx = lua_gettop(L);\n");
+                     add_fmt(B, "    } else {\n");
+                     add_fmt(B, "        lua_call(L, lua_gettop(L) - %d, %d);\n", a + 1, nresults);
+                     add_fmt(B, "    }\n");
+                 } else {
+                     add_fmt(B, "    lua_call(L, lua_gettop(L) - %d, %d);\n", a + 1, nresults);
+                 }
                  /* If fixed results (C!=0), restore stack frame size if needed */
                  if (c != 0) {
-                      add_fmt(B, "    lua_settop(L, %d);\n", p->maxstacksize);
+                      if (p->is_vararg) {
+                          add_fmt(B, "    lua_pushvalue(L, vtab_idx);\n");
+                          add_fmt(B, "    lua_replace(L, %d);\n", p->maxstacksize + 1);
+                          add_fmt(B, "    vtab_idx = %d;\n", p->maxstacksize + 1);
+                          add_fmt(B, "    lua_settop(L, %d);\n", p->maxstacksize + 1);
+                      } else {
+                          add_fmt(B, "    lua_settop(L, %d);\n", p->maxstacksize);
+                      }
                  }
             }
             add_fmt(B, "    }\n");
@@ -632,6 +650,9 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
                 add_fmt(B, "    return lua_gettop(L) - %d;\n", p->maxstacksize + (p->is_vararg ? 1 : 0));
             } else {
                  /* Variable number of arguments from stack (B=0) */
+                 if (p->is_vararg) {
+                     add_fmt(B, "    if (vtab_idx == lua_gettop(L)) lua_settop(L, lua_gettop(L) - 1);\n");
+                 }
                  add_fmt(B, "    lua_call(L, lua_gettop(L) - %d, LUA_MULTRET);\n", a + 1);
                  add_fmt(B, "    return lua_gettop(L) - %d;\n", a);
             }
@@ -648,6 +669,9 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
             } else if (nret == 0) {
                 add_fmt(B, "    return 0;\n");
             } else {
+                 if (p->is_vararg) {
+                     add_fmt(B, "    if (vtab_idx == lua_gettop(L)) lua_settop(L, lua_gettop(L) - 1);\n");
+                 }
                  add_fmt(B, "    return lua_gettop(L) - %d;\n", a);
             }
             break;
@@ -826,22 +850,29 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
         case OP_VARARG: {
             int a = GETARG_A(i);
             int nneeded = GETARG_C(i) - 1;
-            int vtab_idx = p->maxstacksize + 1;
 
             if (nneeded >= 0) {
+                add_fmt(B, "    if (%d + %d >= vtab_idx) {\n", a + 1, nneeded);
+                add_fmt(B, "        lua_settop(L, %d + %d + 1);\n", a + 1, nneeded);
+                add_fmt(B, "        lua_pushvalue(L, vtab_idx);\n");
+                add_fmt(B, "        lua_replace(L, %d + %d + 1);\n", a + 1, nneeded);
+                add_fmt(B, "        vtab_idx = %d + %d + 1;\n", a + 1, nneeded);
+                add_fmt(B, "    }\n");
                 add_fmt(B, "    for (int i=0; i<%d; i++) {\n", nneeded);
-                add_fmt(B, "        lua_rawgeti(L, %d, i+1);\n", vtab_idx);
+                add_fmt(B, "        lua_rawgeti(L, vtab_idx, i+1);\n");
                 add_fmt(B, "        lua_replace(L, %d + i);\n", a + 1);
                 add_fmt(B, "    }\n");
             } else {
                 add_fmt(B, "    {\n");
-                add_fmt(B, "        int nvar = (int)lua_rawlen(L, %d);\n", vtab_idx);
-                add_fmt(B, "        if (%d + nvar > %d) lua_settop(L, %d + nvar);\n", a, vtab_idx, a);
+                add_fmt(B, "        int nvar = (int)lua_rawlen(L, vtab_idx);\n");
+                add_fmt(B, "        lua_settop(L, %d + nvar + 1);\n", a + 1);
+                add_fmt(B, "        lua_pushvalue(L, vtab_idx);\n");
+                add_fmt(B, "        lua_replace(L, %d + nvar + 1);\n", a + 1);
+                add_fmt(B, "        vtab_idx = %d + nvar + 1;\n", a + 1);
                 add_fmt(B, "        for (int i=1; i<=nvar; i++) {\n");
-                add_fmt(B, "            lua_rawgeti(L, %d, i);\n", vtab_idx);
+                add_fmt(B, "            lua_rawgeti(L, vtab_idx, i);\n");
                 add_fmt(B, "            lua_replace(L, %d + i - 1);\n", a + 1);
                 add_fmt(B, "        }\n");
-                add_fmt(B, "        lua_settop(L, %d + nvar);\n", a);
                 add_fmt(B, "    }\n");
             }
             break;
@@ -849,7 +880,7 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
 
         case OP_GETVARG: {
             int c = GETARG_C(i);
-            add_fmt(B, "    lua_rawgeti(L, %d, lua_tointeger(L, %d));\n", p->maxstacksize + 1, c + 1);
+            add_fmt(B, "    lua_rawgeti(L, vtab_idx, lua_tointeger(L, %d));\n", c + 1);
             add_fmt(B, "    lua_replace(L, %d);\n", a + 1);
             break;
         }
@@ -970,7 +1001,17 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
 
             add_fmt(B, "    {\n");
             add_fmt(B, "        int n = %d;\n", n);
-            add_fmt(B, "        if (n == 0) n = lua_gettop(L) - %d;\n", a + 1);
+            add_fmt(B, "        if (n == 0) {\n");
+            if (p->is_vararg) {
+                add_fmt(B, "            if (vtab_idx == lua_gettop(L)) {\n");
+                add_fmt(B, "                n = lua_gettop(L) - %d - 1;\n", a + 1);
+                add_fmt(B, "            } else {\n");
+                add_fmt(B, "                n = lua_gettop(L) - %d;\n", a + 1);
+                add_fmt(B, "            }\n");
+            } else {
+                add_fmt(B, "            n = lua_gettop(L) - %d;\n", a + 1);
+            }
+            add_fmt(B, "        }\n");
             add_fmt(B, "        lua_pushvalue(L, %d); /* table */\n", a + 1);
             add_fmt(B, "        for (int j = 1; j <= n; j++) {\n");
             add_fmt(B, "            lua_pushvalue(L, %d + j);\n", a + 1);
@@ -978,7 +1019,14 @@ static void emit_instruction(luaL_Buffer *B, Proto *p, int pc, Instruction i, Pr
             add_fmt(B, "        }\n");
             add_fmt(B, "        lua_pop(L, 1);\n");
             if (n == 0) {
-                 add_fmt(B, "        lua_settop(L, %d);\n", p->maxstacksize);
+                 if (p->is_vararg) {
+                      add_fmt(B, "    lua_pushvalue(L, vtab_idx);\n");
+                      add_fmt(B, "    lua_replace(L, %d);\n", p->maxstacksize + 1);
+                      add_fmt(B, "    vtab_idx = %d;\n", p->maxstacksize + 1);
+                      add_fmt(B, "    lua_settop(L, %d);\n", p->maxstacksize + 1);
+                 } else {
+                      add_fmt(B, "    lua_settop(L, %d);\n", p->maxstacksize);
+                 }
             }
             add_fmt(B, "    }\n");
             break;
@@ -1389,6 +1437,7 @@ static void process_proto(luaL_Buffer *B, Proto *p, int id, ProtoInfo *protos, i
     add_fmt(B, "static int function_%d(lua_State *L) {\n", id);
 
     if (p->is_vararg) {
+        add_fmt(B, "    int vtab_idx = %d;\n", p->maxstacksize + 1);
         add_fmt(B, "    lua_tcc_prologue(L, %d, %d);\n", p->numparams, p->maxstacksize);
     } else {
         add_fmt(B, "    lua_settop(L, %d); /* Max Stack Size */\n", p->maxstacksize);

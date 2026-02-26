@@ -34,7 +34,9 @@ local function compile_and_load(name, code, use_pure_c)
     package.cpath = old_path
 
     if not ok then
-        error("Failed to require module " .. name .. ": " .. tostring(mod))
+        print("Require failed. Error object type: " .. type(mod))
+        print("Error: " .. tostring(mod))
+        error("Failed to require module " .. name)
     end
 
     print("Module " .. name .. " loaded successfully.")
