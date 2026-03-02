@@ -86,6 +86,7 @@ static void breakstat (LexState *ls);
 static void buildglobal (LexState *ls, TString *varname, expdesc *var);
 static int new_varkind (LexState *ls, TString *name, lu_byte kind);
 static void switchstat (LexState *ls, int line);  /* switch语句的前向声明 */
+static void matchstat (LexState *ls, int line);
 static void trystat (LexState *ls, int line);     /* try语句的前向声明 */
 static void withstat (LexState *ls, int line);    /* with语句的前向声明 */
 static void classstat (LexState *ls, int line, int class_flags, int isexport);   /* class语句的前向声明 */
@@ -1470,6 +1471,7 @@ static void fieldsel (LexState *ls, expdesc *v) {
       case TK_RETURN: ts = luaS_newliteral(ls->L, "return"); break;
       case TK_STRUCT: ts = luaS_newliteral(ls->L, "struct"); break;
       case TK_SWITCH: ts = luaS_newliteral(ls->L, "switch"); break;
+      case TK_MATCH: ts = luaS_newliteral(ls->L, "match"); break;
       case TK_TAKE: ts = luaS_newliteral(ls->L, "take"); break;
       case TK_THEN: ts = luaS_newliteral(ls->L, "then"); break;
       case TK_TRUE: ts = luaS_newliteral(ls->L, "true"); break;
@@ -3131,6 +3133,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
             case TK_REPEAT: ts = luaS_newliteral(ls->L, "repeat"); break;
             case TK_RETURN: ts = luaS_newliteral(ls->L, "return"); break;
             case TK_SWITCH: ts = luaS_newliteral(ls->L, "switch"); break;
+      case TK_MATCH: ts = luaS_newliteral(ls->L, "match"); break;
             case TK_TAKE: ts = luaS_newliteral(ls->L, "take"); break;
             case TK_THEN: ts = luaS_newliteral(ls->L, "then"); break;
             case TK_TRUE: ts = luaS_newliteral(ls->L, "true"); break;
@@ -4514,6 +4517,7 @@ static void cond_suffixedexp (LexState *ls, expdesc *v) {
             case TK_REPEAT: ts = luaS_newliteral(ls->L, "repeat"); break;
             case TK_RETURN: ts = luaS_newliteral(ls->L, "return"); break;
             case TK_SWITCH: ts = luaS_newliteral(ls->L, "switch"); break;
+      case TK_MATCH: ts = luaS_newliteral(ls->L, "match"); break;
             case TK_TAKE: ts = luaS_newliteral(ls->L, "take"); break;
             case TK_THEN: ts = luaS_newliteral(ls->L, "then"); break;
             case TK_TRUE: ts = luaS_newliteral(ls->L, "true"); break;
@@ -5227,6 +5231,174 @@ static void whenstat (LexState *ls, int line) {
 
 
 //===================================== SWITCH =============================================
+static void parse_pattern(LexState *ls, expdesc *ctrl, int *next_check_jump) {
+  FuncState *fs = ls->fs;
+
+  if (ls->t.token == TK_NAME && strcmp(getstr(ls->t.seminfo.ts), "_") == 0) {
+     luaX_next(ls);
+  } else if (ls->t.token == TK_NAME && luaX_lookahead(ls) != '=') {
+     TString *name = str_checkname(ls);
+     new_localvar(ls, name);
+     int reg = fs->nactvar;
+     adjustlocalvars(ls, 1);
+     if (fs->freereg < fs->nactvar) fs->freereg = fs->nactvar;
+     if (reg != ctrl->u.info) {
+        luaK_codeABC(fs, OP_MOVE, reg, ctrl->u.info, 0);
+     }
+  } else if (ls->t.token == '{') {
+     luaX_next(ls);
+     int idx = 1;
+     while (ls->t.token != '}' && ls->t.token != TK_EOS) {
+        expdesc key;
+
+        if (ls->t.token == '[') {
+           luaX_next(ls);
+           expr(ls, &key);
+           checknext(ls, ']');
+           checknext(ls, '=');
+        } else if (ls->t.token == TK_NAME) {
+           int la = luaX_lookahead(ls);
+           if (la == '=') {
+               codestring(&key, str_checkname(ls));
+               luaX_next(ls);
+           } else {
+               init_exp(&key, VKINT, idx++);
+           }
+        } else {
+           init_exp(&key, VKINT, idx++);
+        }
+
+        luaK_exp2anyregup(fs, &key);
+
+        int val_reg = fs->freereg;
+        luaK_reserveregs(fs, 1);
+        luaK_codeABC(fs, OP_GETTABLE, val_reg, ctrl->u.info, key.u.info);
+
+        /* Now shift val_reg down to nactvar to make room for local variables */
+        int target_reg = fs->nactvar;
+        if (val_reg != target_reg) {
+           luaK_codeABC(fs, OP_MOVE, target_reg, val_reg, 0);
+        }
+
+        /* Reset freereg to the end of the new 'val' */
+        fs->freereg = target_reg + 1;
+
+        expdesc val;
+        init_exp(&val, VNONRELOC, target_reg);
+
+        parse_pattern(ls, &val, next_check_jump);
+
+        if (testnext(ls, ',')) {}
+     }
+     check_match(ls, '}', '{', ls->linenumber);
+  } else {
+     expdesc e;
+     expdesc c = *ctrl;
+     int old_flags = ls->expr_flags;
+     ls->expr_flags |= E_NO_COLON;
+     expr(ls, &e);
+     ls->expr_flags = old_flags;
+
+     luaK_infix(fs, OPR_EQ, &c);
+     luaK_posfix(fs, OPR_EQ, &c, &e, ls->linenumber);
+
+     luaK_goiftrue(fs, &c);
+     luaK_concat(fs, next_check_jump, c.f);
+  }
+}
+
+static void matchstat (LexState *ls, int line) {
+  FuncState *fs = ls->fs;
+  BlockCnt bl;
+  expdesc ctrl;
+  int jump_to_check = NO_JUMP;
+  int finish_jump = NO_JUMP;
+
+  luaX_next(ls);  /* skip MATCH */
+
+  enterblock(fs, &bl, 1); /* isloop=1 to support break */
+
+  expr(ls, &ctrl); /* parse control expression */
+
+  /* Save control value to a local variable to ensure register safety */
+  luaK_exp2nextreg(fs, &ctrl);
+  new_localvarliteral(ls, "(match control)");
+  adjustlocalvars(ls, 1);
+
+  if(!testnext(ls, TK_DO)){
+      if(!testnext(ls, TK_THEN)){
+        if (!testnext(ls, ':')){
+          testnext(ls, '{');
+        }
+      }
+  }
+
+  jump_to_check = luaK_jump(fs);
+
+  while (ls->t.token != TK_END && ls->t.token != TK_EOS && ls->t.token != '}') {
+    if (ls->t.token == TK_CASE) {
+      int next_check_jump = NO_JUMP;
+
+      /* Now generating check code */
+      luaK_patchtohere(fs, jump_to_check);
+
+      luaX_next(ls); /* skip CASE */
+
+      BlockCnt case_bl;
+      enterblock(fs, &case_bl, 0);
+
+      /* Parse pattern and build next_check_jump for failures */
+      parse_pattern(ls, &ctrl, &next_check_jump);
+
+      /* Optional Guard */
+      if (testnext(ls, TK_IF)) {
+         expdesc cond;
+         expr(ls, &cond);
+         luaK_goiftrue(fs, &cond);
+         luaK_concat(fs, &next_check_jump, cond.f);
+      }
+
+      /* Body Start */
+      if (testnext(ls, TK_ARROW)) {
+         expdesc e;
+         expr(ls, &e);
+         luaK_exp2nextreg(fs, &e);
+         luaK_ret(fs, e.u.info, 1);
+      } else {
+         testnext(ls, ':');
+         testnext(ls, TK_DO);
+         testnext(ls, TK_THEN);
+         statlist(ls);
+      }
+
+      leaveblock(fs);
+
+      /* Jump to end of match if not returned */
+      luaK_concat(fs, &finish_jump, luaK_jump(fs));
+
+      jump_to_check = next_check_jump;
+    } else {
+       luaX_syntaxerror(ls, "expected 'case'");
+    }
+  }
+
+  /* Patch dangling checks (no case matched) */
+  luaK_patchtohere(fs, jump_to_check);
+
+  /* End of match */
+  if (finish_jump != NO_JUMP) {
+    luaK_patchtohere(fs, finish_jump);
+  }
+
+  if (ls->t.token == TK_END) {
+    luaX_next(ls);
+  } else {
+    check_match(ls, '}', '{', line);
+  }
+
+  leaveblock(fs);
+}
+
 static void switchstat (LexState *ls, int line) {
   FuncState *fs = ls->fs;
   BlockCnt bl;
@@ -11778,6 +11950,10 @@ static void statement (LexState *ls) {
     }
     case TK_SWITCH:{
       switchstat(ls, line);
+      break;
+    }
+    case TK_MATCH:{
+      matchstat(ls, line);
       break;
     }
     case TK_WHILE: {  /* stat -> whilestat */
