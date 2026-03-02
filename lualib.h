@@ -221,6 +221,19 @@ LUAMOD_API int (luaopen_struct) (lua_State *L);
 LUAMOD_API int (luaopen_fs) (lua_State *L);
 
 /**
+ * @brief Name of the plugin library.
+ */
+#define LUA_PLUGINLIBNAME	"plugin"
+
+/**
+ * @brief Opens the plugin library.
+ *
+ * @param L The Lua state.
+ * @return 1 (the library table).
+ */
+LUAMOD_API int (luaopen_plugin) (lua_State *L);
+
+/**
  * @brief Name of the translator library.
  */
 #define LUA_TRANSLATORLIBNAME	"translator"
