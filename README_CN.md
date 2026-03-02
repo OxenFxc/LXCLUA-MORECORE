@@ -343,6 +343,11 @@ asm(
        _print "Compiling this block"
     _endif
 
+    _if 0
+    _else
+       _print "Compile this instead"
+    _endif
+
     -- 嵌入数据
     -- db 1, 2, 3, 4
     -- str "RawData"

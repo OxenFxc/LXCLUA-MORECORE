@@ -343,6 +343,11 @@ asm(
        _print "Compiling this block"
     _endif
 
+    _if 0
+    _else
+       _print "Compile this instead"
+    _endif
+
     -- Embedding data
     -- db 1, 2, 3, 4
     -- str "RawData"

@@ -8411,7 +8411,11 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
               nest_level++;
             }
             else if (strcmp(name, "_endif") == 0 || strcmp(name, "asmend") == 0) {
-              nest_level--;
+              if (nest_level == 1) {
+                luaX_next(ls);
+                nest_level = 0;
+                break;
+              } else { nest_level--; }
             }
             else if (nest_level == 1 && (strcmp(name, "_else") == 0 || strcmp(name, "asmelse") == 0)) {
               /* 在同级遇到 _else，跳出循环并执行 else 分支 */
@@ -8441,7 +8445,10 @@ static void asmstat_ex (LexState *ls, int line, AsmContext *parent_ctx) {
             nest_level++;
           }
           else if (strcmp(name, "_endif") == 0 || strcmp(name, "asmend") == 0) {
-            nest_level--;
+            if (nest_level == 1) {
+              luaX_next(ls);
+              break;
+            } else { nest_level--; }
           }
         }
         luaX_next(ls);
