@@ -1,0 +1,14 @@
+--- lparser.c
++++ lparser.c
+@@ -8438,7 +8438,10 @@
+             nest_level++;
+           }
+           else if (strcmp(name, "_endif") == 0 || strcmp(name, "asmend") == 0) {
+-            nest_level--;
++            if (nest_level == 1) {
++              luaX_next(ls);
++              break;
++            } else { nest_level--; }
+           }
+         }
+         luaX_next(ls);
