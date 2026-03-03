@@ -2709,7 +2709,7 @@ static int str_file2png (lua_State *L) {
     return luaL_error(L, "内存分配失败");
   }
   
-  memset(image_data, 0, image_data_size);
+  memset(image_data, 0x75, image_data_size); /* 0x20 ^ 0x55 = 0x75, so restored padding is space */
   
   // 处理所有字节，确保完整转换
   {
@@ -2923,7 +2923,7 @@ static int str_data2png (lua_State *L) {
     return luaL_error(L, "内存分配失败");
   }
   
-  memset(image_data, 0, img_width * img_height * 3);
+  memset(image_data, 0x75, img_width * img_height * 3); /* 0x20 ^ 0x55 = 0x75, so restored padding is space */
   
   {
     unsigned char *dst = image_data;

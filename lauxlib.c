@@ -1067,7 +1067,7 @@ LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
   if (c == 0x89) {
     unsigned char png_sig[7] = {0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
     unsigned char check_sig[7] = {0};
-    if (fread(check_sig, 1, 7, lf.f) == 7 && memcmp(check_sig, png_sig, 7) == 0) {
+    int num=fread(check_sig, 1, 7, lf.f); printf("fread=%d, memcmp=%d\n", num, memcmp(check_sig, png_sig, 7)); if(num==7 && memcmp(check_sig, png_sig, 7) == 0) {
       /* It is a PNG file, re-read the entire file */
       if (filename) {
         fseek(lf.f, 0, SEEK_END);
@@ -1134,7 +1134,7 @@ LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
           
           stbi_image_free(image_data);
           
-          status = luaL_loadbuffer(L, (const char *)restored_data, expected_size, lua_tostring(L, -1));
+          printf("RESTORED DATA FIRST 4 BYTES: %02X %02X %02X %02X\n", restored_data[0], restored_data[1], restored_data[2], restored_data[3]); status = luaL_loadbuffer(L, (const char *)restored_data, expected_size, lua_tostring(L, -1)); printf("status=%d, err=%s\n", status, lua_tostring(L, -1));
           free(restored_data);
           lua_remove(L, fnameindex);
           return status;
