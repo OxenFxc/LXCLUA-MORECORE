@@ -203,6 +203,110 @@ static const luaL_Reg lexer_lib[] = {
     {NULL, NULL}
 };
 
+static const char *lexer_lua_ext =
+"local lexer = ...\n"
+"local function unquote(s)\n"
+"    return s:match('^\\'(.*)\\'$') or s\n"
+"end\n"
+"function lexer.to_code(tokens)\n"
+"    local out = {}\n"
+"    local prev_is_alnum = false\n"
+"    for _, t in ipairs(tokens) do\n"
+"        local str = ''\n"
+"        local is_alnum = false\n"
+"        if t.type == '<name>' then\n"
+"            str = t.value\n"
+"            is_alnum = true\n"
+"        elseif t.type == '<string>' or t.type == '<interpstring>' then\n"
+"            str = string.format('%q', t.value)\n"
+"        elseif t.type == '<rawstring>' then\n"
+"            str = '_raw' .. string.format('%q', t.value)\n"
+"        elseif t.type == '<integer>' or t.type == '<number>' then\n"
+"            str = tostring(t.value)\n"
+"            is_alnum = true\n"
+"        else\n"
+"            str = unquote(t.type)\n"
+"            if str:match('^[a-zA-Z_][a-zA-Z0-9_]*$') then\n"
+"                is_alnum = true\n"
+"            end\n"
+"        end\n"
+"        if prev_is_alnum and is_alnum then\n"
+"            table.insert(out, ' ')\n"
+"        end\n"
+"        table.insert(out, str)\n"
+"        prev_is_alnum = is_alnum\n"
+"    end\n"
+"    return table.concat(out)\n"
+"end\n"
+"local end_openers = {\n"
+"    [\"'do'\"] = true, [\"'if'\"] = true, [\"'while'\"] = true, [\"'for'\"] = true,\n"
+"    [\"'function'\"] = true, [\"'class'\"] = true, [\"'try'\"] = true,\n"
+"    [\"'switch'\"] = true, [\"'enum'\"] = true, [\"'interface'\"] = true,\n"
+"    [\"'namespace'\"] = true\n"
+"}\n"
+"function lexer.find_match(tokens, start_pos)\n"
+"    local t_start = tokens[start_pos]\n"
+"    if not t_start then return nil end\n"
+"    local target_closer\n"
+"    local is_end_group = false\n"
+"    if end_openers[t_start.type] then\n"
+"        target_closer = \"'end'\"\n"
+"        is_end_group = true\n"
+"    elseif t_start.type == \"'repeat'\" then target_closer = \"'until'\"\n"
+"    elseif t_start.type == \"'('\" then target_closer = \"')'\"\n"
+"    elseif t_start.type == \"'['\" then target_closer = \"']'\"\n"
+"    elseif t_start.type == \"'{'\" then target_closer = \"'}'\"\n"
+"    else return nil end\n"
+"    local stack = 1\n"
+"    for i = start_pos + 1, #tokens do\n"
+"        local t = tokens[i]\n"
+"        if is_end_group then\n"
+"            if end_openers[t.type] then stack = stack + 1\n"
+"            elseif t.type == target_closer then stack = stack - 1 end\n"
+"        else\n"
+"            if t.type == t_start.type then stack = stack + 1\n"
+"            elseif t.type == target_closer then stack = stack - 1 end\n"
+"        end\n"
+"        if stack == 0 then return i end\n"
+"    end\n"
+"    return nil\n"
+"end\n"
+"function lexer.build_tree(tokens)\n"
+"    local root = { type = 'Root', children = {} }\n"
+"    local stack = { root }\n"
+"    for i, t in ipairs(tokens) do\n"
+"        if end_openers[t.type] or t.type == \"'repeat'\" or t.type == \"'('\" or t.type == \"'['\" or t.type == \"'{'\" then\n"
+"            local node = { type = 'Block', opener = t, children = {} }\n"
+"            table.insert(stack[#stack].children, node)\n"
+"            table.insert(stack, node)\n"
+"        elseif t.type == \"'end'\" or t.type == \"'until'\" or t.type == \"')'\" or t.type == \"']'\" or t.type == \"'}'\" then\n"
+"            local current = stack[#stack]\n"
+"            if current.type == 'Block' then\n"
+"                current.closer = t\n"
+"                table.remove(stack)\n"
+"            else\n"
+"                table.insert(current.children, t)\n"
+"            end\n"
+"        else\n"
+"            table.insert(stack[#stack].children, t)\n"
+"        end\n"
+"    end\n"
+"    return root\n"
+"end\n"
+"function lexer.flatten_tree(node, out)\n"
+"    out = out or {}\n"
+"    if node.opener then table.insert(out, node.opener) end\n"
+"    for _, child in ipairs(node.children or {}) do\n"
+"        if child.type == 'Block' then\n"
+"            lexer.flatten_tree(child, out)\n"
+"        else\n"
+"            table.insert(out, child)\n"
+"        end\n"
+"    end\n"
+"    if node.closer then table.insert(out, node.closer) end\n"
+"    return out\n"
+"end\n";
+
 #define REG_TK(L, tk) \
   lua_pushinteger(L, tk); \
   lua_setfield(L, -2, #tk)
@@ -311,6 +415,15 @@ LUAMOD_API int luaopen_lexer(lua_State *L) {
     REG_TK(L, TK_WHEN);
     REG_TK(L, TK_WHILE);
     REG_TK(L, TK_WITH);
+
+    /* Load and execute Lua extension */
+    if (luaL_loadstring(L, lexer_lua_ext) == LUA_OK) {
+        lua_pushvalue(L, -2); /* push the lexer module table */
+        lua_call(L, 1, 0);    /* call the extension script */
+    } else {
+        /* If there's a syntax error in the extension, raise it */
+        return lua_error(L);
+    }
 
     return 1;
 }
