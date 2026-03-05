@@ -379,8 +379,11 @@ static int lexer_reconstruct(lua_State *L) {
             if (lua_isstring(L, -1) || lua_isnumber(L, -1)) {
                 if (token == TK_STRING || token == TK_RAWSTRING || token == TK_INTERPSTRING) {
                     /* Use luaO_pushfstring with %q to properly escape */
-                                                            size_t slen;
+                    size_t slen;
                     const char *sval = lua_tolstring(L, -1, &slen);
+                    if (token == TK_RAWSTRING) {
+                        luaL_addstring(&b, "_raw");
+                    }
                     addquoted(&b, sval, slen);
                 } else {
                     luaL_addstring(&b, lua_tostring(L, -1));
