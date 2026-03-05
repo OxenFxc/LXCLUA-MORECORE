@@ -160,30 +160,157 @@ static int lexer_lex(lua_State *L) {
     return 1;
 }
 
+static int lexer_token2str(lua_State *L) {
+    int token = luaL_checkinteger(L, 1);
+
+    if (token > TK_RAWSTRING || token < 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    if (token < FIRST_RESERVED) {
+        /* single-byte symbols */
+        char s[2] = {(char)token, '\0'};
+        lua_pushstring(L, s);
+    } else {
+        /* reserved words and other tokens */
+        /* We use luaX_token2str with a dummy LexState to get the string representation.
+           Some tokens cause luaX_token2str to push the string onto the stack,
+           while others just return a const char*. We handle both cases using lua_gettop. */
+        LexState dummy_ls;
+        memset(&dummy_ls, 0, sizeof(LexState));
+        dummy_ls.L = L;
+
+        int top = lua_gettop(L);
+        const char *str = luaX_token2str(&dummy_ls, token);
+        if (str) {
+            if (lua_gettop(L) == top) {
+                /* luaX_token2str returned a string but didn't push it */
+                lua_pushstring(L, str);
+            }
+            return 1;
+        } else {
+            lua_pushnil(L);
+            return 1;
+        }
+    }
+    return 1;
+}
+
 static const luaL_Reg lexer_lib[] = {
     {"lex", lexer_lex},
+    {"token2str", lexer_token2str},
     {NULL, NULL}
 };
+
+#define REG_TK(L, tk) \
+  lua_pushinteger(L, tk); \
+  lua_setfield(L, -2, #tk)
 
 LUAMOD_API int luaopen_lexer(lua_State *L) {
     luaL_newlib(L, lexer_lib);
 
     /* Register token constants */
-    /* Let's just register a few common ones for ease of use, or we can iterate if we want */
-    lua_pushinteger(L, TK_NAME);
-    lua_setfield(L, -2, "TK_NAME");
-
-    lua_pushinteger(L, TK_STRING);
-    lua_setfield(L, -2, "TK_STRING");
-
-    lua_pushinteger(L, TK_INT);
-    lua_setfield(L, -2, "TK_INT");
-
-    lua_pushinteger(L, TK_FLT);
-    lua_setfield(L, -2, "TK_FLT");
-
-    lua_pushinteger(L, TK_EOS);
-    lua_setfield(L, -2, "TK_EOS");
+    REG_TK(L, TK_ADDEQ);
+    REG_TK(L, TK_AND);
+    REG_TK(L, TK_ARROW);
+    REG_TK(L, TK_ASM);
+    REG_TK(L, TK_ASYNC);
+    REG_TK(L, TK_AWAIT);
+    REG_TK(L, TK_BANDEQ);
+    REG_TK(L, TK_BOOL);
+    REG_TK(L, TK_BOREQ);
+    REG_TK(L, TK_BREAK);
+    REG_TK(L, TK_BXOREQ);
+    REG_TK(L, TK_CASE);
+    REG_TK(L, TK_CATCH);
+    REG_TK(L, TK_CHAR);
+    REG_TK(L, TK_COMMAND);
+    REG_TK(L, TK_CONCAT);
+    REG_TK(L, TK_CONCATEQ);
+    REG_TK(L, TK_CONCEPT);
+    REG_TK(L, TK_CONST);
+    REG_TK(L, TK_CONTINUE);
+    REG_TK(L, TK_DBCOLON);
+    REG_TK(L, TK_DEFAULT);
+    REG_TK(L, TK_DEFER);
+    REG_TK(L, TK_DIVEQ);
+    REG_TK(L, TK_DO);
+    REG_TK(L, TK_DOLLAR);
+    REG_TK(L, TK_DOLLDOLL);
+    REG_TK(L, TK_DOTS);
+    REG_TK(L, TK_DOUBLE);
+    REG_TK(L, TK_ELSE);
+    REG_TK(L, TK_ELSEIF);
+    REG_TK(L, TK_END);
+    REG_TK(L, TK_ENUM);
+    REG_TK(L, TK_EOS);
+    REG_TK(L, TK_EQ);
+    REG_TK(L, TK_EXPORT);
+    REG_TK(L, TK_FALSE);
+    REG_TK(L, TK_FINALLY);
+    REG_TK(L, TK_FLT);
+    REG_TK(L, TK_FOR);
+    REG_TK(L, TK_FUNCTION);
+    REG_TK(L, TK_GE);
+    REG_TK(L, TK_GLOBAL);
+    REG_TK(L, TK_GOTO);
+    REG_TK(L, TK_IDIV);
+    REG_TK(L, TK_IDIVEQ);
+    REG_TK(L, TK_IF);
+    REG_TK(L, TK_IN);
+    REG_TK(L, TK_INT);
+    REG_TK(L, TK_INTERPSTRING);
+    REG_TK(L, TK_IS);
+    REG_TK(L, TK_KEYWORD);
+    REG_TK(L, TK_LAMBDA);
+    REG_TK(L, TK_LE);
+    REG_TK(L, TK_LET);
+    REG_TK(L, TK_LOCAL);
+    REG_TK(L, TK_LONG);
+    REG_TK(L, TK_MEAN);
+    REG_TK(L, TK_MODEQ);
+    REG_TK(L, TK_MULEQ);
+    REG_TK(L, TK_NAME);
+    REG_TK(L, TK_NAMESPACE);
+    REG_TK(L, TK_NE);
+    REG_TK(L, TK_NIL);
+    REG_TK(L, TK_NOT);
+    REG_TK(L, TK_NULLCOAL);
+    REG_TK(L, TK_OPERATOR);
+    REG_TK(L, TK_OPTCHAIN);
+    REG_TK(L, TK_OR);
+    REG_TK(L, TK_PIPE);
+    REG_TK(L, TK_PLUSPLUS);
+    REG_TK(L, TK_RAWSTRING);
+    REG_TK(L, TK_REPEAT);
+    REG_TK(L, TK_REQUIRES);
+    REG_TK(L, TK_RETURN);
+    REG_TK(L, TK_REVPIPE);
+    REG_TK(L, TK_SAFEPIPE);
+    REG_TK(L, TK_SHL);
+    REG_TK(L, TK_SHLEQ);
+    REG_TK(L, TK_SHR);
+    REG_TK(L, TK_SHREQ);
+    REG_TK(L, TK_SPACESHIP);
+    REG_TK(L, TK_STRING);
+    REG_TK(L, TK_STRUCT);
+    REG_TK(L, TK_SUBEQ);
+    REG_TK(L, TK_SUPERSTRUCT);
+    REG_TK(L, TK_SWITCH);
+    REG_TK(L, TK_TAKE);
+    REG_TK(L, TK_THEN);
+    REG_TK(L, TK_TRUE);
+    REG_TK(L, TK_TRY);
+    REG_TK(L, TK_TYPE_FLOAT);
+    REG_TK(L, TK_TYPE_INT);
+    REG_TK(L, TK_UNTIL);
+    REG_TK(L, TK_USING);
+    REG_TK(L, TK_VOID);
+    REG_TK(L, TK_WALRUS);
+    REG_TK(L, TK_WHEN);
+    REG_TK(L, TK_WHILE);
+    REG_TK(L, TK_WITH);
 
     return 1;
 }
