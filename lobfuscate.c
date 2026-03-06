@@ -655,6 +655,11 @@ int luaO_encodeState (int state, unsigned int seed) {
   int encoded = ((state * prime) % range + offset) % range;
   if (encoded < 0) encoded += range;
   
+  /* CFF Enhancement: Add XOR encoding, then mod range to keep it strictly bounded */
+  encoded ^= 0x5A5A;
+  encoded %= range;
+  if (encoded < 0) encoded += range;
+
   return encoded;
 }
 
@@ -741,9 +746,9 @@ static int emitInstruction (CFFContext *ctx, Instruction inst) {
 */
 
 /* 虚假块数量（基于真实块数量的倍数） */
-#define BOGUS_BLOCK_RATIO  2  /* 每个真实块生成2个虚假块 */
-#define BOGUS_BLOCK_MIN_INSTS  3  /* 虚假块最少指令数 */
-#define BOGUS_BLOCK_MAX_INSTS  8  /* 虚假块最多指令数 */
+#define BOGUS_BLOCK_RATIO  4  /* 每个真实块生成4个虚假块 */
+#define BOGUS_BLOCK_MIN_INSTS  4  /* 虚假块最少指令数 */
+#define BOGUS_BLOCK_MAX_INSTS  12  /* 虚假块最多指令数 */
 
 /* 函数交织常量（在这里定义以便 luaO_generateDispatcher 使用） */
 #define NUM_FAKE_FUNCTIONS  3   /* 虚假函数数量 */
@@ -843,9 +848,9 @@ static int emitBinarySearch (CFFContext *ctx, StateBlock *sb, int low, int high,
 }
 
 /* 虚假块数量（基于真实块数量的倍数） */
-#define BOGUS_BLOCK_RATIO  2  /* 每个真实块生成2个虚假块 */
-#define BOGUS_BLOCK_MIN_INSTS  3  /* 虚假块最少指令数 */
-#define BOGUS_BLOCK_MAX_INSTS  8  /* 虚假块最多指令数 */
+#define BOGUS_BLOCK_RATIO  4  /* 每个真实块生成4个虚假块 */
+#define BOGUS_BLOCK_MIN_INSTS  4  /* 虚假块最少指令数 */
+#define BOGUS_BLOCK_MAX_INSTS  12  /* 虚假块最多指令数 */
 
 /* 生成一条随机的虚假指令 */
 static Instruction generateBogusInstruction (CFFContext *ctx, unsigned int *seed) {
@@ -876,6 +881,9 @@ static Instruction generateBogusInstruction (CFFContext *ctx, unsigned int *seed
     case 6: return CREATE_ABCk(OP_LEN, reg, (*seed % max_reg), 0, 0);
     case 7: return CREATE_ABCk(OP_SHLI, reg, (*seed % max_reg), int2sC(value % 31), 0);
     case 8: return CREATE_ABCk(OP_BNOT, reg, (*seed % max_reg), 0, 0);
+    case 9: return CREATE_ABCk(OP_BAND, reg, (*seed % max_reg), ((*seed >> 4) % max_reg), 0);
+    case 10: return CREATE_ABCk(OP_BOR, reg, (*seed % max_reg), ((*seed >> 4) % max_reg), 0);
+    case 11: return CREATE_ABCk(OP_BXOR, reg, (*seed % max_reg), ((*seed >> 4) % max_reg), 0);
     default: return CREATE_ABx(OP_LOADI, reg, (*seed % 2000) + OFFSET_sBx);
   }
 }
@@ -2969,6 +2977,10 @@ static VMInstruction encryptVMInstruction (VMInstruction inst, uint64_t key, int
   uint64_t modified_key = key ^ ((uint64_t)pc * 0x9E3779B97F4A7C15ULL);
   encrypted ^= modified_key;
   
+  /* 第三轮：常数加法和异或 */
+  encrypted += 0x1234567890ABCDEFULL;
+  encrypted ^= 0xDEADBEEFCAFEBABEULL;
+
   return encrypted;
 }
 
@@ -2983,6 +2995,10 @@ static VMInstruction encryptVMInstruction (VMInstruction inst, uint64_t key, int
 static VMInstruction decryptVMInstruction (VMInstruction inst, uint64_t key, int pc) {
   uint64_t decrypted = inst;
   
+  /* 逆向第三轮 */
+  decrypted ^= 0xDEADBEEFCAFEBABEULL;
+  decrypted -= 0x1234567890ABCDEFULL;
+
   /* 逆向第二轮XOR */
   uint64_t modified_key = key ^ ((uint64_t)pc * 0x9E3779B97F4A7C15ULL);
   decrypted ^= modified_key;
@@ -3105,14 +3121,67 @@ static int floatforloop (lua_State *L, StkId ra) {
 */
 static int convertLuaInstToVM (VMProtectContext *ctx, Instruction inst, int pc) {
   OpCode lua_op = GET_OPCODE(inst);
+
+  /* 指令替换：将特定的数学/逻辑操作替换为其等价形式 */
+  /* 例如: a + b == a - (-b) */
+  /* 如果是 OP_ADD (但没有常量)，我们可以将其替换为某种混淆 */
+  /* 在这里我们做一些简单的混淆转换（仅在 VM 内部替换映射，以使得逆向更加困难）*/
+  /* 注意：因为这可能改变执行语义，我们在这里暂时不替换 opcode 本身，而是交由外部逻辑 */
+
   int vm_op = ctx->opcode_map[lua_op];
   int a = GETARG_A(inst);
+  int b = GETARG_B(inst);
+  int c = GETARG_C(inst);
+  int k = GETARG_k(inst);
   uint64_t vm_inst;
   enum OpMode mode = getOpMode(lua_op);
+
+  /* Instruction Substitution: Map ADD and SUB to custom obfuscated EXT1 and EXT2 */
+  if (lua_op == OP_ADD) {
+    if ((pc % 2) == 0) {
+      vm_op = VM_OP_EXT1;
+    }
+  } else if (lua_op == OP_SUB) {
+    if ((pc % 2) == 0) {
+      vm_op = VM_OP_EXT2;
+    }
+  }
+
+  /* Number Obfuscation (Literal Obfuscation)
+  ** If it is OP_LOADI, we can split it. However, OP_LOADI takes sBx as argument.
+  ** We can emit two VM instructions to load it but it changes PC offsets.
+  ** Since JMPs refer to PC offsets, changing the number of emitted instructions
+  ** will break jump targets unless we rebuild the entire CFG.
+  **
+  ** So instead we keep the PC mapping 1:1, but we apply strong XOR encryption
+  ** below. To implement true instruction substitution without breaking JMPs,
+  ** we encode the substitution within the VM instruction payload if possible.
+  **
+  ** Let's modify the instruction's arguments directly for OP_ADD -> OP_SUB
+  ** actually, that's not easily possible because OP_SUB requires the second operand to be negative
+  ** which needs a runtime check. We will skip OP_ADD -> OP_SUB here due to register constraints.
+  */
+
   switch (mode) {
     case iABx:
     case iAsBx:
-      vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)GETARG_Bx(inst));
+      if (lua_op == OP_LOADI) {
+        /* Encrypt the literal integer with a constant */
+        int64_t val = (int64_t)GETARG_Bx(inst);
+        /* Note: OP_LOADI uses sBx = Bx - OFFSET_sBx. But the raw field is Bx. */
+        /* This is just a conceptual note; we encode Bx directly and handle it in decrypt if needed,
+           but here we're just shifting the representation if possible. Wait, VM execution maps 1:1 to Lua VM,
+           so modifying Bx here requires inverse modification during execution, which breaks vanilla Lua VM execution
+           unless we intercept it in `luaO_executeVM`. */
+
+        /* We'll use a safer approach: modify the argument inside `convertLuaInstToVM`
+           and un-modify it inside `luaO_executeVM` OP_LOADI case. */
+        int64_t original_bx = (int64_t)GETARG_Bx(inst);
+        int64_t obf_bx = original_bx ^ 0x5555;
+        vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)obf_bx);
+      } else {
+        vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)GETARG_Bx(inst));
+      }
       break;
     case iAx:
       vm_inst = VM_MAKE_INST_BX(vm_op, 0, (uint64_t)GETARG_Ax(inst));
@@ -3121,10 +3190,11 @@ static int convertLuaInstToVM (VMProtectContext *ctx, Instruction inst, int pc) 
       vm_inst = VM_MAKE_INST_BX(vm_op, 0, (uint64_t)(GETARG_sJ(inst) + OFFSET_sJ));
       break;
     case ivABC:
-      vm_inst = VM_MAKE_INST(vm_op, a, GETARG_vB(inst), GETARG_vC(inst), GETARG_k(inst));
+      /* Not currently substituting ivABC but using original macro logic */
+      vm_inst = VM_MAKE_INST(vm_op, a, GETARG_vB(inst), GETARG_vC(inst), k);
       break;
     default:
-      vm_inst = VM_MAKE_INST(vm_op, a, GETARG_B(inst), GETARG_C(inst), GETARG_k(inst));
+      vm_inst = VM_MAKE_INST(vm_op, a, b, c, k);
       break;
   }
   VMInstruction encrypted = encryptVMInstruction(vm_inst, ctx->encrypt_key, pc);
@@ -3366,6 +3436,10 @@ void luaO_freeAllVMCode (lua_State *L) {
 static VMInstruction decryptVMInst (VMInstruction encrypted, uint64_t key, int pc) {
   uint64_t decrypted = encrypted;
   
+  /* 逆向第三轮 */
+  decrypted ^= 0xDEADBEEFCAFEBABEULL;
+  decrypted -= 0x1234567890ABCDEFULL;
+
   /* 逆向加密过程 */
   /* 第二轮XOR (逆向) */
   uint64_t modified_key = key ^ ((uint64_t)pc * 0x9E3779B97F4A7C15ULL);
@@ -3441,13 +3515,24 @@ int luaO_executeVM (lua_State *L, Proto *f) {
 
     if (lua_op < 0 || lua_op >= NUM_OPCODES) {
        if (vm_op == VM_OP_HALT) return 0;
-       ci->u.l.savedpc = (const Instruction *)(f->code + pc);
-       return 1;
+       if (vm_op == VM_OP_EXT1) {
+           lua_op = OP_ADD;
+       } else if (vm_op == VM_OP_EXT2) {
+           lua_op = OP_SUB;
+       } else {
+           ci->u.l.savedpc = (const Instruction *)(f->code + pc);
+           return 1;
+       }
     }
 
     switch (lua_op) {
       case OP_MOVE: { setobjs2s(L, base + a, base + b); break; }
-      case OP_LOADI: { setivalue(s2v(base + a), (lua_Integer)(bx - OFFSET_sBx)); break; }
+      case OP_LOADI: {
+        /* Revert number obfuscation */
+        int64_t real_bx = bx ^ 0x5555;
+        setivalue(s2v(base + a), (lua_Integer)(real_bx - OFFSET_sBx));
+        break;
+      }
       case OP_LOADK: {
         if (bx >= 0 && bx < f->sizek) {
           TValue *rb = k + bx;
