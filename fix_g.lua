@@ -1,0 +1,15 @@
+-- The error is on line 98: attempt to call a nil value.
+-- Line 98: `_G [ ( "\"" .. "p" .. "r" .. "i" .. "n" .. "t" .. "\"" ) ] ( ... )`
+-- Wait! `_G['"print"']` is nil! It should be `_G["print"]`!
+-- Where did the extra quotes come from?
+-- Oh, `local g_toks = split_string_to_tokens('"'..r.value..'"', r.line)`
+-- `r.value` is `print`. So I passed `"print"`.
+-- Wait! `split_string_to_tokens` strips the outer quotes if it sees them:
+-- `if inner:sub(1,1) == '"' or inner:sub(1,1) == "'" then inner = str_val:sub(2, -2) end`
+-- But `str_val` is `"print"`.
+-- So `inner` becomes `print`.
+-- Wait, `split_string_to_tokens` has: `val = c` then `table.insert(..., value='"' .. val .. '"')`.
+-- In `split_string_to_tokens` inside `lexer_cff_god_mode.lua`:
+-- Ah, `str_val` was `"print"` (with quotes). `inner` became `print`.
+-- The output is `("\"" .. "p" .. ...)` ? Why `\"`?
+-- Let's check `lexer_cff_god_mode.lua` split_string_to_tokens.

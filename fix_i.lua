@@ -1,0 +1,10 @@
+-- The error is: attempt to compare number with nil
+-- Looking at line 90 equivalent:
+-- for i = ((((1 + 45) ~ 865) ~ 865) - 45) , ((((3 + 17) ~ 881) ~ 881) - 17) do local step = __M[i] * ...
+-- Wait! `__M[i]` ??
+-- Oh! The variable `i` was bypassed in `var_map` (`var_map[r.value] = r.value`),
+-- so `var_map["i"] = "i"`.
+-- Then later, when we encounter `i`, we do:
+-- `if var_map[r.value] then ... "__M["..var_map[r.value].."]" ...`
+-- So `i` becomes `__M[i]`. But `__M["i"]` is nil! (The array __M has numeric indices, not string keys!).
+-- Ah! If it's a bypassed variable, we must output it as a raw identifier `i`, NOT wrap it in `__M[i]`!
