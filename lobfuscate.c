@@ -876,11 +876,20 @@ static Instruction generateBogusInstruction (CFFContext *ctx, unsigned int *seed
   }
 }
 
-/* Emit a sequence of junk instructions (花指令) guarded by an OP_JMP */
+/* Emit a sequence of junk instructions (花指令) guarded by an OP_JMP or opaque predicate */
 static int emitJunkSequence(CFFContext *ctx) {
     int num_nops = 2 + (ctx->seed % 5);
+
+    NEXT_RAND(ctx->seed);
+    int use_opaque = (ctx->seed % 2) && (ctx->obfuscate_flags & OBFUSCATE_OPAQUE_PREDICATES);
+
+    if (use_opaque) {
+        if (luaO_emitOpaquePredicate(ctx, OP_ALWAYS_TRUE, &ctx->seed) < 0) return -1;
+    }
+
     Instruction jmp_over_junk = CREATE_sJ(OP_JMP, num_nops + OFFSET_sJ, 0);
     if (emitInstruction(ctx, jmp_over_junk) < 0) return -1;
+
     for (int i = 0; i < num_nops; i++) {
         NEXT_RAND(ctx->seed);
         /* Use bogus instructions, random NOPs, or short forward jumps to confuse disassemblers */
@@ -2335,7 +2344,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       /* 注意：不使用 MMBIN，因为它会干扰 VM 执行流程 */
       
       /* GEI reg2, 0, k=0 (reg2 >= 0 ? skip next) */
-      Instruction cmp = CREATE_ABCk(OP_GEI, reg2, int2sC(0), 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_GEI, reg2, int2sC(0), 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2351,7 +2360,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, addi) < 0) return -1;
       
       /* EQ reg2, reg1, k=0 (reg2 == reg1 ? 恒真) */
-      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2371,7 +2380,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, sub) < 0) return -1;
       
       /* EQ reg2, reg1, k=0 (reg2 == reg1 ? 恒真) */
-      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2387,7 +2396,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, sub) < 0) return -1;
       
       /* EQI reg2, 0, k=0 (reg2 == 0 ? 恒真) */
-      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2407,8 +2416,8 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       Instruction bor_inst = CREATE_ABCk(OP_BOR, reg2, reg1, reg2, 0);
       if (emitInstruction(ctx, bor_inst) < 0) return -1;
       
-      /* EQI reg2, 0, k=1 (reg2 != 0 ? 恒真) */
-      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 1);
+      /* EQI reg2, 0, k=0 (reg2 == 0 is false, so we want k=0 to fall through) */
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2419,7 +2428,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, load) < 0) return -1;
       Instruction bxor = CREATE_ABCk(OP_BXOR, reg2, reg1, reg1, 0);
       if (emitInstruction(ctx, bxor) < 0) return -1;
-      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2431,7 +2440,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, load0) < 0) return -1;
       Instruction band = CREATE_ABCk(OP_BAND, reg2, reg1, reg2, 0);
       if (emitInstruction(ctx, band) < 0) return -1;
-      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(0), 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2443,7 +2452,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, load0) < 0) return -1;
       Instruction bor = CREATE_ABCk(OP_BOR, reg2, reg1, reg2, 0);
       if (emitInstruction(ctx, bor) < 0) return -1;
-      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2453,7 +2462,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, load) < 0) return -1;
       Instruction band = CREATE_ABCk(OP_BAND, reg2, reg1, reg1, 0);
       if (emitInstruction(ctx, band) < 0) return -1;
-      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQ, reg2, reg1, 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -2465,7 +2474,7 @@ static int emitAlwaysTruePredicate (CFFContext *ctx, unsigned int *seed) {
       if (emitInstruction(ctx, loadm1) < 0) return -1;
       Instruction bor = CREATE_ABCk(OP_BOR, reg2, reg1, reg2, 0);
       if (emitInstruction(ctx, bor) < 0) return -1;
-      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(-1), 0, 0);
+      Instruction cmp = CREATE_ABCk(OP_EQI, reg2, int2sC(-1), 0, 1);
       if (emitInstruction(ctx, cmp) < 0) return -1;
       break;
     }
@@ -3206,22 +3215,34 @@ static int convertLuaInstToVM (VMProtectContext *ctx, Instruction inst, int pc) 
   uint64_t vm_inst;
   enum OpMode mode = getOpMode(lua_op);
 
-  /* Instruction Substitution: Map ADD and SUB to custom obfuscated EXT1 and EXT2 */
+  /* Instruction Substitution: Map operations to custom obfuscated EXTx */
   if (lua_op == OP_ADD) {
-    if ((pc % 2) == 0) {
+    if ((pc % 3) != 0) {
       vm_op = VM_OP_EXT1;
     }
   } else if (lua_op == OP_SUB) {
-    if ((pc % 2) == 0) {
+    if ((pc % 3) != 0) {
       vm_op = VM_OP_EXT2;
     }
   } else if (lua_op == OP_MUL) {
-    if ((pc % 2) == 0) {
+    if ((pc % 3) != 0) {
       vm_op = VM_OP_EXT3;
     }
   } else if (lua_op == OP_BXOR) {
-    if ((pc % 2) == 0) {
+    if ((pc % 3) != 0) {
       vm_op = VM_OP_EXT4;
+    }
+  } else if (lua_op == OP_BAND) {
+    if ((pc % 3) != 0) {
+      vm_op = VM_OP_EXT5;
+    }
+  } else if (lua_op == OP_BOR) {
+    if ((pc % 3) != 0) {
+      vm_op = VM_OP_EXT6;
+    }
+  } else if (lua_op == OP_BNOT) {
+    if ((pc % 3) != 0) {
+      vm_op = VM_OP_EXT7;
     }
   }
 
@@ -3244,9 +3265,11 @@ static int convertLuaInstToVM (VMProtectContext *ctx, Instruction inst, int pc) 
     case iABx:
     case iAsBx:
       if (lua_op == OP_LOADI || lua_op == OP_LOADF) {
-        /* Encrypt the literal integer/float with a constant */
+        /* Encrypt the literal integer/float with a combination of XOR, ADD, and SUB */
         int64_t original_bx = (int64_t)GETARG_Bx(inst);
-        int64_t obf_bx = original_bx ^ ((ctx->encrypt_key ^ pc) & 0xFFFFFFFF);
+        int64_t step1 = original_bx ^ ((ctx->encrypt_key ^ pc) & 0xFFFFFFFF);
+        int64_t step2 = step1 + ((ctx->encrypt_key >> 32) & 0xFFFFFFFF);
+        int64_t obf_bx = step2 ^ 0x5A5A5A5A;
         vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)obf_bx);
       } else {
         vm_inst = VM_MAKE_INST_BX(vm_op, a, (uint64_t)GETARG_Bx(inst));
@@ -3610,6 +3633,30 @@ int luaO_executeVM (lua_State *L, Proto *f) {
                pc++; continue;
            }
            lua_op = OP_BXOR;
+       } else if (vm_op == VM_OP_EXT5) {
+           TValue *rb = s2v(base + b); TValue *rc = s2v(base + c);
+           if (ttisinteger(rb) && ttisinteger(rc)) {
+               /* Obfuscated BAND: x & y == (x | y) - (x ^ y) */
+               setivalue(s2v(base + a), intop(-, intop(|, ivalue(rb), ivalue(rc)), intop(^, ivalue(rb), ivalue(rc))));
+               pc++; continue;
+           }
+           lua_op = OP_BAND;
+       } else if (vm_op == VM_OP_EXT6) {
+           TValue *rb = s2v(base + b); TValue *rc = s2v(base + c);
+           if (ttisinteger(rb) && ttisinteger(rc)) {
+               /* Obfuscated BOR: x | y == (x & y) + (x ^ y) */
+               setivalue(s2v(base + a), intop(+, intop(&, ivalue(rb), ivalue(rc)), intop(^, ivalue(rb), ivalue(rc))));
+               pc++; continue;
+           }
+           lua_op = OP_BOR;
+       } else if (vm_op == VM_OP_EXT7) {
+           TValue *rb = s2v(base + b);
+           if (ttisinteger(rb)) {
+               /* Obfuscated BNOT: ~x == -x - 1 */
+               setivalue(s2v(base + a), intop(-, intop(-, 0, ivalue(rb)), 1));
+               pc++; continue;
+           }
+           lua_op = OP_BNOT;
        } else {
            ci->u.l.savedpc = (const Instruction *)(f->code + pc);
            return 1;
@@ -3620,7 +3667,10 @@ int luaO_executeVM (lua_State *L, Proto *f) {
       case OP_MOVE: { setobjs2s(L, base + a, base + b); break; }
       case OP_LOADI: {
         /* Revert number obfuscation */
-        int64_t real_bx = bx ^ ((vm->encrypt_key ^ pc) & 0xFFFFFFFF);
+        int64_t step2 = bx ^ 0x5A5A5A5A;
+        int64_t step1 = step2 - ((vm->encrypt_key >> 32) & 0xFFFFFFFF);
+        int64_t real_bx = step1 ^ ((vm->encrypt_key ^ pc) & 0xFFFFFFFF);
+        real_bx &= 0xFFFFFFFF;
         setivalue(s2v(base + a), (lua_Integer)(real_bx - OFFSET_sBx));
         break;
       }
@@ -3647,7 +3697,10 @@ int luaO_executeVM (lua_State *L, Proto *f) {
         break;
       }
       case OP_LOADF: {
-        int64_t real_bx = bx ^ ((vm->encrypt_key ^ pc) & 0xFFFFFFFF);
+        int64_t step2 = bx ^ 0x5A5A5A5A;
+        int64_t step1 = step2 - ((vm->encrypt_key >> 32) & 0xFFFFFFFF);
+        int64_t real_bx = step1 ^ ((vm->encrypt_key ^ pc) & 0xFFFFFFFF);
+        real_bx &= 0xFFFFFFFF;
         setfltvalue(s2v(base + a), cast_num((lua_Integer)(real_bx - OFFSET_sBx)));
         break;
       }

@@ -383,6 +383,9 @@ typedef enum {
   VM_OP_EXT2,
   VM_OP_EXT3,
   VM_OP_EXT4,
+  VM_OP_EXT5,
+  VM_OP_EXT6,
+  VM_OP_EXT7,
   VM_OP_HALT,
   VM_OP_COUNT
 } VMOpCode;
