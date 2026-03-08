@@ -51,8 +51,13 @@ static IRNode *new_node(IRNodeType type) {
 
 static IRNode *parse_expr(ParserState *ps);
 
-/* Naive expression parsing */
-static IRNode *parse_expr(ParserState *ps) {
+static IRNode *parse_stmt(ParserState *ps);
+
+/* Forward declare parse_expr */
+static IRNode *parse_expr(ParserState *ps);
+
+/* Parsing prefix and suffixes */
+static IRNode *parse_primary(ParserState *ps) {
     Token t; char *val;
     get_token(ps, &t, &val);
     ps->current_idx++;
@@ -65,9 +70,98 @@ static IRNode *parse_expr(ParserState *ps) {
         n = new_node(IR_EXPR_LITERAL_INT);
         n->int_val = val ? atoi(val) : 0;
         if(val) free(val);
-    } else if (t.token == TK_STRING) {
+    } else if (t.token == TK_FLT) {
+        n = new_node(IR_EXPR_LITERAL_FLT);
+        n->flt_val = val ? atof(val) : 0.0;
+        if(val) free(val);
+    } else if (t.token == TK_STRING || t.token == TK_RAWSTRING || t.token == TK_INTERPSTRING) {
         n = new_node(IR_EXPR_LITERAL_STR);
         n->str_val = val;
+    } else if (t.token == TK_NIL) {
+        n = new_node(IR_EXPR_LITERAL_NIL);
+        if(val) free(val);
+    } else if (t.token == TK_TRUE) {
+        n = new_node(IR_EXPR_LITERAL_BOOL);
+        n->int_val = 1;
+        if(val) free(val);
+    } else if (t.token == TK_FALSE) {
+        n = new_node(IR_EXPR_LITERAL_BOOL);
+        n->int_val = 0;
+        if(val) free(val);
+    } else if (t.token == '{') {
+        n = new_node(IR_EXPR_TABLE);
+        if(val) free(val);
+
+        IRNode *fields_head = NULL, *fields_tail = NULL;
+        while (ps->current_idx <= ps->num_tokens) {
+            get_token(ps, &t, &val);
+            if (t.token == '}') {
+                ps->current_idx++;
+                if(val) free(val);
+                break;
+            }
+            if(val) free(val);
+
+            /* parse field. Could be `[expr] = expr`, `name = expr`, or `expr` */
+            IRNode *field = new_node(IR_STMT_ASSIGN); /* use assign as key/value pair container */
+            get_token(ps, &t, &val);
+            if (t.token == '[') {
+                ps->current_idx++;
+                if(val) free(val);
+                field->children[0] = parse_expr(ps);
+                get_token(ps, &t, &val);
+                if (t.token == ']') ps->current_idx++;
+                if(val) free(val);
+                get_token(ps, &t, &val);
+                if (t.token == '=') ps->current_idx++;
+                if(val) free(val);
+                field->children[1] = parse_expr(ps);
+            } else if (t.token == TK_NAME) {
+                /* check next to see if '=' */
+                int is_named_key = 0;
+                int save_idx = ps->current_idx;
+                ps->current_idx++; /* consume name */
+                Token next_t; char *next_val;
+                get_token(ps, &next_t, &next_val);
+                if (next_t.token == '=') {
+                    is_named_key = 1;
+                }
+                if(next_val) free(next_val);
+                ps->current_idx = save_idx; /* revert */
+
+                if (is_named_key) {
+                    field->children[0] = new_node(IR_EXPR_LITERAL_STR);
+                    /* string token value needs quotes since our generator outputs raw string without adding them unless it's a LITERAL_STR but wait, LITERAL_STR adds quotes. */
+                    /* actually, we can just use the raw name and let LITERAL_STR generator add the quotes */
+                    field->children[0]->str_val = strdup(val); /* Duplicate the string */
+                    ps->current_idx++; /* consume name */
+                    get_token(ps, &t, &val); /* get '=' */
+                    ps->current_idx++; /* consume '=' */
+                    if(val) free(val);
+                    field->children[1] = parse_expr(ps);
+                } else {
+                    /* fallback to parsing a normal expression (it was a name but not a named key) */
+                    /* we need to restore the index and parse the expression normally */
+                    ps->current_idx = save_idx - 1; /* point back to the TK_NAME */
+                    if(val) free(val);
+                    field->children[1] = parse_expr(ps); /* value only */
+                }
+            } else {
+                /* not a bracket or a name-key, must be a plain value */
+                if(val) free(val);
+                field->children[1] = parse_expr(ps); /* value only */
+            }
+
+            if (!fields_head) fields_head = fields_tail = field;
+            else { fields_tail->next = field; fields_tail = field; }
+
+            get_token(ps, &t, &val);
+            if (t.token == ',' || t.token == ';') {
+                ps->current_idx++;
+                if(val) free(val);
+            }
+        }
+        n->children[0] = fields_head;
     } else if (t.token == '(') {
         if(val) free(val);
         n = parse_expr(ps);
@@ -78,9 +172,164 @@ static IRNode *parse_expr(ParserState *ps) {
         if(val) free(val);
     }
 
+    /* Parse suffixes: '.', '[', ':', '(' */
+    while (1) {
+        get_token(ps, &t, &val);
+        if (t.token == '.') {
+            ps->current_idx++;
+            if(val) free(val);
+            get_token(ps, &t, &val);
+            if (t.token == TK_NAME) {
+                ps->current_idx++;
+                IRNode *index = new_node(IR_EXPR_INDEX);
+                index->children[0] = n;
+                index->children[1] = new_node(IR_EXPR_LITERAL_STR);
+                index->children[1]->str_val = val;
+                n = index;
+            } else {
+                if(val) free(val);
+                break;
+            }
+        } else if (t.token == '[') {
+            ps->current_idx++;
+            if(val) free(val);
+            IRNode *inner = parse_expr(ps);
+            get_token(ps, &t, &val);
+            if (t.token == ']') ps->current_idx++;
+            if(val) free(val);
+
+            IRNode *index = new_node(IR_EXPR_INDEX);
+            index->children[0] = n;
+            index->children[1] = inner;
+            n = index;
+        } else if (t.token == ':') {
+            ps->current_idx++;
+            if(val) free(val);
+            get_token(ps, &t, &val);
+            if (t.token == TK_NAME) {
+                ps->current_idx++;
+                IRNode *method = new_node(IR_EXPR_METHOD);
+                method->children[0] = n;
+                method->children[1] = new_node(IR_EXPR_LITERAL_STR);
+                method->children[1]->str_val = val;
+
+                /* Parse args */
+                get_token(ps, &t, &val);
+                if (t.token == '(') {
+                    ps->current_idx++;
+                    if(val) free(val);
+
+                    get_token(ps, &t, &val);
+                    if (t.token == ')') {
+                        ps->current_idx++;
+                        if(val) free(val);
+                    } else {
+                        if(val) free(val);
+                        IRNode *args_head = NULL, *args_tail = NULL;
+                        while (1) {
+                            IRNode *arg = parse_expr(ps);
+                            if (!args_head) args_head = args_tail = arg;
+                            else { args_tail->next = arg; args_tail = arg; }
+
+                            get_token(ps, &t, &val);
+                            if (t.token == ',') {
+                                ps->current_idx++;
+                                if(val) free(val);
+                            } else {
+                                break;
+                            }
+                        }
+
+                        IRNode *arg_list = new_node(IR_STMT_LIST);
+                        arg_list->children[0] = args_head; /* Just attach the list to children[0] or whatever, generate_code handles IR_STMT_LIST */
+                        /* Actually, generate_code for IR_STMT_LIST uses children[0] and children[1] as a linked list. Wait. */
+                        /* The existing AST uses `next` pointers for lists, let's just use `next` */
+                        method->children[2] = args_head;
+
+                        get_token(ps, &t, &val);
+                        if (t.token == ')') ps->current_idx++;
+                        if(val) free(val);
+                    }
+                } else if (t.token == TK_STRING || t.token == TK_RAWSTRING || t.token == TK_INTERPSTRING) {
+                    method->children[2] = parse_primary(ps);
+                } else if (t.token == '{') {
+                    method->children[2] = parse_primary(ps);
+                } else {
+                    if(val) free(val);
+                }
+                n = method;
+            } else {
+                if(val) free(val);
+                break;
+            }
+        } else if (t.token == '(' || t.token == TK_STRING || t.token == TK_RAWSTRING || t.token == TK_INTERPSTRING || t.token == '{') {
+            IRNode *call = new_node(IR_EXPR_CALL);
+            call->children[0] = n;
+            if (t.token == '(') {
+                ps->current_idx++;
+                if(val) free(val);
+                get_token(ps, &t, &val);
+                if (t.token == ')') {
+                    ps->current_idx++;
+                    if(val) free(val);
+                } else {
+                    if(val) free(val);
+                    IRNode *args_head = NULL, *args_tail = NULL;
+                    while (1) {
+                        IRNode *arg = parse_expr(ps);
+                        if (!args_head) args_head = args_tail = arg;
+                        else { args_tail->next = arg; args_tail = arg; }
+
+                        get_token(ps, &t, &val);
+                        if (t.token == ',') {
+                            ps->current_idx++;
+                            if(val) free(val);
+                        } else {
+                            break;
+                        }
+                    }
+                    call->children[1] = args_head;
+
+                    get_token(ps, &t, &val);
+                    if (t.token == ')') ps->current_idx++;
+                    if(val) free(val);
+                }
+            } else {
+                call->children[1] = parse_primary(ps);
+                if(val) free(val);
+            }
+            n = call;
+        } else {
+            if(val) free(val);
+            break;
+        }
+    }
+    return n;
+}
+
+/* Naive expression parsing */
+static IRNode *parse_expr(ParserState *ps) {
+    Token t; char *val;
+    get_token(ps, &t, &val);
+    if(val) free(val);
+
+    IRNode *n = NULL;
+
+    /* Unary operators */
+    if (t.token == '-' || t.token == TK_NOT || t.token == '#') {
+        ps->current_idx++;
+        n = new_node(IR_EXPR_UNOP);
+        n->token = t.token;
+        n->children[0] = parse_expr(ps); /* unary binds tightly but let's just recurse */
+    } else {
+        n = parse_primary(ps);
+    }
+
     /* Binary Op lookup (simplified) */
     get_token(ps, &t, &val);
-    if (t.token == '+' || t.token == '-' || t.token == '*' || t.token == '/' || t.token == TK_EQ || t.token == '<' || t.token == '>') {
+    if (t.token == '+' || t.token == '-' || t.token == '*' || t.token == '/' || t.token == '%' || t.token == '^' ||
+        t.token == TK_CONCAT || t.token == TK_EQ || t.token == TK_NE || t.token == '<' || t.token == '>' ||
+        t.token == TK_LE || t.token == TK_GE || t.token == TK_AND || t.token == TK_OR) {
         int op = t.token;
         ps->current_idx++;
         if(val) free(val);
@@ -214,15 +463,215 @@ static IRNode *parse_stmt(ParserState *ps) {
 
 
         return n;
+    } else if (t.token == TK_WHILE) {
+        ps->current_idx++;
+        if(val) free(val);
+
+        IRNode *n = new_node(IR_STMT_WHILE);
+        n->children[0] = parse_expr(ps);
+
+        get_token(ps, &t, &val);
+        if (t.token == TK_DO) ps->current_idx++;
+        if(val) free(val);
+
+        IRNode *body_head = NULL, *body_tail = NULL;
+        while (ps->current_idx <= ps->num_tokens) {
+            get_token(ps, &t, &val);
+            if (t.token == TK_END) {
+                if(val) free(val);
+                ps->current_idx++;
+                break;
+            }
+            if(val) free(val);
+            IRNode *s = parse_stmt(ps);
+            if (s) {
+                if (!body_head) body_head = body_tail = s;
+                else { body_tail->next = s; body_tail = s; }
+            } else {
+                ps->current_idx++;
+            }
+        }
+        n->children[1] = body_head;
+        return n;
+    } else if (t.token == TK_REPEAT) {
+        ps->current_idx++;
+        if(val) free(val);
+
+        IRNode *n = new_node(IR_STMT_REPEAT);
+
+        IRNode *body_head = NULL, *body_tail = NULL;
+        while (ps->current_idx <= ps->num_tokens) {
+            get_token(ps, &t, &val);
+            if (t.token == TK_UNTIL) {
+                if(val) free(val);
+                ps->current_idx++;
+                break;
+            }
+            if(val) free(val);
+            IRNode *s = parse_stmt(ps);
+            if (s) {
+                if (!body_head) body_head = body_tail = s;
+                else { body_tail->next = s; body_tail = s; }
+            } else {
+                ps->current_idx++;
+            }
+        }
+        n->children[0] = body_head;
+        n->children[1] = parse_expr(ps);
+        return n;
+    } else if (t.token == TK_FOR) {
+        ps->current_idx++;
+        if(val) free(val);
+
+        /* Check if it's numeric for or generic for */
+        IRNode *names_head = NULL, *names_tail = NULL;
+        while (1) {
+            get_token(ps, &t, &val);
+            if (t.token == TK_NAME) {
+                IRNode *name = new_node(IR_EXPR_NAME);
+                name->str_val = val;
+                ps->current_idx++;
+                if (!names_head) names_head = names_tail = name;
+                else { names_tail->next = name; names_tail = name; }
+
+                get_token(ps, &t, &val);
+                if (t.token == ',') {
+                    ps->current_idx++;
+                    if(val) free(val);
+                } else {
+                    if(val) free(val);
+                    break;
+                }
+            } else {
+                if(val) free(val);
+                break;
+            }
+        }
+
+        get_token(ps, &t, &val);
+        if (t.token == '=') {
+            /* Numeric for */
+            ps->current_idx++;
+            if(val) free(val);
+
+            IRNode *n = new_node(IR_STMT_FOR);
+            if (names_head) n->str_val = strdup(names_head->str_val); /* Just take first name */
+
+            n->children[0] = parse_expr(ps); /* start */
+
+            get_token(ps, &t, &val);
+            if (t.token == ',') ps->current_idx++;
+            if(val) free(val);
+
+            n->children[1] = parse_expr(ps); /* end */
+
+            /* optional step */
+            get_token(ps, &t, &val);
+            if (t.token == ',') {
+                ps->current_idx++;
+                if(val) free(val);
+                n->children[2] = parse_expr(ps);
+            } else {
+                if(val) free(val);
+            }
+
+            get_token(ps, &t, &val);
+            if (t.token == TK_DO) ps->current_idx++;
+            if(val) free(val);
+
+            IRNode *body_head = NULL, *body_tail = NULL;
+            while (ps->current_idx <= ps->num_tokens) {
+                get_token(ps, &t, &val);
+                if (t.token == TK_END) {
+                    if(val) free(val);
+                    ps->current_idx++;
+                    break;
+                }
+                if(val) free(val);
+                IRNode *s = parse_stmt(ps);
+                if (s) {
+                    if (!body_head) body_head = body_tail = s;
+                    else { body_tail->next = s; body_tail = s; }
+                } else {
+                    ps->current_idx++;
+                }
+            }
+            n->children[3] = body_head;
+            return n;
+        } else if (t.token == TK_IN) {
+            /* Generic for */
+            ps->current_idx++;
+            if(val) free(val);
+
+            IRNode *n = new_node(IR_STMT_FOR_IN);
+            n->children[0] = names_head;
+
+            IRNode *exprs_head = NULL, *exprs_tail = NULL;
+            while (ps->current_idx <= ps->num_tokens) {
+                get_token(ps, &t, &val);
+                if (t.token == TK_DO) {
+                    if(val) free(val);
+                    break; /* break out of expr parsing when DO is found */
+                }
+                if(val) free(val);
+
+                IRNode *expr = parse_expr(ps);
+                if (!exprs_head) exprs_head = exprs_tail = expr;
+                else { exprs_tail->next = expr; exprs_tail = expr; }
+
+                get_token(ps, &t, &val);
+                if (t.token == ',') {
+                    ps->current_idx++;
+                    if(val) free(val);
+                } else if (t.token == TK_DO) {
+                    /* don't consume DO here, let outer loop break */
+                    if(val) free(val);
+                    break;
+                } else {
+                    if(val) free(val);
+                    break;
+                }
+            }
+            n->children[1] = exprs_head;
+
+            get_token(ps, &t, &val);
+            if (t.token == TK_DO) ps->current_idx++;
+            if(val) free(val);
+
+            IRNode *body_head = NULL, *body_tail = NULL;
+            while (ps->current_idx <= ps->num_tokens) {
+                get_token(ps, &t, &val);
+                if (t.token == TK_END) {
+                    if(val) free(val);
+                    ps->current_idx++;
+                    break;
+                }
+                if(val) free(val);
+                IRNode *s = parse_stmt(ps);
+                if (s) {
+                    if (!body_head) body_head = body_tail = s;
+                    else { body_tail->next = s; body_tail = s; }
+                } else {
+                    ps->current_idx++;
+                }
+            }
+            n->children[2] = body_head;
+            return n;
+        } else {
+            if(val) free(val);
+            return NULL; /* Syntax error */
+        }
     } else if (t.token == TK_RETURN) {
         ps->current_idx++;
         if(val) free(val);
         IRNode *n = new_node(IR_STMT_RETURN);
         n->children[0] = parse_expr(ps);
         return n;
-    } else if (t.token == TK_NAME) {
-        /* Could be assignment or call */
+    } else if (t.token == TK_NAME || t.token == '(') {
+        /* Could be assignment or call, delegate to parse_expr */
+        if(val) free(val);
         IRNode *lhs = parse_expr(ps);
+
         get_token(ps, &t, &val);
         if (t.token == '=') {
             ps->current_idx++;
@@ -231,19 +680,20 @@ static IRNode *parse_stmt(ParserState *ps) {
             n->children[0] = lhs;
             n->children[1] = parse_expr(ps);
             return n;
-        } else if (t.token == '(') {
-            ps->current_idx++;
+        } else {
             if(val) free(val);
-            IRNode *n = new_node(IR_STMT_CALL);
-            n->children[0] = lhs;
-            n->children[1] = parse_expr(ps);
-
-            get_token(ps, &t, &val);
-            if (t.token == ')') ps->current_idx++;
-            if(val) free(val);
-            return n;
+            if (lhs && (lhs->type == IR_EXPR_CALL || lhs->type == IR_EXPR_METHOD)) {
+                /* valid expression statement */
+                IRNode *expr_stmt = new_node(IR_STMT_EXPR);
+                expr_stmt->children[0] = lhs;
+                return expr_stmt;
+            } else if (lhs) {
+                /* potentially invalid expression statement, but return it for now */
+                IRNode *expr_stmt = new_node(IR_STMT_EXPR);
+                expr_stmt->children[0] = lhs;
+                return expr_stmt;
+            }
         }
-        if(val) free(val);
     }
 
     /* Fallback skip */
@@ -498,7 +948,12 @@ static void insert_bogus_branches(IRNode *node) {
 static void encrypt_strings(IRNode *node) {
     if (!node) return;
 
-    if (node->type == IR_EXPR_LITERAL_STR) {
+    /* Do not encrypt method names (they must be raw syntax identifiers) */
+    if (node->type == IR_EXPR_METHOD) {
+        if (node->children[0]) encrypt_strings(node->children[0]);
+        if (node->children[2]) encrypt_strings(node->children[2]);
+        /* skip children[1] which is the method name */
+    } else if (node->type == IR_EXPR_LITERAL_STR) {
         if (node->str_val) {
             /* Simple XOR encryption */
             size_t len = strlen(node->str_val);
@@ -577,6 +1032,54 @@ static void generate_code(IRNode *node, luaL_Buffer *B, int indent) {
         generate_code(node->children[1], B, indent + 2);
         luaL_addstring(B, spaces);
         luaL_addstring(B, "end\n");
+    } else if (node->type == IR_STMT_REPEAT) {
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "repeat\n");
+        generate_code(node->children[0], B, indent + 2);
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "until ");
+        generate_code(node->children[1], B, 0);
+        luaL_addstring(B, "\n");
+    } else if (node->type == IR_STMT_FOR) {
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "for ");
+        if (node->str_val) luaL_addstring(B, node->str_val);
+        luaL_addstring(B, " = ");
+        generate_code(node->children[0], B, 0);
+        luaL_addstring(B, ", ");
+        generate_code(node->children[1], B, 0);
+        if (node->children[2]) {
+            luaL_addstring(B, ", ");
+            generate_code(node->children[2], B, 0);
+        }
+        luaL_addstring(B, " do\n");
+        generate_code(node->children[3], B, indent + 2);
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "end\n");
+    } else if (node->type == IR_STMT_FOR_IN) {
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "for ");
+        if (node->children[0]) {
+            IRNode *name = node->children[0];
+            while (name) {
+                luaL_addstring(B, name->str_val);
+                name = name->next;
+                if (name) luaL_addstring(B, ", ");
+            }
+        }
+        luaL_addstring(B, " in ");
+        if (node->children[1]) {
+            IRNode *expr = node->children[1];
+            while (expr) {
+                generate_code(expr, B, 0);
+                expr = expr->next;
+                if (expr) luaL_addstring(B, ", ");
+            }
+        }
+        luaL_addstring(B, " do\n");
+        generate_code(node->children[2], B, indent + 2);
+        luaL_addstring(B, spaces);
+        luaL_addstring(B, "end\n");
     } else if (node->type == IR_STMT_FUNCTION) {
         luaL_addstring(B, spaces);
         luaL_addstring(B, "local function ");
@@ -589,7 +1092,8 @@ static void generate_code(IRNode *node, luaL_Buffer *B, int indent) {
         luaL_addstring(B, "end\n");
     } else if (node->type == IR_EXPR_UNOP) {
         char buf[8];
-        snprintf(buf, sizeof(buf), "%c", (char)node->token);
+        if (node->token == TK_NOT) strcpy(buf, "not ");
+        else snprintf(buf, sizeof(buf), "%c", (char)node->token);
         luaL_addstring(B, buf);
         generate_code(node->children[0], B, 0);
     } else if (node->type == IR_STMT_BREAK) {
@@ -604,6 +1108,10 @@ static void generate_code(IRNode *node, luaL_Buffer *B, int indent) {
     } else if (node->type == IR_STMT_RETURN) {
         luaL_addstring(B, spaces);
         luaL_addstring(B, "return ");
+        generate_code(node->children[0], B, 0);
+        luaL_addstring(B, "\n");
+    } else if (node->type == IR_STMT_EXPR) {
+        luaL_addstring(B, spaces);
         generate_code(node->children[0], B, 0);
         luaL_addstring(B, "\n");
     } else if (node->type == IR_EXPR_NAME) {
@@ -621,26 +1129,88 @@ static void generate_code(IRNode *node, luaL_Buffer *B, int indent) {
         luaL_addstring(B, "\"");
         luaL_addstring(B, node->str_val);
         luaL_addstring(B, "\"");
+    } else if (node->type == IR_EXPR_LITERAL_NIL) {
+        luaL_addstring(B, "nil");
     } else if (node->type == IR_EXPR_LITERAL_BOOL) {
         luaL_addstring(B, node->int_val ? "true" : "false");
+    } else if (node->type == IR_EXPR_TABLE) {
+        luaL_addstring(B, "{");
+        if (node->children[0]) {
+            IRNode *field = node->children[0];
+            while (field) {
+                if (field->children[0]) {
+                    if (field->children[0]->type == IR_EXPR_LITERAL_STR) {
+                        luaL_addstring(B, "[");
+                        generate_code(field->children[0], B, 0);
+                        luaL_addstring(B, "] = ");
+                    } else {
+                        luaL_addstring(B, "[");
+                        generate_code(field->children[0], B, 0);
+                        luaL_addstring(B, "] = ");
+                    }
+                }
+                generate_code(field->children[1], B, 0);
+                field = field->next;
+                if (field) luaL_addstring(B, ", ");
+            }
+        }
+        luaL_addstring(B, "}");
+    } else if (node->type == IR_EXPR_INDEX) {
+        generate_code(node->children[0], B, 0);
+        luaL_addstring(B, "[");
+        generate_code(node->children[1], B, 0);
+        luaL_addstring(B, "]");
+    } else if (node->type == IR_EXPR_METHOD) {
+        generate_code(node->children[0], B, 0);
+        luaL_addstring(B, ":");
+        if (node->children[1]->type == IR_EXPR_LITERAL_STR) {
+            luaL_addstring(B, node->children[1]->str_val);
+        }
+        luaL_addstring(B, "(");
+        if (node->children[2]) {
+            IRNode *arg = node->children[2];
+            while (arg) {
+                generate_code(arg, B, 0);
+                arg = arg->next;
+                if (arg) luaL_addstring(B, ", ");
+            }
+        }
+        luaL_addstring(B, ")");
     } else if (node->type == IR_EXPR_BINOP) {
         generate_code(node->children[0], B, 0);
         char buf[8];
         if (node->token == TK_EQ) strcpy(buf, " == ");
+        else if (node->token == TK_NE) strcpy(buf, " ~= ");
+        else if (node->token == TK_LE) strcpy(buf, " <= ");
+        else if (node->token == TK_GE) strcpy(buf, " >= ");
+        else if (node->token == TK_AND) strcpy(buf, " and ");
+        else if (node->token == TK_OR) strcpy(buf, " or ");
+        else if (node->token == TK_CONCAT) strcpy(buf, " .. ");
         else snprintf(buf, sizeof(buf), " %c ", node->token);
         luaL_addstring(B, buf);
         generate_code(node->children[1], B, 0);
     } else if (node->type == IR_EXPR_CALL) {
         generate_code(node->children[0], B, 0);
         luaL_addstring(B, "(");
-        generate_code(node->children[1], B, 0);
+        if (node->children[1]) {
+            IRNode *arg = node->children[1];
+            while (arg) {
+                generate_code(arg, B, 0);
+                arg = arg->next;
+                if (arg) luaL_addstring(B, ", ");
+            }
+        }
         luaL_addstring(B, ")");
+    }
+
+    /* Now that we use IR_STMT_EXPR for statements, any IR_EXPR node should NOT traverse its `next` pointer here. */
+    if (node->type >= IR_EXPR_BINOP) {
+        return; /* Expressions do not implicitly traverse `next`, the parent list/call does it. */
     }
 
     if (node->next && indent > 0) {
         generate_code(node->next, B, indent);
     } else if (node->next) {
-        luaL_addstring(B, "\n");
         generate_code(node->next, B, 0);
     }
 }

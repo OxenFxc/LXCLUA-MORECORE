@@ -1141,6 +1141,16 @@ static int lexer_get_block_bounds(lua_State *L) {
     return 2;
 }
 
+static int lexer_obfuscate_wrap(lua_State *L) {
+    size_t l;
+    const char *code = luaL_checklstring(L, 1, &l);
+    int cff = lua_toboolean(L, 2);
+    int bogus = lua_toboolean(L, 3);
+    int str_enc = lua_toboolean(L, 4);
+
+    return lua_lexer_obfuscate(L, code, cff, bogus, str_enc);
+}
+
 static const luaL_Reg lexer_lib[] = {
     {"find_match", lexer_find_match},
     {"build_tree", lexer_build_tree},
@@ -1156,6 +1166,7 @@ static const luaL_Reg lexer_lib[] = {
     {"parse_local", lexer_parse_local},
     {"find_label", lexer_find_label},
     {"get_block_bounds", lexer_get_block_bounds},
+    {"obfuscate", lexer_obfuscate_wrap},
     {NULL, NULL}
 };
 
