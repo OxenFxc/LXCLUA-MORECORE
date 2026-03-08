@@ -409,7 +409,29 @@ local function generate_fractal_coordinates(num_states)
     return coords
 end
 
-local function flatten_v11(func_node)
+
+local function collect_locals(node, map)
+    if not node.elements then return end
+    for i=1, #node.elements do
+        local el = node.elements[i]
+        if el.type == "'local'" then
+            local next_el = node.elements[i+1]
+            if next_el and next_el.type == "<name>" then
+                map[next_el.value] = next_el.value
+            elseif next_el and next_el.type == "function" then
+                local fnode = next_el
+                if fnode.elements[2] and fnode.elements[2].type == "<name>" then
+                    map[fnode.elements[2].value] = fnode.elements[2].value
+                end
+            end
+        end
+        if el.type ~= "function" then
+            collect_locals(el, map)
+        end
+    end
+end
+
+local function flatten_v11(func_node, outer_locals)
     local body_tokens = {}
     local params_ended = false
     local func_start = {}
@@ -428,6 +450,7 @@ local function flatten_v11(func_node)
     end
 
     local var_map = {}
+    for k, v in pairs(outer_locals or {}) do var_map[k] = v end
     local next_v_idx = 1
     next_v_idx = extract_params(func_node, var_map, next_v_idx)
 
@@ -450,14 +473,24 @@ local function flatten_v11(func_node)
                 for _, st in ipairs(split_tokens) do table.insert(out_stmt, st) end
             elseif r.type == "<name>" then
                 if next_val == "=" and prev_val == "{" or next_val == "=" and prev_val == "," then
-                    table.insert(out_stmt, r)
+                    table.insert(out_stmt, {token=0, type="'['", value="[", line=r.line})
+                    local g_toks = split_string_anti_hook('"'..r.value..'"', r.line)
+                    for _, st in ipairs(g_toks) do table.insert(out_stmt, st) end
+                    table.insert(out_stmt, {token=0, type="']'", value="]", line=r.line})
+                elseif prev_val == "." then
+                    -- replace the dot with bracket string lookup
+                    table.remove(out_stmt) -- remove the dot
+                    table.insert(out_stmt, {token=0, type="'['", value="[", line=r.line})
+                    local g_toks = split_string_anti_hook('"'..r.value..'"', r.line)
+                    for _, st in ipairs(g_toks) do table.insert(out_stmt, st) end
+                    table.insert(out_stmt, {token=0, type="']'", value="]", line=r.line})
                 elseif var_map[r.value] then
-                    if prev_val == "." or prev_val == ":" then table.insert(out_stmt, r)
+                    if prev_val == ":" then table.insert(out_stmt, r)
                     elseif type(var_map[r.value]) == "string" then table.insert(out_stmt, r)
                     else table.insert(out_stmt, {token=0, type="<raw>", value="__M[" .. encrypt_index(var_map[r.value]) .. "]", line=r.line}) end
                 elseif is_keyword(r.value) then table.insert(out_stmt, r)
                 else
-                    if prev_val == "." or prev_val == ":" then table.insert(out_stmt, r)
+                    if prev_val == ":" then table.insert(out_stmt, r)
                     elseif prev_val == "for" or prev_val == "local" or prev_val == "function" then
                         var_map[r.value] = r.value
                         table.insert(out_stmt, r)
@@ -519,7 +552,12 @@ local function flatten_v11(func_node)
     for _, t in ipairs(func_start) do
         local v = t.value or t.type
         if v and v:sub(1,1)=="'" then v = v:sub(2, -2) end
-        if t.type == "<name>" and var_map[v] then fs_reconstruct = fs_reconstruct .. "__M" .. var_map[v] .. " "
+                if t.type == "<name>" and var_map[v] then
+            if type(var_map[v]) == "number" then
+                fs_reconstruct = fs_reconstruct .. "__M[" .. encrypt_index(var_map[v]) .. "] "
+            else
+                fs_reconstruct = fs_reconstruct .. var_map[v] .. " "
+            end
         else fs_reconstruct = fs_reconstruct .. v .. " " end
     end
     table.insert(code_parts, fs_reconstruct)
@@ -769,8 +807,8 @@ local function flatten_v11(func_node)
     return table.concat(code_parts)
 end
 
-local function walk(node)
-    if node.type == "function" then return flatten_v11(node) end
+local function walk(node, outer_locals)
+    if node.type == "function" then return flatten_v11(node, outer_locals) end
     local out_code = ""
     if not node.elements then return lexer.reconstruct({node}) end
 
@@ -780,10 +818,10 @@ local function walk(node)
         else
             local el = node.elements[i]
             if el.type == "'local'" and node.elements[i+1] and node.elements[i+1].type == "function" then
-                out_code = out_code .. "local " .. flatten_v11(node.elements[i+1]) .. " "
+                out_code = out_code .. "local " .. flatten_v11(node.elements[i+1], outer_locals) .. " "
                 skip_next = true
             else
-                out_code = out_code .. walk(el) .. " "
+                out_code = out_code .. walk(el, outer_locals) .. " "
             end
         end
     end
@@ -793,26 +831,14 @@ end
 local function obfuscate(code)
     local tokens = lexer(code)
     local tree = lexer.build_tree(tokens)
-    return walk(tree)
+    local outer_locals = {}
+    collect_locals(tree, outer_locals)
+    return walk(tree, outer_locals)
 end
 
-local code = [[
-local function vmp_example(start_val)
-  local obj = { hp = start_val, name = "Matrix" }
-  local mp = 50
-  for i = 1, 3 do
-    local step = i * 10
-    if step > 15 then
-      obj.hp = obj.hp + step
-      if obj.hp > 140 then break end
-    else
-      mp = mp + 1
-    end
-  end
-  print("VMP Result: ", obj.hp, " MP: ", mp)
-end
-vmp_example(100)
-]]
+local f = io.open(arg[1] or "test_bonus_small.lua", "r")
+local code = f:read("*a")
+f:close()
 
 print("--- Original Code ---")
 print(code)
