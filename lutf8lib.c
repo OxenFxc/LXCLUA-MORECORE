@@ -849,6 +849,13 @@ static int match_class (unsigned c, unsigned cl) {
         case 'w' : res = utf8_isalnum(c); break;
         case 'x' : res = utf8_isxdigit(c); break;
         case 'z' : res = (c == 0); break;  /* deprecated option */
+        case 'n' : res = (c == '\n' || c == '\r'); break;
+        case 'r' : res = (c == '\r'); break;
+        case 't' : res = (c == '\t'); break;
+        case 'v' : res = (c == '\v' || c == '\f'); break;
+        case 'o' : res = (c >= '0' && c <= '7'); break;
+        case 'h' : res = (c == ' ' || c == '\t'); break;
+        case 'q' : res = utf8_isgraph(c); break;
         default: return (cl == c);
     }
     return (utf8_islower(cl) ? res : !res);

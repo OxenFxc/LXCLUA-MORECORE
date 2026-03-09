@@ -746,6 +746,13 @@ static int match_class (int c, int cl) {
     case 'w' : res = isalnum(c); break;
     case 'x' : res = isxdigit(c); break;
     case 'z' : res = (c == 0); break;  /* deprecated option */
+    case 'n' : res = (c == '\n' || c == '\r'); break;
+    case 'r' : res = (c == '\r'); break;
+    case 't' : res = (c == '\t'); break;
+    case 'v' : res = (c == '\v' || c == '\f'); break;
+    case 'o' : res = (c >= '0' && c <= '7'); break;
+    case 'h' : res = (c == ' ' || c == '\t'); break;
+    case 'q' : res = (isprint(c) && !isspace(c)); break;
     default: return (cl == c);
   }
   return (islower(cl) ? res : !res);

@@ -1741,27 +1741,13 @@ static inline const char *fast_search(const char *text, size_t text_len, const c
   }
   
   if (pat_len <= 4) {
-    uint32_t mask = 0;
-    const unsigned char *p = (const unsigned char *)pattern;
-    size_t i;
-    for (i = 0; i < pat_len; i++) {
-      mask = (mask << 8) | p[i];
-    }
-    mask <<= (4 - pat_len) * 8;
-    
-    const unsigned char *t = (const unsigned char *)text;
-    const unsigned char *end = t + text_len - pat_len + 1;
-    
+    const char *end = text + text_len - pat_len + 1;
+    const char *t = text;
     while (t < end) {
-      uint32_t chunk = *(uint32_t *)t;
-      if ((chunk & mask) == mask) {
-        size_t j = 0;
-        while (j < pat_len && t[j] == p[j]) {
-          j++;
-        }
-        if (j == pat_len) {
-          return (const char *)t;
-        }
+      t = (const char *)memchr(t, pattern[0], end - t);
+      if (!t) break;
+      if (memcmp(t, pattern, pat_len) == 0) {
+        return t;
       }
       t++;
     }
@@ -1775,40 +1761,6 @@ static inline const char *fast_search(const char *text, size_t text_len, const c
   
   bm_preprocess_badchar(pattern, pat_len, work_buf);
   return bm_search(text, text_len, pattern, pat_len, work_buf);
-}
-
-static const char *match_regex(const char *src, size_t src_len, const char *pattern, size_t *match_len) {
-  const char *p = pattern;
-  const char *s = src;
-  const char *end = src + src_len;
-  const char *wildcard = NULL;
-  const char *wildcard_end = NULL;
-  
-  while (p < pattern + strlen(pattern) && s < end) {
-    if (*p == '*') {
-      wildcard = p;
-      wildcard_end = s;
-      p++;
-    } else if (*p == '?' || *p == *s) {
-      p++;
-      s++;
-    } else if (wildcard) {
-      p = wildcard + 1;
-      wildcard_end++;
-      s = wildcard_end;
-    } else {
-      return NULL;
-    }
-  }
-  
-  while (*p == '*') p++;
-  
-  if (*p == '\0' && (s == end || *(p - 1) == '*')) {
-    *match_len = s - src;
-    return src;
-  }
-  
-  return NULL;
 }
 
 static int luaB_match (lua_State *L) {
@@ -1882,42 +1834,16 @@ static int luaB_match (lua_State *L) {
   const char *end = src + src_len;
   
   if (use_regex) {
-    while (pos < end) {
-      size_t match_len = 0;
-      const char *match = match_regex(pos, end - pos, find_str, &match_len);
-      if (match) {
-        result_len += replace_len - match_len;
-        pos = match + match_len;
-      } else {
-        break;
-      }
-    }
-    
-    char *result = (char *)lua_newuserdatauv(L, result_len + 1, 0);
-    
-    pos = src;
-    char *out = result;
-    
-    while (pos < end) {
-      size_t match_len = 0;
-      const char *match = match_regex(pos, end - pos, find_str, &match_len);
-      if (match) {
-        size_t prefix_len = match - pos;
-        memcpy(out, pos, prefix_len);
-        out += prefix_len;
-        memcpy(out, replace_str, replace_len);
-        out += replace_len;
-        pos = match + match_len;
-      } else {
-        size_t suffix_len = end - pos;
-        memcpy(out, pos, suffix_len);
-        out += suffix_len;
-        break;
-      }
-    }
-    
-    *out = '\0';
-    lua_pushlstring(L, result, result_len);
+    /* 使用Lua内建的正则匹配功能替换原有的简陋实现 */
+    lua_getglobal(L, "string");
+    lua_getfield(L, -1, "gsub");
+    lua_pushstring(L, src);
+    lua_pushstring(L, find_str);
+    lua_pushstring(L, replace_str);
+    lua_call(L, 3, 2); /* gsub returns 2 values: string, count */
+    lua_pop(L, 1); /* pop count */
+    lua_remove(L, -2); /* remove string table */
+    return 1;
   } else {
     int work_buf[256];
     
