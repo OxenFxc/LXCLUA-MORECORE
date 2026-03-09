@@ -5,6 +5,7 @@
 #include "lualib.h"
 
 #include "lprefix.h"
+#include <ctype.h>
 #include <assert.h>
 #include <string.h>
 #define lutf8lib_c
@@ -944,6 +945,88 @@ static const char *max_expand (MatchState *ms, const char *s, const char *p, con
     return NULL;
 }
 
+static const char *range_expand (MatchState *ms, const char *s,
+                                 const char *p, const char *ep, int min, int max, const char *next_p) {
+    ptrdiff_t i = 0;
+    while ((max == -1 || i < max) && singlematch(ms, s, p, ep)) {
+        s = utf8_next(s, ms->src_end);
+        i++;
+    }
+    if (i < min) return NULL;
+    while (i >= min) {
+        const char *res = match(ms, s, next_p);
+        if (res) return res;
+        i--;
+        if (i >= min) s = utf8_prev(ms->src_init, s);
+    }
+    return NULL;
+}
+
+static int parse_repetition(const char *ep, int *min, int *max, const char **next_p) {
+    if (*ep != '{') return 0;
+    const char *p = ep + 1;
+    int l_min = 0, l_max = -1;
+    int has_min = 0, has_max = 0;
+    
+    if (isdigit(cast_uchar(*p))) {
+        while (isdigit(cast_uchar(*p))) {
+            l_min = l_min * 10 + (*p - '0');
+            p++;
+        }
+        has_min = 1;
+    }
+    
+    if (*p == ',') {
+        p++;
+        if (isdigit(cast_uchar(*p))) {
+            l_max = 0;
+            while (isdigit(cast_uchar(*p))) {
+                l_max = l_max * 10 + (*p - '0');
+                p++;
+            }
+            has_max = 1;
+        }
+    } else {
+        if (has_min) {
+            l_max = l_min;
+            has_max = 1;
+        }
+    }
+    
+    if (*p == '}') {
+        *min = has_min ? l_min : 0;
+        *max = has_max ? l_max : -1;
+        *next_p = p + 1;
+        return 1;
+    }
+    
+    return 0;
+}
+
+static const char *find_matching_paren(const char *p, const char *p_end) {
+    int level = 1;
+    while (p < p_end) {
+        if (*p == L_ESC) p += 2;
+        else if (*p == '(') level++, p++;
+        else if (*p == ')') {
+            level--;
+            if (level == 0) return p;
+            p++;
+        } else if (*p == '[') {
+            p++;
+            if (*p == '^') p++;
+            do {
+                if (*p == L_ESC) p += 2;
+                else p++;
+            } while (p < p_end && *p != ']');
+            if (p < p_end) p++;
+        } else {
+            p++;
+        }
+    }
+    return NULL;
+}
+
 static const char *min_expand (MatchState *ms, const char *s, const char *p, const char *ep) {
     for (;;) {
         const char *res = match(ms, s, ep+1);
@@ -997,6 +1080,36 @@ static const char *match (MatchState *ms, const char *s, const char *p) {
             case '(': {  /* start capture */
                 if (*(p + 1) == ')')  /* position capture? */
                     s = start_capture(ms, s, p + 2, CAP_POSITION);
+                else if (*(p + 1) == '?' && *(p + 2) == '=') { /* positive lookahead */
+                    const char *r_end = find_matching_paren(p + 3, ms->p_end);
+                    if (!r_end) luaL_error(ms->L, "malformed pattern (missing ')')");
+                    const char *old_p_end = ms->p_end;
+                    ms->p_end = r_end;
+                    const char *res = match(ms, s, p + 3);
+                    ms->p_end = old_p_end;
+                    if (res != NULL) { s = s; p = r_end + 1; goto init; }
+                    else s = NULL;
+                }
+                else if (*(p + 1) == '?' && *(p + 2) == '!') { /* negative lookahead */
+                    const char *r_end = find_matching_paren(p + 3, ms->p_end);
+                    if (!r_end) luaL_error(ms->L, "malformed pattern (missing ')')");
+                    const char *old_p_end = ms->p_end;
+                    ms->p_end = r_end;
+                    const char *res = match(ms, s, p + 3);
+                    ms->p_end = old_p_end;
+                    if (res == NULL) { s = s; p = r_end + 1; goto init; }
+                    else s = NULL;
+                }
+                else if (*(p + 1) == '?' && *(p + 2) == '>') { /* atomic match */
+                    const char *r_end = find_matching_paren(p + 3, ms->p_end);
+                    if (!r_end) luaL_error(ms->L, "malformed pattern (missing ')')");
+                    const char *old_p_end = ms->p_end;
+                    ms->p_end = r_end;
+                    const char *res = match(ms, s, p + 3);
+                    ms->p_end = old_p_end;
+                    if (res != NULL) { s = res; p = r_end + 1; goto init; }
+                    else s = NULL;
+                }
                 else
                     s = start_capture(ms, s, p + 1, CAP_UNFINISHED);
                 break;
@@ -1054,36 +1167,53 @@ static const char *match (MatchState *ms, const char *s, const char *p) {
                 const char *ep = classend(ms, p);  /* points to optional suffix */
                 /* does not match at least once? */
                 if (!singlematch(ms, s, p, ep)) {
+                    int rep_min, rep_max;
+                    const char *next_p;
                     if (*ep == '*' || *ep == '?' || *ep == '-') {  /* accept empty? */
                         p = ep + 1; goto init;  /* return match(ms, s, ep + 1); */
+                    }
+                    else if (*ep == '{' && parse_repetition(ep, &rep_min, &rep_max, &next_p) && rep_min == 0) {
+                        p = next_p; goto init;
                     }
                     else  /* '+' or no suffix */
                         s = NULL;  /* fail */
                 }
                 else {  /* matched once */
                     const char *next_s = utf8_next(s, ms->src_end);
-                    switch (*ep) {  /* handle optional suffix */
-                        case '?': {  /* optional */
-                            const char *res;
-                            const char *next_ep = utf8_next(ep, ms->p_end);
-                            if ((res = match(ms, next_s, next_ep)) != NULL)
-                                s = res;
-                            else {
-                                p = next_ep; goto init;  /* else return match(ms, s, ep + 1); */
+                    int rep_min, rep_max;
+                    const char *next_p;
+                    int is_rep = 0;
+                    
+                    if (*ep == '{' && parse_repetition(ep, &rep_min, &rep_max, &next_p)) {
+                        is_rep = 1;
+                    }
+                    
+                    if (is_rep) {
+                        s = range_expand(ms, s, p, ep, rep_min, rep_max, next_p);
+                    } else {
+                        switch (*ep) {  /* handle optional suffix */
+                            case '?': {  /* optional */
+                                const char *res;
+                                const char *next_ep = utf8_next(ep, ms->p_end);
+                                if ((res = match(ms, next_s, next_ep)) != NULL)
+                                    s = res;
+                                else {
+                                    p = next_ep; goto init;  /* else return match(ms, s, ep + 1); */
+                                }
+                                break;
                             }
-                            break;
+                            case '+':  /* 1 or more repetitions */
+                                s = next_s;  /* 1 match already done */
+                                /* go through */
+                            case '*':  /* 0 or more repetitions */
+                                s = max_expand(ms, s, p, ep);
+                                break;
+                            case '-':  /* 0 or more repetitions (minimum) */
+                                s = min_expand(ms, s, p, ep);
+                                break;
+                            default:  /* no suffix */
+                                s = next_s; p = ep; goto init;  /* return match(ms, s + 1, ep); */
                         }
-                        case '+':  /* 1 or more repetitions */
-                            s = next_s;  /* 1 match already done */
-                            /* go through */
-                        case '*':  /* 0 or more repetitions */
-                            s = max_expand(ms, s, p, ep);
-                            break;
-                        case '-':  /* 0 or more repetitions (minimum) */
-                            s = min_expand(ms, s, p, ep);
-                            break;
-                        default:  /* no suffix */
-                            s = next_s; p = ep; goto init;  /* return match(ms, s + 1, ep); */
                     }
                 }
                 break;

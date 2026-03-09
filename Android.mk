@@ -73,6 +73,8 @@ LOCAL_SRC_FILES := \
 	lstruct.c \
 	sha256.c \
 	ltcc.c\
+	llexerlib.c\
+	llexer_compiler.c\
 	lobfuscate.c \
 	lwasm3.c \
 	m3_api_libc.c \
