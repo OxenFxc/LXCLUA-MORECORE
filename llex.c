@@ -292,13 +292,13 @@ static const char *const luaX_tokens [] = {
     "and", "asm", "async", "await", "bool", "break", "case", "catch", "char", "command", "concept", "const", "continue", "default", "defer", "do", "double", "else", "elseif",
     "end", "enum", "export", "false", "finally", "float", "for", "function", "global", "goto", "if", "in", "int", "is", "keyword", "lambda", "local", "long", "namespace", "nil", "not", "operator", "or",
     "repeat", "requires",
-    "return", "struct", "superstruct", "switch", "take", "then", "true", "try", "until", "using", "void", "when", "while", "with",
+    "return", "struct", "superstruct", "switch", "take", "then", "true", "try", "until", "using", "void", "when", "while", "with", "let",
     "//", "..", "...", "==", ">=", "<=", "~",  "<<", ">>", "|>", "<|", "|?>",
     "::", "<eof>",
-    "<let>", "=>", ":=", "->",
+    "=>", ":=", "->",
     /* 复合赋值运算符 */
     "+=", "-=", "*=", "/=", "//=", "%=", "&=", "|=", "~=", ">>=", "<<=", "..=", "++",
-    "?.", "??", "<=>", "$", "$$",
+    "?.", "??", "??=", "<=>", "$", "$$",
     "<number>", "<integer>", "<name>", "<string>", "<interpstring>", "<rawstring>"
 };
 
@@ -1168,7 +1168,10 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '?':{
         next(ls);
         if (check_next1(ls, '.')) return TK_OPTCHAIN;  /* '?.' 可选链运算符 */
-        else if (check_next1(ls, '?')) return TK_NULLCOAL;  /* '??' 空值合并运算符 */
+        else if (check_next1(ls, '?')) {
+          if (check_next1(ls, '=')) return TK_NULLCOALEQ; /* '??=' 空值合并赋值 */
+          return TK_NULLCOAL;  /* '??' 空值合并运算符 */
+        }
         else return '?';
       }
       case '+':{  /* '+' 或 '+=' 或 '++' */

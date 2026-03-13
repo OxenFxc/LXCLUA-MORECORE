@@ -3317,6 +3317,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
         case TK_REVPIPE: opstr = "<|"; break;
         case TK_SPACESHIP: opstr = "<=>"; break;
         case TK_NULLCOAL: opstr = "??"; break;
+        case TK_NULLCOALEQ: opstr = "??="; break;
         case TK_ARROW: opstr = "->"; break;
         case TK_MEAN: opstr = "=>"; break;
         case TK_ADDEQ: opstr = "+="; break;
@@ -5472,23 +5473,70 @@ static void labelstat (LexState *ls, TString *name, int line) {
 }
 
 
+static int is_stmt_terminator (int token);
+
 static void whilestat (LexState *ls, int line) {
-  /* whilestat -> WHILE cond DO block END */
+  /* whilestat -> WHILE cond DO block END | WHILE let NAME {',' NAME} '=' explist DO block END */
   FuncState *fs = ls->fs;
   int whileinit;
   int condexit;
   BlockCnt bl;
-  luaX_next(ls);  /* skip WHILE */
-  whileinit = luaK_getlabel(fs);
-  condexit = cond(ls);
-  enterblock(fs, &bl, 1);
-  if (ls->t.token == TK_DO) luaX_next(ls);
-  block(ls);
-  createlabel(ls, luaS_newliteral(ls->L, "continue"), 0, 0);
-  luaK_jumpto(fs, whileinit);
-  check_match(ls, TK_END, TK_WHILE, line);
-  leaveblock(fs);
-  luaK_patchtohere(fs, condexit);  /* false conditions finish the loop */
+  
+  if (luaX_lookahead(ls) == TK_LET) {
+    int nvars = 1;
+    int nexps;
+    expdesc e;
+    
+    luaX_next(ls);  /* skip WHILE */
+    luaX_next(ls);  /* skip let */
+    
+    whileinit = luaK_getlabel(fs);
+    
+    /* Open loop block encompassing let condition + loop body */
+    enterblock(fs, &bl, 1);
+    
+    new_localvar(ls, str_checkname(ls));
+    while (testnext(ls, ',')) {
+      new_localvar(ls, str_checkname(ls));
+      nvars++;
+    }
+    checknext(ls, '=');
+    
+    nexps = explist(ls, &e);
+    adjust_assign(ls, nvars, nexps, &e);
+    adjustlocalvars(ls, nvars);
+    
+    expdesc cond_v;
+    init_exp(&cond_v, VLOCAL, fs->nactvar - nvars);
+    luaK_goiftrue(fs, &cond_v);
+    condexit = cond_v.f;
+    
+    if (ls->t.token == TK_DO) luaX_next(ls);
+    
+    /* Parse the statements inside loop without creating a separate block layer
+       so the let variables are visible */
+    while (!is_stmt_terminator(ls->t.token) && ls->t.token != TK_EOS && ls->t.token != TK_END) {
+        statement(ls);
+    }
+    
+    createlabel(ls, luaS_newliteral(ls->L, "continue"), 0, 0);
+    luaK_jumpto(fs, whileinit);
+    check_match(ls, TK_END, TK_WHILE, line);
+    leaveblock(fs);  /* leaves loop block, discarding locals */
+    luaK_patchtohere(fs, condexit);
+  } else {
+    luaX_next(ls);  /* skip WHILE */
+    whileinit = luaK_getlabel(fs);
+    condexit = cond(ls);
+    enterblock(fs, &bl, 1);
+    if (ls->t.token == TK_DO) luaX_next(ls);
+    block(ls);
+    createlabel(ls, luaS_newliteral(ls->L, "continue"), 0, 0);
+    luaK_jumpto(fs, whileinit);
+    check_match(ls, TK_END, TK_WHILE, line);
+    leaveblock(fs);
+    luaK_patchtohere(fs, condexit);  /* false conditions finish the loop */
+  }
 }
 
 
@@ -5657,14 +5705,85 @@ static void forstat (LexState *ls, int line) {
 ** 返回值：
 **   1 如果使用大括号语法，0 否则
 */
+static int test_let_then_block (LexState *ls, int *escapelist) {
+  /* test_let_then_block -> let NAME {',' NAME} '=' explist [THEN | '{'] block ['}'] */
+  BlockCnt bl;
+  FuncState *fs = ls->fs;
+  int jf;  /* instruction to skip 'then' code (if condition is false) */
+  int use_brace = 0;  /* 是否使用大括号语法 */
+  int nvars = 1;
+  int nexps;
+  expdesc e;
+  
+  checknext(ls, TK_LET);  /* skip let */
+  
+  /* open a new block for the 'let' variables.
+     This block encompasses both the assignment and the 'then' block. */
+  enterblock(fs, &bl, 0);
+
+  /* parse variables */
+  new_localvar(ls, str_checkname(ls));
+  while (testnext(ls, ',')) {
+    new_localvar(ls, str_checkname(ls));
+    nvars++;
+  }
+  
+  checknext(ls, '=');
+  
+  /* parse expressions and assign to variables */
+  nexps = explist(ls, &e);
+  adjust_assign(ls, nvars, nexps, &e);
+  adjustlocalvars(ls, nvars);
+  
+  /* Create condition based on the first let variable */
+  expdesc cond_v;
+  init_exp(&cond_v, VLOCAL, fs->nactvar - nvars);
+  
+  /* 检查是否是大括号语法 */
+  if (ls->t.token == '{') {
+    use_brace = 1;
+    luaX_next(ls);  /* skip '{' */
+  } else if (ls->t.token == TK_THEN) {
+    luaX_next(ls);  /* skip 'then' */
+  } else if (ls->t.token == TK_DO) {
+    luaX_next(ls);  /* skip 'do' (Universal Block Opener) */
+  }
+
+  /* Evaluate the first variable as a boolean condition */
+  luaK_goiftrue(fs, &cond_v);  /* skip over block if condition is false */
+  jf = cond_v.f;
+
+  /* The actual block execution */
+  if (use_brace) {
+    while (ls->t.token != '}' && ls->t.token != TK_EOS) {
+      statement(ls);
+    }
+    checknext(ls, '}');
+  } else {
+    /* statlist loop */
+    while (!is_stmt_terminator(ls->t.token) && ls->t.token != TK_EOS && ls->t.token != TK_ELSE && ls->t.token != TK_ELSEIF) {
+       statement(ls);
+    }
+  }
+
+  /* Must leave the block to clean up the locals BEFORE patching jumps so `else` doesn't see them */
+  leaveblock(fs);  /* end of 'let' block */
+
+  if (ls->t.token == TK_ELSE || ls->t.token == TK_ELSEIF || ls->t.token == TK_CASE || ls->t.token == TK_WHEN)
+    luaK_concat(fs, escapelist, luaK_jump(fs));  /* must jump over it */
+  luaK_patchtohere(fs, jf);
+
+  return use_brace;
+}
+
 static int test_then_block (LexState *ls, int *escapelist) {
-  /* test_then_block -> [IF | ELSEIF] cond [THEN | '{'] block ['}'] */
+  /* test_then_block -> cond [THEN | '{'] block ['}'] */
   BlockCnt bl;
   FuncState *fs = ls->fs;
   expdesc v;
   int jf;  /* instruction to skip 'then' code (if condition is false) */
   int use_brace = 0;  /* 是否使用大括号语法 */
-  luaX_next(ls);  /* skip IF or ELSEIF */
+  /* IF or ELSEIF has already been skipped by the caller (ifstat) */
   cond_expr(ls, &v);  /* read condition (使用 cond_expr 避免 { 被误解为函数调用) */
   
   /* 检查是否是大括号语法 */
@@ -5737,10 +5856,24 @@ static void ifstat (LexState *ls, int line) {
   /* ifstat -> IF cond [THEN|'{'] block {ELSEIF cond [THEN|'{'] block} [ELSE ['{'] block ['}']] [END] */
   FuncState *fs = ls->fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
-  int use_brace = test_then_block(ls, &escapelist);  /* IF cond THEN block */
+  int use_brace;
+  
+  luaX_next(ls);  /* skip IF */
+  
+  if (ls->t.token == TK_LET) {
+    use_brace = test_let_then_block(ls, &escapelist);
+  } else {
+    use_brace = test_then_block(ls, &escapelist);  /* cond THEN block */
+  }
   
   while (ls->t.token == TK_ELSEIF) {
-    int elseif_brace = test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
+    int elseif_brace;
+    luaX_next(ls); /* skip ELSEIF */
+    if (ls->t.token == TK_LET) {
+      elseif_brace = test_let_then_block(ls, &escapelist);
+    } else {
+      elseif_brace = test_then_block(ls, &escapelist);  /* cond THEN block */
+    }
     use_brace = use_brace || elseif_brace;
   }
   
@@ -9957,6 +10090,7 @@ static void operatorstat (LexState *ls, int line) {
     case TK_REVPIPE: opstr = "<|"; break;
     case TK_SPACESHIP: opstr = "<=>"; break;
     case TK_NULLCOAL: opstr = "??"; break;
+    case TK_NULLCOALEQ: opstr = "??="; break;
     case TK_ARROW: opstr = "->"; break;
     case TK_MEAN: opstr = "=>"; break;
     case TK_ADDEQ: opstr = "+="; break;
@@ -11481,6 +11615,7 @@ static BinOpr getcompoundop (int token) {
     case TK_SHREQ:    return OPR_SHR;     /* >>= */
     case TK_SHLEQ:    return OPR_SHL;     /* <<= */
     case TK_CONCATEQ: return OPR_CONCAT;  /* ..= */
+    case TK_NULLCOALEQ: return OPR_NULLCOAL; /* ??= */
     case TK_NE:       return OPR_BXOR;    /* ~= 在赋值上下文中作为位异或赋值 */
     default:          return OPR_NOBINOPR;
   }
