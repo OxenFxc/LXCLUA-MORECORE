@@ -1765,6 +1765,7 @@ typedef struct ConsControl {
   int nh;  /* total number of 'record' elements */
   int na;  /* number of array elements already stored */
   int tostore;  /* number of array elements pending to be stored */
+  int has_spread; /* whether a spread operator was encountered */
 } ConsControl;
 
 
@@ -1797,7 +1798,9 @@ static void closelistfield (FuncState *fs, ConsControl *cc) {
   luaK_exp2nextreg(fs, &cc->v);
   cc->v.k = VVOID;
   if (cc->tostore == LFIELDS_PER_FLUSH) {
-    luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
+    if (!cc->has_spread) {
+        luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
+    }
     cc->na += cc->tostore;
     cc->tostore = 0;  /* no more items pending */
   }
@@ -1806,15 +1809,28 @@ static void closelistfield (FuncState *fs, ConsControl *cc) {
 
 static void lastlistfield (FuncState *fs, ConsControl *cc) {
   if (cc->tostore == 0) return;
+  if (cc->has_spread && !hasmultret(cc->v.k)) return; /* If there was a spread, do not emit SETLIST for remaining! */
   if (hasmultret(cc->v.k)) {
     luaK_setmultret(fs, &cc->v);
+    
+    if (cc->has_spread) {
+        /* Note: Using multret after spread operator overwrites dynamically added elements because `cc->na` is static. 
+           Proper multret spread will require a new runtime instruction or complex loop block handling L->top, 
+           so for now we preserve standard behavior which uses SETLIST and relies on cc->na. 
+           We simply allow `hasmultret` to proceed and use `luaK_setlist`.
+         */
+    }
+    
     luaK_setlist(fs, cc->t->u.info, cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
     if (cc->v.k != VVOID)
       luaK_exp2nextreg(fs, &cc->v);
-    luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);
+    /* Only flush statically if we have pending items to store and haven't had a spread */
+    if (cc->tostore > 0 && !cc->has_spread) {
+      luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);
+    }
   }
   cc->na += cc->tostore;
 }
@@ -1823,7 +1839,28 @@ static void lastlistfield (FuncState *fs, ConsControl *cc) {
 static void listfield (LexState *ls, ConsControl *cc) {
   /* listfield -> exp */
   expr(ls, &cc->v);
-  cc->tostore++;
+  
+  if (cc->has_spread) {
+      /* Dynamic append: table[#table+1] = exp */
+      FuncState *fs = ls->fs;
+      luaK_exp2nextreg(fs, &cc->v);
+      
+      int len_reg = fs->freereg;
+      luaK_reserveregs(fs, 1);
+      luaK_codeABC(fs, OP_LEN, len_reg, cc->t->u.info, 0);
+      luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
+      
+      expdesc tab, key;
+      tab = *cc->t;
+      init_exp(&key, VNONRELOC, len_reg);
+      luaK_indexed(fs, &tab, &key);
+      luaK_storevar(fs, &tab, &cc->v);
+      
+      fs->freereg = len_reg; /* Free the len_reg */
+      cc->v.k = VVOID; /* Clear the value */
+  } else {
+      cc->tostore++;
+  }
 }
 
 
@@ -1983,6 +2020,7 @@ static void constructor (LexState *ls, expdesc *t) {
   luaK_code(fs, 0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
+  cc.has_spread = 0;
   init_exp(t, VNONRELOC, fs->freereg);  /* table will be at stack top */
   luaK_reserveregs(fs, 1);
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
@@ -1992,53 +2030,95 @@ static void constructor (LexState *ls, expdesc *t) {
     if (ls->t.token == '}') break;
 
     if (ls->t.token == TK_DOTS) {
-        luaX_next(ls);
-        expdesc expr_v;
-        expr(ls, &expr_v);
-        closelistfield(fs, &cc); /* Flush pending elements */
+        int next_token = luaX_lookahead(ls);
+        if (next_token == ',' || next_token == ';' || next_token == '}') {
+            closelistfield(fs, &cc);
+            expr(ls, &cc.v);
+            if (cc.has_spread) {
+                luaK_exp2nextreg(fs, &cc.v);
+                int len_reg = fs->freereg;
+                luaK_reserveregs(fs, 1);
+                luaK_codeABC(fs, OP_LEN, len_reg, cc.t->u.info, 0);
+                luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
+                expdesc tab, key;
+                tab = *cc.t;
+                init_exp(&key, VNONRELOC, len_reg);
+                luaK_indexed(fs, &tab, &key);
+                luaK_storevar(fs, &tab, &cc.v);
+                fs->freereg = len_reg;
+                cc.v.k = VVOID;
+            } else {
+                cc.tostore++;
+            }
+        } else {
+            luaX_next(ls);
+            expdesc expr_v;
+            expr(ls, &expr_v);
+            
+            /* FORCE flush pending static elements before the spread operator loop clobbers registers */
+            if (cc.v.k != VVOID) {
+                luaK_exp2nextreg(fs, &cc.v);
+                cc.v.k = VVOID;
+            }
+            if (cc.tostore > 0) {
+                luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);
+                cc.na += cc.tostore;
+                cc.tostore = 0;
+                fs->freereg = cc.t->u.info + 1; /* Reset freereg to right after the table! */
+            }
+            
+            cc.has_spread = 1;
 
-        int t_reg = t->u.info;
-        int base = fs->freereg;
+            int t_reg = t->u.info;
+            int base = fs->freereg;
 
-        expdesc ipairs_var;
-        singlevaraux(fs, luaS_newliteral(ls->L, "ipairs"), &ipairs_var, 1);
-        if (ipairs_var.k == VVOID) {
-          expdesc key;
-          singlevaraux(fs, ls->envn, &ipairs_var, 1);
-          codestring(&key, luaS_newliteral(ls->L, "ipairs"));
-          luaK_indexed(fs, &ipairs_var, &key);
+            expdesc ipairs_var;
+            singlevaraux(fs, luaS_newliteral(ls->L, "ipairs"), &ipairs_var, 1);
+            if (ipairs_var.k == VVOID) {
+              expdesc key;
+              singlevaraux(fs, ls->envn, &ipairs_var, 1);
+              codestring(&key, luaS_newliteral(ls->L, "ipairs"));
+              luaK_indexed(fs, &ipairs_var, &key);
+            }
+            luaK_exp2nextreg(fs, &ipairs_var);
+            luaK_exp2nextreg(fs, &expr_v);
+
+            luaK_codeABC(fs, OP_CALL, base, 2, 4);
+            luaK_codeABC(fs, OP_LOADNIL, base + 3, 0, 0);
+            fs->freereg = base + 4;
+
+            int prep_jmp = luaK_codeABx(fs, OP_TFORPREP, base, 0);
+            
+            int loop_start = luaK_getlabel(fs);
+
+            fs->freereg = base + 6;
+
+            int len_reg = fs->freereg;
+            luaK_reserveregs(fs, 1);
+            luaK_codeABC(fs, OP_LEN, len_reg, t_reg, 0);
+            luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
+
+            expdesc tab, key, val;
+            init_exp(&tab, VNONRELOC, t_reg);
+            init_exp(&key, VNONRELOC, len_reg);
+            init_exp(&val, VNONRELOC, base + 5);
+            luaK_indexed(fs, &tab, &key);
+            luaK_storevar(fs, &tab, &val);
+
+            fs->freereg = base + 6;
+
+            fixforjump(fs, prep_jmp, luaK_getlabel(fs), 0);
+            
+            luaK_codeABC(fs, OP_TFORCALL, base, 0, 2);
+            luaK_fixline(fs, ls->linenumber);
+            
+            int loop_jmp = luaK_codeABx(fs, OP_TFORLOOP, base, 0);
+            fixforjump(fs, loop_jmp, loop_start, 1);
+
+            fs->freereg = base;
+
+            cc.v.k = VVOID;
         }
-        luaK_exp2nextreg(fs, &ipairs_var);
-        luaK_exp2nextreg(fs, &expr_v);
-
-        luaK_codeABC(fs, OP_CALL, base, 2, 4);
-        fs->freereg = base + 3;
-
-        int prep_jmp = luaK_codeABx(fs, OP_TFORPREP, base, 0);
-        int loop_start = luaK_getlabel(fs);
-
-        fs->freereg = base + 5;
-
-        int len_reg = fs->freereg;
-        luaK_reserveregs(fs, 1);
-        luaK_codeABC(fs, OP_LEN, len_reg, t_reg, 0);
-        luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
-
-        expdesc tab, key, val;
-        init_exp(&tab, VNONRELOC, t_reg);
-        init_exp(&key, VNONRELOC, len_reg);
-        init_exp(&val, VNONRELOC, base + 4);
-        luaK_indexed(fs, &tab, &key);
-        luaK_storevar(fs, &tab, &val);
-
-        fs->freereg = base + 3;
-
-        fixforjump(fs, prep_jmp, luaK_getlabel(fs), 0);
-        luaK_codeABC(fs, OP_TFORCALL, base, 0, 2);
-        int loop_jmp = luaK_codeABx(fs, OP_TFORLOOP, base, 0);
-        fixforjump(fs, loop_jmp, prep_jmp + 1, 1);
-
-        cc.v.k = VVOID;
     } else {
         closelistfield(fs, &cc);
         field(ls, &cc);
@@ -2083,8 +2163,36 @@ static void namedvararg (LexState *ls, TString *varargname) {
 }
 
 
+/**
+ * 解析函数参数列表
+ * 支持参数默认值语法：name = expr
+ * 
+ * 语法规则:
+ *   parlist -> [ {NAME ['=' expr] ','} (NAME ['=' expr] | '...') ]
+ * 
+ * 默认值语义：
+ *   - 当调用方未传入该参数（参数为nil）时，使用默认值
+ *   - 显式传入nil也会触发默认值替换
+ *   - 默认值表达式可以引用前面已声明的参数
+ *   - 默认值可以是任意表达式（常量、变量、函数调用等）
+ * 
+ * 示例:
+ *   function foo(x = 10, y = "hello", z = x * 2)
+ *   function bar(a, b = 0, c = {})
+ * 
+ * 生成的字节码等价于:
+ *   function foo(x, y, z)
+ *       if x == nil then x = 10 end
+ *       if y == nil then y = "hello" end
+ *       if z == nil then z = x * 2 end
+ *       -- 原始函数体
+ *   end
+ * 
+ * @param ls 词法分析器状态
+ * @param varargname 输出参数，如果存在具名可变参数则存储其名称
+ */
 static void parlist (LexState *ls, TString **varargname) {
-  /* parlist -> [ {NAME ','} (NAME | '...') ] */
+  /* parlist -> [ {NAME [':' type] ['=' expr] ','} (NAME [':' type] ['=' expr] | '...') ] */
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
   int nparams = 0;
@@ -2094,7 +2202,28 @@ static void parlist (LexState *ls, TString **varargname) {
       if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {
           int vidx = new_localvar(ls, str_checkname(ls));
           getlocalvardesc(fs, vidx)->vd.hint = gettypehint(ls);
+          /* 立即激活该参数变量并分配寄存器，以便后续默认值表达式可以引用它 */
+          adjustlocalvars(ls, 1);
+          luaK_reserveregs(fs, 1);
           nparams++;
+          /* 检查是否有默认值 '=' */
+          if (testnext(ls, '=')) {
+              int param_reg = getlocalvardesc(fs, fs->nactvar - 1)->vd.ridx;
+              /*
+              ** 生成 nil 检查和条件跳转：
+              ** OP_TESTNIL param param 0 k=0
+              **   k=0: 如果参数是nil，则跳过下一条JMP（继续执行默认值赋值）
+              **   k=0: 如果参数不是nil，则不跳过，执行JMP跳过默认值赋值
+              */
+              luaK_codeABCk(fs, OP_TESTNIL, param_reg, param_reg, 0, 0);
+              int jmp_skip = luaK_jump(fs);  /* 不是nil时执行此JMP，跳过默认值赋值 */
+              /* 解析默认值表达式并将结果存入参数寄存器 */
+              expdesc default_val;
+              expr(ls, &default_val);
+              luaK_exp2reg(fs, &default_val, param_reg);
+              /* 修复跳转目标：不是nil时跳到此处 */
+              luaK_patchtohere(fs, jmp_skip);
+          }
       }
       else if (ls->t.token == TK_DOTS) {
           luaX_next(ls);
@@ -2109,11 +2238,10 @@ static void parlist (LexState *ls, TString **varargname) {
       }
     } while (!isvararg && testnext(ls, ','));
   }
-  adjustlocalvars(ls, nparams);
+  /* 参数已在循环中逐个激活，此处只需设置 numparams 和 vararg 标记 */
   f->numparams = cast_byte(fs->nactvar);
   if (isvararg)
     setvararg(fs, f->numparams);  /* declared vararg */
-  luaK_reserveregs(fs, fs->nactvar);  /* reserve registers for parameters */
 }
 
 
@@ -2142,6 +2270,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
     if (ismethod) {
       new_localvarliteral(ls, "self");
       adjustlocalvars(ls, 1);
+      luaK_reserveregs(&new_fs, 1);
     }
     while (ls->t.token != '}' && ls->t.token != TK_EOS) {
 
@@ -2175,6 +2304,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
       if (!has_self) {
         new_localvarliteral(ls, "self");
         adjustlocalvars(ls, 1);
+        luaK_reserveregs(&new_fs, 1);  /* 为self参数分配寄存器 */
       }
   }
   
@@ -2473,9 +2603,20 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
 }
 
 
+/**
+ * 解析 lambda 表达式的参数列表
+ * 支持两种形式:
+ *   1. 带括号: (param1, param2, ...)
+ *   2. 无括号: param1, param2, ...
+ * 
+ * 支持参数默认值: param = expr
+ * 
+ * @param ls 词法分析器状态
+ * @param varargname 输出参数，如果存在具名可变参数则存储其名称
+ */
 static void lambda_parlist(LexState *ls, TString **varargname) {
-    /* lambda_parlist -> '(' [ param { ',' param } ] ')' */
-    /* lambda_parlist -> [ param { ',' param } ] */
+    /* lambda_parlist -> '(' [ param ['=' expr] { ',' param ['=' expr] } ] ')' */
+    /* lambda_parlist -> [ param ['=' expr] { ',' param ['=' expr] } ] */
     if (testnext(ls, '(')) {
         parlist(ls, varargname);
         checknext(ls, ')');
@@ -2489,7 +2630,22 @@ static void lambda_parlist(LexState *ls, TString **varargname) {
         do {
             if (ls->t.token == TK_NAME || is_type_token(ls->t.token)) {  /* param -> NAME */
                 new_localvar(ls, str_checkname(ls));
+                /* 立即激活该参数变量并分配寄存器 */
+                adjustlocalvars(ls, 1);
+                luaK_reserveregs(fs, 1);
                 nparams++;
+                /* 检查是否有默认值 '=' */
+                if (testnext(ls, '=')) {
+                    int param_reg = getlocalvardesc(fs, fs->nactvar - 1)->vd.ridx;
+                    /* 生成 nil 检查：如果参数不是nil则跳过默认值赋值 */
+                    luaK_codeABCk(fs, OP_TESTNIL, param_reg, param_reg, 0, 0);
+                    int jmp_skip = luaK_jump(fs);
+                    /* 解析默认值表达式 */
+                    expdesc default_val;
+                    expr(ls, &default_val);
+                    luaK_exp2reg(fs, &default_val, param_reg);
+                    luaK_patchtohere(fs, jmp_skip);
+                }
             }
             else if (ls->t.token == TK_DOTS) {  /* param -> '...' */
                 luaX_next(ls);
@@ -2504,9 +2660,8 @@ static void lambda_parlist(LexState *ls, TString **varargname) {
             }
         } while (!f->is_vararg && testnext(ls, ','));
     }
-    adjustlocalvars(ls, nparams);
+    /* 参数已在循环中逐个激活 */
     f->numparams = cast_byte(fs->nactvar);
-    luaK_reserveregs(fs, fs->nactvar);  /* reserve register for parameters */
 }
 
 
@@ -3644,8 +3799,14 @@ static void simpleexp (LexState *ls, expdesc *v) {
     }
     case TK_DOTS: {  /* vararg or spread operator */
       FuncState *fs = ls->fs;
+      int dots_line = ls->linenumber;  /* 记录 '...' 所在行号 */
       int la = luaX_lookahead(ls);
-      if (la == TK_NAME || la == '(' || la == '{' || la == TK_STRING || la == TK_RAWSTRING || la == TK_INTERPSTRING || la == TK_INT || la == TK_FLT || la == TK_TRUE || la == TK_FALSE || la == TK_NIL || la == '-' || la == TK_NOT || la == '#' || la == '~' || la == TK_FUNCTION || la == TK_LAMBDA) {
+      /*
+      ** 展开运算符要求 '...' 和后续表达式必须在同一行。
+      ** 如果跨行（如 varargs 赋值后换行），按标准 varargs 处理，
+      ** 避免误将下一行的标识符当作展开目标。
+      */
+      if ((la == TK_NAME || la == '(' || la == '{' || la == TK_STRING || la == TK_RAWSTRING || la == TK_INTERPSTRING || la == TK_INT || la == TK_FLT || la == TK_TRUE || la == TK_FALSE || la == TK_NIL || la == '-' || la == TK_NOT || la == '#' || la == '~' || la == TK_FUNCTION || la == TK_LAMBDA) && ls->linenumber == dots_line) {
         luaX_next(ls); /* skip '...' */
 
         /* Generate: table.unpack(expr) */
@@ -4985,8 +5146,14 @@ static void cond_simpleexp (LexState *ls, expdesc *v) {
     }
     case TK_DOTS: {  /* vararg or spread operator */
       FuncState *fs = ls->fs;
+      int dots_line = ls->linenumber;  /* 记录 '...' 所在行号 */
       int la = luaX_lookahead(ls);
-      if (la == TK_NAME || la == '(' || la == '{' || la == TK_STRING || la == TK_RAWSTRING || la == TK_INTERPSTRING || la == TK_INT || la == TK_FLT || la == TK_TRUE || la == TK_FALSE || la == TK_NIL || la == '-' || la == TK_NOT || la == '#' || la == '~' || la == TK_FUNCTION || la == TK_LAMBDA) {
+      /*
+      ** 展开运算符要求 '...' 和后续表达式必须在同一行。
+      ** 如果跨行（如 varargs 赋值后换行），按标准 varargs 处理，
+      ** 避免误将下一行的标识符当作展开目标。
+      */
+      if ((la == TK_NAME || la == '(' || la == '{' || la == TK_STRING || la == TK_RAWSTRING || la == TK_INTERPSTRING || la == TK_INT || la == TK_FLT || la == TK_TRUE || la == TK_FALSE || la == TK_NIL || la == '-' || la == TK_NOT || la == '#' || la == '~' || la == TK_FUNCTION || la == TK_LAMBDA) && ls->linenumber == dots_line) {
         luaX_next(ls); /* skip '...' */
 
         /* Generate: table.unpack(expr) */
@@ -12084,6 +12251,15 @@ static void deferstat (LexState *ls) {
   checktoclose(fs, fs->nactvar - 1);
 }
 
+/**
+ * 解析 C++ 风格的函数参数列表
+ * 支持类型前缀（int x, float y 等）和参数默认值（x = expr）
+ * 
+ * 语法规则:
+ *   cpp_parlist -> [ [Type] NAME ['=' expr] { ',' [Type] NAME ['=' expr] } ]
+ * 
+ * @param ls 词法分析器状态
+ */
 static void cpp_parlist (LexState *ls) {
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
@@ -12106,7 +12282,22 @@ static void cpp_parlist (LexState *ls) {
       switch (ls->t.token) {
         case TK_NAME: {
           new_localvar(ls, str_checkname(ls));
+          /* 立即激活该参数变量并分配寄存器 */
+          adjustlocalvars(ls, 1);
+          luaK_reserveregs(fs, 1);
           nparams++;
+          /* 检查是否有默认值 '=' */
+          if (testnext(ls, '=')) {
+              int param_reg = getlocalvardesc(fs, fs->nactvar - 1)->vd.ridx;
+              /* 生成 nil 检查：如果参数不是nil则跳过默认值赋值 */
+              luaK_codeABCk(fs, OP_TESTNIL, param_reg, param_reg, 0, 0);
+              int jmp_skip = luaK_jump(fs);
+              /* 解析默认值表达式 */
+              expdesc default_val;
+              expr(ls, &default_val);
+              luaK_exp2reg(fs, &default_val, param_reg);
+              luaK_patchtohere(fs, jmp_skip);
+          }
           break;
         }
         case TK_DOTS: {
@@ -12118,11 +12309,10 @@ static void cpp_parlist (LexState *ls) {
       }
     } while (!isvararg && testnext(ls, ','));
   }
-  adjustlocalvars(ls, nparams);
+  /* 参数已在循环中逐个激活 */
   f->numparams = cast_byte(fs->nactvar);
   if (isvararg)
     setvararg(fs, f->numparams);
-  luaK_reserveregs(fs, fs->nactvar);
 }
 
 static void declaration_stat (LexState *ls, int line) {
