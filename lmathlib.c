@@ -803,6 +803,107 @@ static int math_array (lua_State *L) {
 }
 
 
+static void generate_math_expr(luaL_Buffer *b, lua_Number target, int depth) {
+  if (depth <= 0) {
+    if (target == (lua_Integer)target) {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%lld", (long long)(lua_Integer)target);
+      luaL_addstring(b, buf);
+    } else {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%.17g", (double)target);
+      luaL_addstring(b, buf);
+    }
+    return;
+  }
+
+  int op = rand() % 4; /* 0: +, 1: -, 2: *, 3: / */
+  int left_side = rand() % 2;
+  lua_Number random_val = (lua_Number)(1 + (rand() % 100));
+
+  luaL_addchar(b, '(');
+
+  if (left_side) {
+    /* Target is on the left, random val on the right */
+    lua_Number new_target;
+    switch (op) {
+      case 0: new_target = target - random_val; break;
+      case 1: new_target = target + random_val; break;
+      case 2: new_target = target / random_val; break;
+      case 3: new_target = target * random_val; break;
+    }
+    generate_math_expr(b, new_target, depth - 1);
+
+    switch (op) {
+      case 0: luaL_addstring(b, " + "); break;
+      case 1: luaL_addstring(b, " - "); break;
+      case 2: luaL_addstring(b, " * "); break;
+      case 3: luaL_addstring(b, " / "); break;
+    }
+
+    if (random_val == (lua_Integer)random_val) {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%lld", (long long)(lua_Integer)random_val);
+      luaL_addstring(b, buf);
+    } else {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%.17g", (double)random_val);
+      luaL_addstring(b, buf);
+    }
+  } else {
+    /* Random val on the left, target on the right */
+    lua_Number new_target;
+    if (op == 3 && target == 0) {
+      op = rand() % 3; /* Avoid dividing by 0 target */
+    }
+
+    switch (op) {
+      case 0: new_target = target - random_val; break;
+      case 1: new_target = random_val - target; break; /* val - target = result => target = val - result */
+      case 2: new_target = target / random_val; break;
+      case 3: new_target = random_val / target; break; /* val / target = result => target = val / result */
+    }
+
+    if (random_val == (lua_Integer)random_val) {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%lld", (long long)(lua_Integer)random_val);
+      luaL_addstring(b, buf);
+    } else {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%.17g", (double)random_val);
+      luaL_addstring(b, buf);
+    }
+
+    switch (op) {
+      case 0: luaL_addstring(b, " + "); break;
+      case 1: luaL_addstring(b, " - "); break;
+      case 2: luaL_addstring(b, " * "); break;
+      case 3: luaL_addstring(b, " / "); break;
+    }
+
+    generate_math_expr(b, new_target, depth - 1);
+  }
+
+  luaL_addchar(b, ')');
+}
+
+static int math_toexpr (lua_State *L) {
+  lua_Number target = luaL_checknumber(L, 1);
+  int depth = (int)luaL_checkinteger(L, 2);
+
+  if (depth < 0) {
+    depth = 0;
+  } else if (depth > 15) {
+    depth = 15;
+  }
+
+  luaL_Buffer b;
+  luaL_buffinit(L, &b);
+  generate_math_expr(&b, target, depth);
+  luaL_pushresult(&b);
+  return 1;
+}
+
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
   {"acos",  math_acos},
@@ -826,6 +927,7 @@ static const luaL_Reg mathlib[] = {
   {"tan",   math_tan},
   {"type", math_type},
   {"array", math_array},
+  {"toexpr", math_toexpr},
 #if defined(LUA_COMPAT_MATHLIB)
   {"atan2", math_atan},
   {"cosh",   math_cosh},

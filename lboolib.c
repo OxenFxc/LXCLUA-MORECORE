@@ -105,75 +105,87 @@ static void random_string(char *buf, size_t len) {
   buf[str_len] = '\0';
 }
 
-static int bool_toexpr (lua_State *L) {
-  int b = lua_toboolean(L, 1);
-  char expr_buf[512];
-  
-  if (b) {
-    /* Generate complex nested expression that evaluates to true */
-    int expr_type = rand() % 6;
-    char random_str[32];
-    random_string(random_str, sizeof(random_str));
-    
-    switch (expr_type) {
-      case 0: /* Simple true expression with negation */
-        sprintf(expr_buf, "not false");
-        break;
-      case 1: /* Random string with multiple logic gates */
-        sprintf(expr_buf, "((\"%s\" and 123) or false) and not (false or nil)", 
-                random_str);
-        break;
-      case 2: /* Nested logic gates with comparison */
-        sprintf(expr_buf, "((%d > %d) and (\"%c\" ~= nil)) or (not false)", 
-                1 + rand() % 100, rand() % 100, random_char());
-        break;
-      case 3: /* Complex nested structure */
-        sprintf(expr_buf, "not (not ((true and true) and (\"%s\" or true))) and (true and not false)", 
-                random_str);
-        break;
-      case 4: /* Multiple and/or chains */
-        sprintf(expr_buf, "(true and true and true) or (not false and true)");
-        break;
-      case 5: /* Random combination with comparison */
-        sprintf(expr_buf, "((10 > 5) and (\"test\" ~= nil)) or (not false)");
-        break;
-      default:
-        strcpy(expr_buf, "true");
-        break;
+static void generate_bool_expr(luaL_Buffer *b, int target, int depth) {
+  if (depth <= 0) {
+    if (target) {
+      luaL_addstring(b, "true");
+    } else {
+      luaL_addstring(b, "false");
     }
+    return;
+  }
+
+  int op = rand() % 5; /* 0: and, 1: or, 2: not, 3: ==, 4: ~= */
+
+  luaL_addchar(b, '(');
+
+  if (op == 2) { /* not */
+    luaL_addstring(b, "not ");
+    generate_bool_expr(b, !target, depth - 1);
   } else {
-    /* Generate complex nested expression that evaluates to false */
-    int expr_type = rand() % 6;
-    char random_str[32];
-    random_string(random_str, sizeof(random_str));
-    
-    switch (expr_type) {
-      case 0: /* Simple false expression with negation */
-        sprintf(expr_buf, "not true");
+    int left_target, right_target;
+    switch (op) {
+      case 0: /* and */
+        if (target) {
+          left_target = 1;
+          right_target = 1;
+        } else {
+          left_target = rand() % 2;
+          right_target = left_target ? 0 : (rand() % 2);
+        }
         break;
-      case 1: /* Complex false expression with string */
-        sprintf(expr_buf, "((false or false) and nil) or (nil and true)");
+      case 1: /* or */
+        if (target) {
+          left_target = rand() % 2;
+          right_target = left_target ? (rand() % 2) : 1;
+        } else {
+          left_target = 0;
+          right_target = 0;
+        }
         break;
-      case 2: /* Comparison with false result */
-        sprintf(expr_buf, "((%d < %d) and (nil == nil)) or (not true)", 
-                rand() % 100, 1 + rand() % 100);
+      case 3: /* == */
+        left_target = rand() % 2;
+        right_target = target ? left_target : !left_target;
         break;
-      case 3: /* Double negation of false */
-        sprintf(expr_buf, "not (not (not true)) and (false and false)");
-        break;
-      case 4: /* Multiple false chain */
-        sprintf(expr_buf, "(false and false and false) or (nil and not false)");
-        break;
-      case 5: /* Complex nested false with comparison */
-        sprintf(expr_buf, "((5 < 3) and not (true or true)) and (\"test\" == nil)");
+      case 4: /* ~= */
+        left_target = rand() % 2;
+        right_target = target ? !left_target : left_target;
         break;
       default:
-        strcpy(expr_buf, "false");
+        left_target = target;
+        right_target = target;
         break;
     }
+
+    generate_bool_expr(b, left_target, depth - 1);
+
+    switch (op) {
+      case 0: luaL_addstring(b, " and "); break;
+      case 1: luaL_addstring(b, " or "); break;
+      case 3: luaL_addstring(b, " == "); break;
+      case 4: luaL_addstring(b, " ~= "); break;
+    }
+
+    generate_bool_expr(b, right_target, depth - 1);
+  }
+
+  luaL_addchar(b, ')');
+}
+
+static int bool_toexpr (lua_State *L) {
+  int target = lua_toboolean(L, 1);
+  int depth = (int)luaL_optinteger(L, 2, 0);
+
+  if (depth < 0) {
+    depth = 0;
+  } else if (depth > 15) {
+    depth = 15;
   }
   
-  lua_pushstring(L, expr_buf);
+  luaL_Buffer b;
+  luaL_buffinit(L, &b);
+  generate_bool_expr(&b, target, depth);
+  luaL_pushresult(&b);
   return 1;
 }
 
