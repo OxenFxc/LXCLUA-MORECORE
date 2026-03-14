@@ -4,7 +4,7 @@
 -- statements, split them into blocks using lexer utilities, and rebuild the function
 -- using a switch-based state machine.
 
-local cff = require("cff")
+local lexer_utils = require("extensions.lexer_utils")
 
 local code = [[
 local function example()
@@ -24,7 +24,7 @@ print("--- Original Code ---")
 print(code)
 
 print("--- CFF Obfuscated Code ---")
-local refactored = cff.obfuscate(code)
+local refactored = lexer_utils.obfuscate(code)
 print(refactored)
 
 print("--- Execution Output ---")

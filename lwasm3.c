@@ -211,7 +211,17 @@ static int function_call(lua_State *L) {
 
     M3Result result = m3_CallArgv(wf->function, argc, argv);
     if (result) {
-        return luaL_error(L, "Function call failed: %s", result);
+        IM3Runtime runtime = NULL;
+        if (wf->function && wf->function->module) {
+            runtime = wf->function->module->runtime;
+        }
+        if (runtime) {
+            M3ErrorInfo info;
+            m3_GetErrorInfo(runtime, &info);
+            return luaL_error(L, "WASM Trap: %s - %s", result, info.message);
+        } else {
+            return luaL_error(L, "Function call failed: %s", result);
+        }
     }
 
     int retc = m3_GetRetCount(wf->function);
