@@ -2030,95 +2030,40 @@ static void constructor (LexState *ls, expdesc *t) {
     if (ls->t.token == '}') break;
 
     if (ls->t.token == TK_DOTS) {
-        int next_token = luaX_lookahead(ls);
-        if (next_token == ',' || next_token == ';' || next_token == '}') {
-            closelistfield(fs, &cc);
-            expr(ls, &cc.v);
-            if (cc.has_spread) {
-                luaK_exp2nextreg(fs, &cc.v);
-                int len_reg = fs->freereg;
-                luaK_reserveregs(fs, 1);
-                luaK_codeABC(fs, OP_LEN, len_reg, cc.t->u.info, 0);
-                luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
-                expdesc tab, key;
-                tab = *cc.t;
-                init_exp(&key, VNONRELOC, len_reg);
-                luaK_indexed(fs, &tab, &key);
-                luaK_storevar(fs, &tab, &cc.v);
-                fs->freereg = len_reg;
-                cc.v.k = VVOID;
-            } else {
-                cc.tostore++;
-            }
-        } else {
-            luaX_next(ls);
-            expdesc expr_v;
-            expr(ls, &expr_v);
-            
-            /* FORCE flush pending static elements before the spread operator loop clobbers registers */
-            if (cc.v.k != VVOID) {
-                luaK_exp2nextreg(fs, &cc.v);
-                cc.v.k = VVOID;
-            }
-            if (cc.tostore > 0) {
-                luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);
-                cc.na += cc.tostore;
-                cc.tostore = 0;
-                fs->freereg = cc.t->u.info + 1; /* Reset freereg to right after the table! */
-            }
-            
-            cc.has_spread = 1;
+        /*
+         * Spread Operator inside constructor: {...expr}
+         * Wait, standard vararg dots: {...}
+         * For both varargs and custom spread, `expr(ls, &cc.v)` correctly parses `TK_DOTS`.
+         * `expr` natively distinguishes between standard varargs and spread by looking ahead.
+         * Therefore, we just let `expr` handle it directly.
+         */
+        closelistfield(fs, &cc);
+        expr(ls, &cc.v);
 
-            int t_reg = t->u.info;
-            int base = fs->freereg;
-
-            expdesc ipairs_var;
-            singlevaraux(fs, luaS_newliteral(ls->L, "ipairs"), &ipairs_var, 1);
-            if (ipairs_var.k == VVOID) {
-              expdesc key;
-              singlevaraux(fs, ls->envn, &ipairs_var, 1);
-              codestring(&key, luaS_newliteral(ls->L, "ipairs"));
-              luaK_indexed(fs, &ipairs_var, &key);
-            }
-            luaK_exp2nextreg(fs, &ipairs_var);
-            luaK_exp2nextreg(fs, &expr_v);
-
-            luaK_codeABC(fs, OP_CALL, base, 2, 4);
-            luaK_codeABC(fs, OP_LOADNIL, base + 3, 0, 0);
-            fs->freereg = base + 4;
-
-            int prep_jmp = luaK_codeABx(fs, OP_TFORPREP, base, 0);
-            
-            int loop_start = luaK_getlabel(fs);
-
-            fs->freereg = base + 6;
-
+        /* Because `...` or `...expr` generates a VCALL or VVARARG returning multiple items,
+           we flag it so subsequent elements trigger dynamic appending (`OP_LEN` + `OP_ADDI`).
+           Wait, I need to restore the dynamic appending bytecode here!
+         */
+        if (cc.has_spread) {
+            /* We are ALREADY in a spread state (from a previous element).
+               Actually, dynamic appending needs to happen *here* if `cc.has_spread` is set!
+             */
+            luaK_exp2nextreg(fs, &cc.v);
             int len_reg = fs->freereg;
             luaK_reserveregs(fs, 1);
-            luaK_codeABC(fs, OP_LEN, len_reg, t_reg, 0);
+            luaK_codeABC(fs, OP_LEN, len_reg, cc.t->u.info, 0);
             luaK_codeABCk(fs, OP_ADDI, len_reg, len_reg, int2sC(1), 0);
-
-            expdesc tab, key, val;
-            init_exp(&tab, VNONRELOC, t_reg);
+            expdesc tab, key;
+            tab = *cc.t;
             init_exp(&key, VNONRELOC, len_reg);
-            init_exp(&val, VNONRELOC, base + 5);
             luaK_indexed(fs, &tab, &key);
-            luaK_storevar(fs, &tab, &val);
-
-            fs->freereg = base + 6;
-
-            fixforjump(fs, prep_jmp, luaK_getlabel(fs), 0);
-            
-            luaK_codeABC(fs, OP_TFORCALL, base, 0, 2);
-            luaK_fixline(fs, ls->linenumber);
-            
-            int loop_jmp = luaK_codeABx(fs, OP_TFORLOOP, base, 0);
-            fixforjump(fs, loop_jmp, loop_start, 1);
-
-            fs->freereg = base;
-
+            luaK_storevar(fs, &tab, &cc.v);
+            fs->freereg = len_reg;
             cc.v.k = VVOID;
+        } else {
+            cc.tostore++;
         }
+        cc.has_spread = 1; /* Mark that we have encountered a spread */
     } else {
         closelistfield(fs, &cc);
         field(ls, &cc);
@@ -6848,7 +6793,7 @@ static void takestat_full(LexState *ls) {
   }
   
   /* 第一阶段：收集所有变量信息 */
-  while (ls->t.token != '}' && nvars < MAX_DESTRUCT_ITEMS) {
+  while (ls->t.token != end_token && nvars < MAX_DESTRUCT_ITEMS) {
     /* 跳过空位（数组模式） */
     if (ls->t.token == ',') {
       array_mode = 1;

@@ -221,6 +221,18 @@ enum Color {
 -- Destructuring
 local data = { x = 1, y = 2 }
 local take { x, y } = data
+
+-- Array Destructuring
+local arr = {10, 20, 30}
+local take [first, , third] = arr
+
+-- Spread Operator
+local arr1 = {1, 2}
+local arr2 = {3, 4}
+local combined = { 0, ...arr1, ...arr2 }
+
+local function sum(a, b, c) return a + b + c end
+print(sum(1, ...arr2))
 ```
 
 ### 6. Control Flow
@@ -269,6 +281,26 @@ namespace MyLib {
 }
 using namespace MyLib; -- Import all
 -- using MyLib::test;  -- Import specific member
+
+-- Ternary Conditional Expression
+local is_debug = true
+local level = is_debug ? 10 : 0
+
+-- List Comprehension
+local src = {1, 2, 3, 4, 5}
+local evens = [for _, v in ipairs(src) do v * 2 if v % 2 == 0]
+
+-- Dict Comprehension
+local dict = {a = 1, b = 2}
+local inverted = {for k, v in pairs(dict) do v, k}
+
+-- Continue Statement
+for i = 1, 10 do
+    if i % 2 == 0 then
+        continue
+    end
+    print(i)
+end
 ```
 
 ### 7. Shell-like Tests

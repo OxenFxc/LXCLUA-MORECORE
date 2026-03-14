@@ -281,6 +281,7 @@ namespace MyLib {
 }
 using namespace MyLib; -- 导入所有
 -- using MyLib::test;  -- 导入特定成员
+
 -- 三元条件表达式
 local is_debug = true
 local level = is_debug ? 10 : 0
@@ -292,6 +293,14 @@ local evens = [for _, v in ipairs(src) do v * 2 if v % 2 == 0]
 -- 字典推导式 (Dict Comprehension)
 local dict = {a = 1, b = 2}
 local inverted = {for k, v in pairs(dict) do v, k}
+
+-- Continue 语句
+for i = 1, 10 do
+    if i % 2 == 0 then
+        continue
+    end
+    print(i)
+end
 ```
 
 ### 7. Shell 风格测试
