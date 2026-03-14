@@ -1,56 +1,106 @@
-# LXCLUA-NCore Project Development Plan (计划书)
+# LXCLUA-NCore 极致性能与极致安全双引擎重构计划书 (Tiered & Hybrid Architecture)
 
-This document outlines the current state, strengths, weaknesses, and future development roadmaps for the LXCLUA-NCore project. It is intended to guide contributors and maintainers on where to focus efforts.
+本计划书旨在彻底重构 LXCLUA-NCore 的字节码逻辑与虚拟机架构。核心目标是实现**既要极致性能（High-Performance JIT/AOT）又要极致安全（VMP/CFF 高级混淆）**的双引擎架构。
 
-## 1. Project Overview & Strengths (项目优势与现状)
-
-LXCLUA-NCore is a highly customized, high-performance embedded scripting engine based on Lua 5.5. It brings modern programming paradigms, deep C-level integration, and advanced security features to the Lua ecosystem.
-
-*   **Custom 64-bit VM Instruction Set:** Optimized instruction mapping (`XCLUA`) allowing larger operand sizes (e.g., `sC` offsets up to 32767) and more efficient dispatching.
-*   **Rich Syntax Extensions:** Native support for OOP (classes, interfaces, visibility modifiers), Switch statements, Try-Catch, Arrow Functions, Pipeline Operators (`|>`), Optional Chaining (`?.`), Nullish Coalescing (`??`), and Shell-style conditional testing (`[ -f "file" ]`).
-*   **Security & Obfuscation:** A multi-layered obfuscation engine supporting control flow flattening (CFF), bogus blocks, string encryption via rolling XOR, integer arithmetic obfuscation (LCG-based), and binary dispatcher injection.
-*   **JIT / Runtime C Compilation (TCC):** Integration with Tiny C Compiler enables seamless runtime compilation of C code into native execution via `require("tcc")`.
-*   **WebAssembly (WASM) Integration:** Built-in `wasm3` runtime execution directly from Lua, supporting high-performance sandbox execution with environment manipulation.
-*   **Exposed Lexer / AST (`lexer`):** Exposes internal C parsing primitives (like `build_tree`, `find_label`, `get_block_bounds`) to Lua, allowing powerful AST manipulation, refactoring, and customized CFF logic written entirely in pure Lua.
-*   **Bare-Metal Foundation:** An included `os/` directory providing Multiboot support, VGA, Serial I/O, and basic interrupts for running the engine directly on bare metal (x86).
-
-## 2. Weaknesses & Challenges (现存问题与挑战)
-
-While feature-rich, the extensive modifications and integrations introduce specific challenges that need to be addressed:
-
-*   **Complexity of Integration:** Maintaining synchronization between the custom 64-bit `lparser.c`/`lvm.c`, TCC inline C generation (`ltcc.c`), and WebAssembly bindings (`lwasm3.c`) requires immense care. Any structural changes to the Lua stack or bytecode format risk breaking multiple downstream modules.
-*   **Memory Safety in Native Extensions:** Given the heavy use of raw C APIs in modules like `struct`, `ptr`, and the obfuscator (`lobfuscate.c`), the risk of segfaults or memory leaks (especially during AST generation or CFF restructuring) is higher than in vanilla Lua.
-*   **Documentation & API Standardization:** While `README.md` covers the syntax, deeper modules (like the `ByteCode` API or `lexer` manipulation) lack comprehensive, standardized documentation detailing edge cases (e.g., handling interpolated strings `<interpstring>` vs raw strings `<rawstring>`).
-*   **Test Coverage for Edge Cases:** Some modern syntax features (like async/await, or deeply nested concepts/superstructs) may lack exhaustive regression tests, especially when combined with heavy CFF obfuscation.
-
-## 3. Short-Term Goals (近期开发目标)
-
-Focus on stabilization, security enhancements, and expanding the Lua-side tooling for the C primitives.
-
-1.  **Enhance Pure Lua Lexer Tooling:**
-    *   Since C primitives (e.g., `lexer.get_block_bounds`) are available, implement more robust high-level control-flow flattening (CFF) and abstract syntax tree (AST) manipulation scripts in pure Lua. This avoids writing complex business logic in C (`llexerlib.c`).
-    *   Create detailed examples/tutorials for users on how to use `lexer.reconstruct` and AST manipulation to refactor their own Lua code dynamically.
-2.  **Strengthen `tcc` Obfuscation:**
-    *   Expand `obf_int` to include more complex opaque predicates.
-    *   Ensure `string_encryption` remains decoupled from the `flatten` obfuscation flag to avoid double-encryption bugs.
-3.  **WASM Sandbox Hardening:**
-    *   Improve error isolation in the `wasm3` module so that WASM traps do not crash the host Lua state.
-    *   Expand WASI support and ensure macro guards (`d_m3HasWASI`) are robust across all compilation targets.
-4.  **Testing & CI:**
-    *   Add more automated tests specifically targeting the interaction between the custom 64-bit opcodes and the `debug` hooks (e.g., conditional breakpoints, `hookf`).
-
-## 4. Long-Term Goals (远期开发目标)
-
-Focus on architectural evolution, performance optimization, and broader platform support.
-
-1.  **Advanced Bytecode Optimization Pass:**
-    *   Implement an intermediate representation (IR) optimization pass before bytecode emission to aggressively fold constants, eliminate dead code, and inline small functions statically.
-2.  **Full OS/Bare-Metal Maturation (Phase 2):**
-    *   Expand the `os/` foundation from basic bootloader and VGA drivers to include a simple scheduler and file system support, allowing LXCLUA to run as a standalone embedded operating system.
-3.  **JIT Compilation to WASM/Native:**
-    *   Explore generating WASM bytecode directly from the Lua AST/ByteCode for execution in browsers, leveraging the existing `wasm3` knowledge.
-4.  **Package Manager / Ecosystem:**
-    *   Develop a lightweight package manager (akin to LuaRocks) tailored for LXCLUA-NCore, supporting pre-compiled TCC/WASM modules and pure Lua AST transformers.
+重构的核心思想是引入**强类型中间表示 (SSA IR)** 作为解耦层，并在运行时引入**双引擎虚拟机 (Dual-Engine VM)** 机制，通过编译期注解（Pragma）将代码分流至“性能管线”或“安全管线”。
 
 ---
-*End of Document. Planned and maintained by the LXCLUA-NCore Development Team.*
+
+## 阶段一：架构解耦与统一中间表示 (IR) 层的建立
+
+本阶段的目标是打破当前 `源代码 -> AST -> 字节码` 的单线编译流程，在 AST 和 Bytecode 之间引入独立于具体指令格式的中间表示层（IR）。
+
+- [ ] **1.1 定义 SSA IR 数据结构 (`lir.h` / `lir.c`)**
+  - [ ] 设计类似于 LLVM IR 的三地址码格式，例如 `IR_ADD v1, v2, v3`。
+  - [ ] 定义基本块（Basic Block）结构，包含入口、出口、前驱（Predecessors）和后继（Successors）指针。
+  - [ ] 实现 IR 节点的内存分配与管理机制。
+
+- [ ] **1.2 改造前端解析器 (`lparser.c` / `llexer_compiler.c`)**
+  - [ ] 修改现有的 AST 生成逻辑，使其不再直接发射（Emit）64位定长字节码。
+  - [ ] 实现 `AST -> IR` 的遍历转换生成器。
+  - [ ] 支持编译期注解或宏（例如 `@optimize("speed")` 或 `@optimize("obfuscate")`），并将其作为 Metadata 附加到对应函数的 IR 对象上。
+
+- [ ] **1.3 实现基础的 IR 优化 Pass**
+  - [ ] **常量折叠 (Constant Folding)**：在编译期计算常量表达式（如 `1 + 2` -> `3`）。
+  - [ ] **常量传播 (Constant Propagation)**：将常量赋值传播到后续使用处。
+  - [ ] **死代码消除 (Dead Code Elimination)**：移除不可达的 IR 块（如 `if (false)` 分支）。
+  - [ ] 实现 IR 层面的控制流图 (CFG) 构建与分析工具。
+
+---
+
+## 阶段二：安全管线 (Security Pipeline) 与高级混淆重构
+
+本阶段的目标是将现有的混淆逻辑（如 `lobfuscate.c` 中的控制流扁平化、虚假块等）上移至 IR 层，并增强 VMP 保护机制。
+
+- [ ] **2.1 IR 级别的控制流扁平化 (IR-CFF)**
+  - [ ] 重写 `cff.lua` 或 `lobfuscate.c` 中的 CFF 逻辑，使其直接操作 IR 的基本块。
+  - [ ] 实现基于 IR 的基本块洗牌（Block Shuffle）。
+  - [ ] 在 IR 图中注入虚假基本块（Bogus Blocks）和不透明谓词（Opaque Predicates）。
+
+- [ ] **2.2 终极虚拟机保护 (VMP) 的指令生成**
+  - [ ] 设计动态操作码（Opcode Mutation）生成机制，为每个受保护的函数生成独一无二的随机指令映射表。
+  - [ ] 将 IR 编译为一维的、基于纯数学驱动状态机（State Machine Array）的加密字节码。
+  - [ ] 实现常量字符串的深层加密（例如使用 AES-CTR 模式或自定义的纯数学解密算法）。
+
+- [ ] **2.3 变量与环境虚拟化 (Variable Virtualization)**
+  - [ ] 在 IR 层拦截对 `_G` 和局部变量的访问。
+  - [ ] 将变量访问重定向到混淆后的虚拟内存数组（Virtual Memory Array），消除原生的寄存器和全局查找指令。
+
+---
+
+## 阶段三：性能管线 (Performance Pipeline) 与指令集升级
+
+本阶段的目标是针对标记为高性能的代码，生成极致优化的执行流。
+
+- [ ] **3.1 设计变长混合指令集 (Variable-Length ISA)**
+  - [ ] 修改 `lopcodes.h`，摒弃单一的 64 位定长指令。
+  - [ ] 引入 32位/64位/96位 混合指令编码，高频短指令使用短编码以提升 I-Cache 命中率。
+  - [ ] 设计超级指令（Super-Instructions），例如将 `GETTABLE` + `CALL` 融合成单条 `GETTABLE_CALL`。
+
+- [ ] **3.2 `IR -> 优化字节码` 的代码生成器**
+  - [ ] 实现将优化后的 IR 转换为上述变长指令集的发射器（Emitter）。
+  - [ ] 优化寄存器分配算法，尽量减少寄存器溢出（Spill）。
+
+- [ ] **3.3 JIT/AOT 编译集成 (TCC/WASM 深度融合)**
+  - [ ] 对于极端的计算密集型函数，利用已有的 `tcc` 模块，在加载期将 IR 直接转译为 C 代码并编译为原生机器码。
+  - [ ] 探索将部分 IR 编译为 WASM 并在内置的 `wasm3` 引擎中执行的路径。
+
+---
+
+## 阶段四：双引擎虚拟机 (Dual-Engine VM) 的实现
+
+本阶段的目标是重构核心执行器 `lvm.c`，使其能够同时支持高速执行和高安全执行，并在两者间无缝切换。
+
+- [ ] **4.1 高速分发器 (Fast Dispatcher - `lvm_fast.c`)**
+  - [ ] 使用 C 语言的 **计算型 goto (Computed Goto / Direct Threading)** 替换传统的 `switch-case`，消除分支预测惩罚。
+  - [ ] 专门负责执行由性能管线生成的变长/超级指令。
+
+- [ ] **4.2 安全分发器 (Secure Dispatcher - `lvm_secure.c`)**
+  - [ ] 实现一个复杂的、包含多层混淆和状态机步进的执行循环。
+  - [ ] 专门负责解释由安全管线生成的、高度加密的动态指令集。
+
+- [ ] **4.3 双引擎边界切换机制 (Boundary Switch)**
+  - [ ] 在 `lvm.c` 中实现上下文管理，当高速函数调用安全函数（或反之）时，能够安全地挂起当前执行引擎，切换到另一个引擎。
+  - [ ] 确保在切换时，Lua 的调用栈（Call Stack）、闭包环境（Upvalues）和异常处理（Try-Catch）保持一致且零拷贝。
+
+---
+
+## 阶段五：序列化格式重构与全面测试
+
+本阶段的目标是更新字节码的 Dump/Undump 流程，并确保整个双引擎架构的稳定性。
+
+- [ ] **5.1 二进制格式加固 (`ldump.c` / `lundump.c`)**
+  - [ ] 放弃标准 Lua 头部，引入自定义魔数、编译时间戳和动态执行密钥。
+  - [ ] 对常量表、局部变量信息等区块进行 AES 分块加密。
+  - [ ] 实现加载时的 SHA-256 内存实时完整性校验。
+
+- [ ] **5.2 基础功能集成测试**
+  - [ ] 编写测试用例，验证简单的数学运算和控制流在 IR 层的正确转换。
+  - [ ] 跑通基础的双引擎互相调用测试（Mock 指令）。
+
+- [ ] **5.3 进阶特性与回归测试**
+  - [ ] 验证所有现代语法扩展（类、Switch、Try-Catch、箭头函数等）在双管线下的正确性。
+  - [ ] 进行大规模的压力测试和内存泄漏分析（尤其是边界切换时的栈管理）。
+
+---
+*End of Document. 极致性能与极致安全双引擎重构计划书。*
