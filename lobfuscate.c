@@ -112,6 +112,8 @@ static const char* getOpName(OpCode op) {
 ** =======================================================
 */
 
+static void luaO_encryptStrings (lua_State *L, Proto *f, uint64_t key);
+
 
 /*
 ** 检查指令是否为基本块终结指令
@@ -1563,6 +1565,22 @@ int luaO_flatten (lua_State *L, Proto *f, int flags, unsigned int seed,
       if (log_file != NULL) { fclose(log_file); g_cff_log_file = NULL; }
       return vm_result;
     }
+
+    /* 单独应用字符串加密 */
+    if (flags & OBFUSCATE_STR_ENCRYPT) {
+      CFF_LOG("跳过CFF和VM保护，仅应用字符串加密");
+      f->difierline_mode |= OBFUSCATE_STR_ENCRYPT;
+      unsigned int r = seed;
+      NEXT_RAND(r);
+      uint64_t key = ((uint64_t)r << 32);
+      NEXT_RAND(r);
+      key |= r;
+      luaO_encryptStrings(L, f, key);
+      /* 我们还需要生成一个简单的解析元数据保存key以供解密，
+         为了简便我们可以直接挂载到 difierline_data */
+      f->difierline_data = key;
+    }
+
     if (log_file != NULL) { fclose(log_file); g_cff_log_file = NULL; }
     return 0;  /* 未启用任何混淆 */
   }

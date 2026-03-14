@@ -154,12 +154,15 @@ static const char *obf_int(int val, unsigned int *seed, int obfuscate) {
         snprintf(buf, 128, "%d", val);
     } else {
         int r = my_rand(seed) % 0x7FFF;
-        int op = my_rand(seed) % 4;
+        int op = my_rand(seed) % 7;
         switch (op) {
             case 0: snprintf(buf, 128, "((%d + %d) - %d)", val, r, r); break;
             case 1: snprintf(buf, 128, "((%d - %d) + %d)", val, r, r); break;
             case 2: snprintf(buf, 128, "((%d ^ %d) ^ %d)", val, r, r); break;
             case 3: snprintf(buf, 128, "((%d * 2) - %d)", val, val); break;
+            case 4: snprintf(buf, 128, "((%d | 0) + 0)", val); break;
+            case 5: snprintf(buf, 128, "((%d & %d) | (%d & ~%d))", val, val, val, val); break;
+            case 6: snprintf(buf, 128, "(~(~%d))", val); break;
         }
     }
     return buf;
