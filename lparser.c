@@ -3709,6 +3709,17 @@ static void ifexpr (LexState *ls, expdesc *v) {
   reg = v->u.info;
   luaK_concat(fs, &escape, luaK_jump(fs));
   luaK_patchtohere(fs, condition);
+
+  while (ls->t.token == TK_ELSEIF) {
+    luaX_next(ls); /* skip ELSEIF */
+    condition = cond(ls);
+    checknext(ls, TK_THEN);
+    expr(ls, v);
+    luaK_exp2reg(fs, v, reg);
+    luaK_concat(fs, &escape, luaK_jump(fs));
+    luaK_patchtohere(fs, condition);
+  }
+
   checknext(ls, TK_ELSE);
   expr(ls, v);
   checknext(ls, TK_END);
