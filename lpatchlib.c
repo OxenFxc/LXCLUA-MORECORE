@@ -62,8 +62,8 @@ static int patch_write(lua_State *L) {
   DWORD oldProtect;
 #endif
 
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
   bytes = luaL_checklstring(L, 2, &len);
   if (address == NULL || len == 0) { lua_pushboolean(L, 0); return 1; }
 
@@ -131,8 +131,8 @@ static int patch_read(lua_State *L) {
   void *address;
   size_t size;
 
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
   size = (size_t)luaL_checkinteger(L, 2);
 
   if (address == NULL || size == 0) {
@@ -176,8 +176,8 @@ static int patch_free(lua_State *L) {
   size_t size;
   int result = 0;
 
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
   size = (size_t)luaL_checkinteger(L, 2);
 
   if (address == NULL || size == 0) {
@@ -205,8 +205,8 @@ static int patch_mprotect(lua_State *L) {
   size_t protect_len;
   int result = 0;
 
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
   size = (size_t)luaL_checkinteger(L, 2);
   flags_str = luaL_checkstring(L, 3);
 
@@ -261,8 +261,8 @@ static int patch_mprotect(lua_State *L) {
 
 static int patch_call(lua_State *L) {
   void *address;
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
 
   if (address == NULL) {
     return luaL_error(L, "Cannot call NULL pointer");
@@ -277,8 +277,8 @@ static int patch_call(lua_State *L) {
 
 static int patch_call_ret(lua_State *L) {
   void *address;
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  address = lua_touserdata(L, 1);
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
 
   if (address == NULL) {
     return luaL_error(L, "Cannot call NULL pointer");
@@ -292,7 +292,23 @@ static int patch_call_ret(lua_State *L) {
   return 1;
 }
 
+static int patch_get_arch(lua_State *L) {
+#if defined(__x86_64__) || defined(_M_X64)
+  lua_pushstring(L, "x86_64");
+#elif defined(__i386) || defined(__i386__) || defined(_M_IX86)
+  lua_pushstring(L, "x86");
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  lua_pushstring(L, "arm64");
+#elif defined(__arm__) || defined(_M_ARM)
+  lua_pushstring(L, "arm");
+#else
+  lua_pushstring(L, "unknown");
+#endif
+  return 1;
+}
+
 static const luaL_Reg patchlib[] = {
+  {"get_arch", patch_get_arch},
   {"get_marker", patch_get_marker},
   {"get_symbol", patch_get_symbol},
   {"write", patch_write},
