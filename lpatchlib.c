@@ -38,22 +38,36 @@ static int patch_get_marker(lua_State *L) {
 }
 
 static int patch_write(lua_State *L) {
-  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
-  void *address = lua_touserdata(L, 1);
+  void *address;
   size_t len;
-  const char *bytes = luaL_checklstring(L, 2, &len);
-  if (address == NULL || len == 0) { lua_pushboolean(L, 0); return 1; }
+  const char *bytes;
+  long page_size;
+  uintptr_t start_page;
+  uintptr_t end_page;
+  size_t protect_len;
 #if defined(_WIN32)
-  SYSTEM_INFO si; GetSystemInfo(&si); long page_size = si.dwPageSize;
+  SYSTEM_INFO si;
+  DWORD oldProtect;
+#endif
+
+  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+  address = lua_touserdata(L, 1);
+  bytes = luaL_checklstring(L, 2, &len);
+  if (address == NULL || len == 0) { lua_pushboolean(L, 0); return 1; }
+
+#if defined(_WIN32)
+  GetSystemInfo(&si);
+  page_size = si.dwPageSize;
 #else
-  long page_size = sysconf(_SC_PAGESIZE);
+  page_size = sysconf(_SC_PAGESIZE);
 #endif
   if (page_size <= 0) page_size = 4096;
-  uintptr_t start_page = (uintptr_t)address & ~(page_size - 1);
-  uintptr_t end_page   = ((uintptr_t)address + len + page_size - 1) & ~(page_size - 1);
-  size_t protect_len = end_page - start_page;
+
+  start_page = (uintptr_t)address & ~(page_size - 1);
+  end_page   = ((uintptr_t)address + len + page_size - 1) & ~(page_size - 1);
+  protect_len = end_page - start_page;
+
 #if defined(_WIN32)
-  DWORD oldProtect;
   if (!VirtualProtect((void*)start_page, protect_len, PAGE_EXECUTE_READWRITE, &oldProtect)) {
     lua_pushboolean(L, 0); return 1;
   }
@@ -62,12 +76,14 @@ static int patch_write(lua_State *L) {
     lua_pushboolean(L, 0); return 1;
   }
 #endif
+
   memcpy(address, bytes, len);
   __builtin___clear_cache((char*)start_page, (char*)start_page + protect_len);
+
 #if defined(_WIN32)
   VirtualProtect((void*)start_page, protect_len, oldProtect, &oldProtect);
 #else
-  mprotect((void*)start_page, protect_len, PROT_READ | PROT_WRITE | PROT_EXEC);
+  mprotect((void*)start_page, protect_len, PROT_READ | PROT_EXEC);
 #endif
   lua_pushboolean(L, 1);
   return 1;
