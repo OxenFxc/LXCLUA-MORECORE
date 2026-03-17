@@ -1,44 +1,32 @@
 local patch = require("patch")
-local ptr = require("ptr")
 
--- 1. Create a dummy Lua function with an endless loop
-local function infinite_loop()
-    print("WARNING: This should never execute!")
-end
-
--- 2. Get the physical memory address of the VMP marker inside the VM loader
+-- 1. Get the physical memory address of the VMP marker inside the VM loader
 local marker_addr, size = patch.get_marker("lundump")
 print(string.format("LVM Loader VMP Marker resides at: %s (Size: %d bytes)", tostring(marker_addr), size))
 
--- To calculate the relative jump offset, we need the integer value of the marker address
--- We use FFI or `tostring(marker_addr)` trick to parse the address if `ptr.toint` is not available.
+-- 2. Parse the userdata string safely across Windows and Linux
+-- Windows output: userdata: 00007ff74a9c6180
+-- Linux output: userdata: 0x5555...
 local addr_str = tostring(marker_addr)
-local marker_int = tonumber(addr_str:match("0x[0-9a-fA-F]+"))
+local hex_part = addr_str:match("userdata:%s*0*x?([0-9a-fA-F]+)")
+
+if not hex_part then
+    error("Cannot parse marker integer address from: " .. addr_str)
+end
+
+local marker_int = tonumber(hex_part, 16)
 if not marker_int then
-    print("Cannot parse marker integer address:", addr_str)
-    -- Fallback for testing: write a RET instruction (0xC3) to immediately return
-    -- The C function calling VMP_MARKER is `void lundump_vmp_hook_point(void)`.
-    -- If we overwrite it with `RET`, it safely returns and bypasses the rest of the NOPs.
-    print("Applying simple RET payload...")
-    patch.write(marker_addr, string.char(0xC3) .. string.rep("\144", size - 1))
-    print("Successfully injected raw Machine Code!")
-    return
+    error("Failed to convert parsed hex to integer: " .. hex_part)
 end
 
 print(string.format("Marker Address Int: 0x%x", marker_int))
 
--- 3. Let's create an x86_64 raw assembly payload that calls an endless loop or returns.
--- The simplest payload to prove we can execute raw machine code without crashing the VM:
--- The hook is called from `luaU_undump` as `lundump_vmp_hook_point()`.
--- It expects a `RET` (0xC3) to return back to `luaU_undump`.
--- We will write a payload that modifies RAX (even if it's discarded) and returns.
--- Payload:
--- mov eax, 0x1337  (\xB8\x37\x13\x00\x00)
--- ret              (\xC3)
-
-local payload = "\xB8\x37\x13\x00\x00\xC3"
-local padding = string.rep("\x90", size - #payload)
-payload = payload .. padding
+-- 3. Construct a safe raw machine code payload (x86_64 / x86 / ARM NOPs)
+-- Since the hook point is inside a standard C function, injecting a raw RET (0xC3)
+-- could corrupt the stack frame if the compiler generated a prologue (e.g. push rbp).
+-- The safest demonstration of writing raw machine code is to overwrite the existing
+-- NOP marker bytes with our own dynamically generated NOP bytes (\x90).
+local payload = string.rep("\x90", size)
 
 print("\n>>> INJECTING RAW MACHINE CODE INTO VM EXECUTABLE SEGMENT (lundump.c) <<<\n")
 patch.write(marker_addr, payload)
