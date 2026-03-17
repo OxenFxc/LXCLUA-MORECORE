@@ -40,8 +40,8 @@ print("2. Testing patch.write via dynamically loaded symbol")
 print("==================================================")
 
 -- Look up a safe, innocuous standard C function to patch temporarily for testing
--- We will resolve 'lua_version', grab its address, and attempt to write a NOP/RET
-local symbol_name = "lua_version"
+-- We will resolve a standard C library function like 'puts' since it is exported dynamically across all OSes
+local symbol_name = "puts"
 local symbol_addr = patch.get_symbol(symbol_name)
 
 if symbol_addr then

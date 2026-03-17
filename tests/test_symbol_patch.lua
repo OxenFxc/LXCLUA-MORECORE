@@ -33,7 +33,8 @@ print("2. Testing patch.get_symbol (Arbitrary Function Patching)")
 print("==================================================")
 
 -- This proves we can now patch *any* function dynamically, not just VMP markers
-local symbol_name = "luaL_checkinteger"
+-- This proves we can now patch dynamically linked standard functions
+local symbol_name = "puts"
 local symbol_addr = patch.get_symbol(symbol_name)
 
 if symbol_addr then
