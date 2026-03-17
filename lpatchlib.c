@@ -275,6 +275,23 @@ static int patch_call(lua_State *L) {
   return 0;
 }
 
+static int patch_call_ret(lua_State *L) {
+  void *address;
+  luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+  address = lua_touserdata(L, 1);
+
+  if (address == NULL) {
+    return luaL_error(L, "Cannot call NULL pointer");
+  }
+
+  // Cast address to a function pointer that returns a 64-bit integer
+  long long (*func)(void) = (long long (*)(void))address;
+  long long result = func();
+
+  lua_pushinteger(L, result);
+  return 1;
+}
+
 static const luaL_Reg patchlib[] = {
   {"get_marker", patch_get_marker},
   {"get_symbol", patch_get_symbol},
@@ -284,6 +301,7 @@ static const luaL_Reg patchlib[] = {
   {"free", patch_free},
   {"mprotect", patch_mprotect},
   {"call", patch_call},
+  {"call_ret", patch_call_ret},
   {NULL, NULL}
 };
 
