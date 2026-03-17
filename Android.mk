@@ -73,6 +73,7 @@ LOCAL_SRC_FILES := \
 	lstruct.c \
 	sha256.c \
 	ltcc.c\
+	lpatchlib.c\
 	llexerlib.c\
 	llexer_compiler.c\
 	lobfuscate.c \

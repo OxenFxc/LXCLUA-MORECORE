@@ -119,7 +119,8 @@ static int patch_get_symbol(lua_State *L) {
 #endif
 
   if (address == NULL) {
-    return luaL_error(L, "Symbol not found: %s", name);
+    lua_pushnil(L);
+    return 1;
   }
 
   lua_pushlightuserdata(L, address);
