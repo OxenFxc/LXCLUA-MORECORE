@@ -30,6 +30,11 @@
 
 #include "sha256.h"
 
+__attribute__((noinline))
+void ldump_vmp_hook_point(void) {
+  VMP_MARKER(ldump_vmp);
+}
+
 
 typedef struct {
   char *data;
@@ -753,6 +758,7 @@ static void dumpHeader (DumpState *D) {
 int luaU_dump(lua_State *L, const Proto *f, lua_Writer w, void *data,
               int strip) {
   DumpState D;
+  ldump_vmp_hook_point();
   D.L = L;
   D.writer = w;
   D.data = data;
@@ -798,6 +804,7 @@ int luaU_dump_obfuscated(lua_State *L, const Proto *f, lua_Writer w, void *data,
                          int strip, int obfuscate_flags, unsigned int seed,
                          const char *log_path) {
   DumpState D;
+  ldump_vmp_hook_point();
   D.L = L;
   D.writer = w;
   D.data = data;

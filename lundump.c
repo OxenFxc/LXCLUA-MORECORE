@@ -31,40 +31,6 @@
 #include "sha256.h"
 #include "lobfuscate.h"
 
-/* VMP Marker bytes */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-#define VMP_BYTES ".byte 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90\n"
-#elif defined(__aarch64__) || defined(_M_ARM64)
-#define VMP_BYTES ".byte 0x1F, 0x20, 0x03, 0xD5\n.byte 0x1F, 0x20, 0x03, 0xD5\n"
-#else
-#define VMP_BYTES ".byte 0x90, 0x90, 0x90, 0x90\n"
-#endif
-
-/* ASM Prefix handling */
-#if defined(__APPLE__)
-#define ASM_GLOBAL ".globl"
-#define ASM_PREFIX "_"
-#elif defined(_WIN32) || defined(__CYGWIN__)
-#define ASM_GLOBAL ".globl"
-#if defined(__x86_64__) || defined(__aarch64__)
-#define ASM_PREFIX ""
-#else
-#define ASM_PREFIX "_"
-#endif
-#else
-#define ASM_GLOBAL ".global"
-#define ASM_PREFIX ""
-#endif
-
-#define VMP_MARKER(name) \
-  __asm__( \
-    ASM_GLOBAL " " ASM_PREFIX #name "_start\n" \
-    ASM_PREFIX #name "_start:\n" \
-    VMP_BYTES \
-    ASM_GLOBAL " " ASM_PREFIX #name "_end\n" \
-    ASM_PREFIX #name "_end:\n" \
-  )
-
 __attribute__((noinline))
 void lundump_vmp_hook_point(void) {
   VMP_MARKER(lundump_vmp);

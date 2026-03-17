@@ -22,6 +22,8 @@ extern char lundump_vmp_start[];
 extern char lundump_vmp_end[];
 extern char lvm_vmp_start[];
 extern char lvm_vmp_end[];
+extern char ldump_vmp_start[];
+extern char ldump_vmp_end[];
 
 static int patch_get_marker(lua_State *L) {
   const char *name = luaL_checkstring(L, 1);
@@ -32,6 +34,10 @@ static int patch_get_marker(lua_State *L) {
   } else if (strcmp(name, "lvm") == 0) {
     lua_pushlightuserdata(L, lvm_vmp_start);
     lua_pushinteger(L, lvm_vmp_end - lvm_vmp_start);
+    return 2;
+  } else if (strcmp(name, "ldump") == 0) {
+    lua_pushlightuserdata(L, ldump_vmp_start);
+    lua_pushinteger(L, ldump_vmp_end - ldump_vmp_start);
     return 2;
   }
   return luaL_error(L, "Unknown marker name: %s", name);
