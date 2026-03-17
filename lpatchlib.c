@@ -292,7 +292,23 @@ static int patch_call_ret(lua_State *L) {
   return 1;
 }
 
+static int patch_get_arch(lua_State *L) {
+#if defined(__x86_64__) || defined(_M_X64)
+  lua_pushstring(L, "x86_64");
+#elif defined(__i386) || defined(__i386__) || defined(_M_IX86)
+  lua_pushstring(L, "x86");
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  lua_pushstring(L, "arm64");
+#elif defined(__arm__) || defined(_M_ARM)
+  lua_pushstring(L, "arm");
+#else
+  lua_pushstring(L, "unknown");
+#endif
+  return 1;
+}
+
 static const luaL_Reg patchlib[] = {
+  {"get_arch", patch_get_arch},
   {"get_marker", patch_get_marker},
   {"get_symbol", patch_get_symbol},
   {"write", patch_write},
