@@ -329,6 +329,34 @@ static int patch_read_u64(lua_State *L) {
   return 1;
 }
 
+static int patch_read_i8(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int8_t *ptr = (int8_t *)lua_topointer(L, 1);
+  lua_pushinteger(L, (lua_Integer)(*ptr));
+  return 1;
+}
+
+static int patch_read_i16(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int16_t *ptr = (int16_t *)lua_topointer(L, 1);
+  lua_pushinteger(L, (lua_Integer)(*ptr));
+  return 1;
+}
+
+static int patch_read_i32(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int32_t *ptr = (int32_t *)lua_topointer(L, 1);
+  lua_pushinteger(L, (lua_Integer)(*ptr));
+  return 1;
+}
+
+static int patch_read_i64(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int64_t *ptr = (int64_t *)lua_topointer(L, 1);
+  lua_pushinteger(L, (lua_Integer)(*ptr));
+  return 1;
+}
+
 static int patch_write_u8(lua_State *L) {
   luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
   uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
@@ -351,6 +379,42 @@ static int patch_write_u64(lua_State *L) {
   luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
   uint64_t *ptr = (uint64_t *)lua_topointer(L, 1);
   uint64_t val = (uint64_t)luaL_checkinteger(L, 2);
+  *ptr = val;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_write_i8(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int8_t *ptr = (int8_t *)lua_topointer(L, 1);
+  int8_t val = (int8_t)luaL_checkinteger(L, 2);
+  *ptr = val;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_write_i16(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int16_t *ptr = (int16_t *)lua_topointer(L, 1);
+  int16_t val = (int16_t)luaL_checkinteger(L, 2);
+  *ptr = val;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_write_i32(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int32_t *ptr = (int32_t *)lua_topointer(L, 1);
+  int32_t val = (int32_t)luaL_checkinteger(L, 2);
+  *ptr = val;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_write_i64(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  int64_t *ptr = (int64_t *)lua_topointer(L, 1);
+  int64_t val = (int64_t)luaL_checkinteger(L, 2);
   *ptr = val;
   lua_pushboolean(L, 1);
   return 1;
@@ -728,6 +792,26 @@ static int patch_write_f64(lua_State *L) {
   return 1;
 }
 
+static int patch_read_ptr(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  void **ptr = (void **)lua_topointer(L, 1);
+  if (*ptr == NULL) {
+    lua_pushnil(L);
+  } else {
+    lua_pushlightuserdata(L, *ptr);
+  }
+  return 1;
+}
+
+static int patch_write_ptr(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  void **ptr = (void **)lua_topointer(L, 1);
+  void *val = (void *)lua_topointer(L, 2);
+  *ptr = val;
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
 static int patch_read_cstring(lua_State *L) {
   luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
   const char *ptr = (const char *)lua_topointer(L, 1);
@@ -812,10 +896,20 @@ static const luaL_Reg patchlib[] = {
   {"read_u16", patch_read_u16},
   {"read_u32", patch_read_u32},
   {"read_u64", patch_read_u64},
+  {"read_i8", patch_read_i8},
+  {"read_i16", patch_read_i16},
+  {"read_i32", patch_read_i32},
+  {"read_i64", patch_read_i64},
   {"write_u8", patch_write_u8},
   {"write_u16", patch_write_u16},
   {"write_u32", patch_write_u32},
   {"write_u64", patch_write_u64},
+  {"write_i8", patch_write_i8},
+  {"write_i16", patch_write_i16},
+  {"write_i32", patch_write_i32},
+  {"write_i64", patch_write_i64},
+  {"read_ptr", patch_read_ptr},
+  {"write_ptr", patch_write_ptr},
   {"read_f32", patch_read_f32},
   {"read_f64", patch_read_f64},
   {"write_f32", patch_write_f32},

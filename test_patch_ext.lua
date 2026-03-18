@@ -165,5 +165,42 @@ assert(p_read[2] ~= nil, "struct pointer read (string) failed")
 patch.free(p_mem, 16)
 print("struct pointer (arbitrary types) write: SUCCESS")
 
+-- Test new integer types (signed)
+local i_mem = patch.alloc(64)
+
+patch.write_i8(i_mem, -128)
+assert(patch.read_i8(i_mem) == -128, "i8 write/read failed")
+
+patch.write_i16(i_mem, -32768)
+assert(patch.read_i16(i_mem) == -32768, "i16 write/read failed")
+
+patch.write_i32(i_mem, -2147483648)
+assert(patch.read_i32(i_mem) == -2147483648, "i32 write/read failed")
+
+patch.write_i64(i_mem, -9223372036854775808)
+assert(patch.read_i64(i_mem) == -9223372036854775808, "i64 write/read failed")
+
+print("Signed integer (i8/i16/i32/i64) write/read: SUCCESS")
+patch.free(i_mem, 64)
+
+-- Test direct pointer read/write
+local ptr_mem = patch.alloc(16)
+local dummy_mem = patch.alloc(4)
+patch.write_u32(dummy_mem, 0xDEADBEEF)
+
+patch.write_ptr(ptr_mem, dummy_mem)
+local read_back_ptr = patch.read_ptr(ptr_mem)
+
+assert(read_back_ptr == dummy_mem, "pointer write/read mismatch")
+assert(patch.read_u32(read_back_ptr) == 0xDEADBEEF, "dereferencing read pointer failed")
+
+-- Null pointer handling
+patch.write_u64(ptr_mem, 0)
+assert(patch.read_ptr(ptr_mem) == nil, "null pointer read failed")
+
+print("Pointer read/write: SUCCESS")
+
+patch.free(ptr_mem, 16)
+patch.free(dummy_mem, 4)
 
 print("All NEW patch extensions passed!")
