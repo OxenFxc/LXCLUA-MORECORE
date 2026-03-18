@@ -331,6 +331,243 @@ static int patch_memcpy(lua_State *L) {
   return 1;
 }
 
+static int patch_memcmp(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid ptr1");
+  luaL_argcheck(L, lua_topointer(L, 2) != NULL, 2, "invalid ptr2");
+  void *ptr1 = (void *)lua_topointer(L, 1);
+  void *ptr2 = (void *)lua_topointer(L, 2);
+  size_t size = (size_t)luaL_checkinteger(L, 3);
+  int res = memcmp(ptr1, ptr2, size);
+  lua_pushinteger(L, res);
+  return 1;
+}
+
+static int patch_memset(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid dest pointer");
+  void *dst = (void *)lua_topointer(L, 1);
+  int c = (int)luaL_checkinteger(L, 2);
+  size_t size = (size_t)luaL_checkinteger(L, 3);
+  memset(dst, c, size);
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_write_cstring(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  void *dst = (void *)lua_topointer(L, 1);
+  size_t len;
+  const char *str = luaL_checklstring(L, 2, &len);
+  memcpy(dst, str, len + 1);
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_alloc_aligned(lua_State *L) {
+  size_t size = (size_t)luaL_checkinteger(L, 1);
+  size_t alignment = (size_t)luaL_checkinteger(L, 2);
+  void *address = NULL;
+
+  if (size == 0 || alignment == 0 || (alignment & (alignment - 1)) != 0) {
+    lua_pushnil(L);
+    return 1;
+  }
+
+#if defined(_WIN32)
+  address = _aligned_malloc(size, alignment);
+#else
+  if (alignment < sizeof(void *)) {
+    alignment = sizeof(void *);
+  }
+  if (posix_memalign(&address, alignment, size) != 0) {
+    address = NULL;
+  }
+#endif
+
+  if (address == NULL) {
+    lua_pushnil(L);
+    return 1;
+  }
+
+  lua_pushlightuserdata(L, address);
+  return 1;
+}
+
+static int patch_free_aligned(lua_State *L) {
+  void *address;
+
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  address = (void *)lua_topointer(L, 1);
+
+  if (address == NULL) {
+    lua_pushboolean(L, 0);
+    return 1;
+  }
+
+#if defined(_WIN32)
+  _aligned_free(address);
+#else
+  free(address);
+#endif
+
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_read_struct(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+  const char *fmt = luaL_checkstring(L, 2);
+
+  lua_newtable(L);
+  int i = 1;
+  while (*fmt) {
+    if (*fmt == 'i') {
+      fmt++;
+      if (*fmt == '8') { lua_pushinteger(L, *(int8_t*)ptr); ptr += 1; }
+      else if (*fmt == '1' && *(fmt+1) == '6') { fmt++; lua_pushinteger(L, *(int16_t*)ptr); ptr += 2; }
+      else if (*fmt == '3' && *(fmt+1) == '2') { fmt++; lua_pushinteger(L, *(int32_t*)ptr); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; lua_pushinteger(L, *(int64_t*)ptr); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'u') {
+      fmt++;
+      if (*fmt == '8') { lua_pushinteger(L, *(uint8_t*)ptr); ptr += 1; }
+      else if (*fmt == '1' && *(fmt+1) == '6') { fmt++; lua_pushinteger(L, *(uint16_t*)ptr); ptr += 2; }
+      else if (*fmt == '3' && *(fmt+1) == '2') { fmt++; lua_pushinteger(L, *(uint32_t*)ptr); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; lua_pushinteger(L, *(uint64_t*)ptr); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'f') {
+      fmt++;
+      if (*fmt == '3' && *(fmt+1) == '2') { fmt++; lua_pushnumber(L, *(float*)ptr); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; lua_pushnumber(L, *(double*)ptr); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'p') {
+      lua_pushlightuserdata(L, *(void**)ptr); ptr += sizeof(void*);
+    } else if (*fmt == 'x') {
+      ptr += 1;
+      fmt++;
+      continue;
+    } else {
+      return luaL_error(L, "invalid struct format character: %c", *fmt);
+    }
+    lua_rawseti(L, -2, i++);
+    fmt++;
+  }
+  return 1;
+}
+
+static int patch_write_struct(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  luaL_checktype(L, 3, LUA_TTABLE);
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+  const char *fmt = luaL_checkstring(L, 2);
+
+  int i = 1;
+  while (*fmt) {
+    lua_rawgeti(L, 3, i);
+    if (*fmt == 'i') {
+      fmt++;
+      if (*fmt == '8') { *(int8_t*)ptr = (int8_t)luaL_checkinteger(L, -1); ptr += 1; }
+      else if (*fmt == '1' && *(fmt+1) == '6') { fmt++; *(int16_t*)ptr = (int16_t)luaL_checkinteger(L, -1); ptr += 2; }
+      else if (*fmt == '3' && *(fmt+1) == '2') { fmt++; *(int32_t*)ptr = (int32_t)luaL_checkinteger(L, -1); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; *(int64_t*)ptr = (int64_t)luaL_checkinteger(L, -1); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'u') {
+      fmt++;
+      if (*fmt == '8') { *(uint8_t*)ptr = (uint8_t)luaL_checkinteger(L, -1); ptr += 1; }
+      else if (*fmt == '1' && *(fmt+1) == '6') { fmt++; *(uint16_t*)ptr = (uint16_t)luaL_checkinteger(L, -1); ptr += 2; }
+      else if (*fmt == '3' && *(fmt+1) == '2') { fmt++; *(uint32_t*)ptr = (uint32_t)luaL_checkinteger(L, -1); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; *(uint64_t*)ptr = (uint64_t)luaL_checkinteger(L, -1); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'f') {
+      fmt++;
+      if (*fmt == '3' && *(fmt+1) == '2') { fmt++; *(float*)ptr = (float)luaL_checknumber(L, -1); ptr += 4; }
+      else if (*fmt == '6' && *(fmt+1) == '4') { fmt++; *(double*)ptr = (double)luaL_checknumber(L, -1); ptr += 8; }
+      else return luaL_error(L, "invalid struct format");
+    } else if (*fmt == 'p') {
+      luaL_argcheck(L, lua_islightuserdata(L, -1) || lua_isnil(L, -1), 3, "expected lightuserdata for 'p'");
+      *(void**)ptr = (void*)lua_topointer(L, -1);
+      ptr += sizeof(void*);
+    } else if (*fmt == 'x') {
+      ptr += 1;
+      lua_pop(L, 1);
+      fmt++;
+      continue;
+    } else {
+      return luaL_error(L, "invalid struct format character: %c", *fmt);
+    }
+    lua_pop(L, 1);
+    i++;
+    fmt++;
+  }
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_hook(lua_State *L) {
+  void *target = (void *)lua_topointer(L, 1);
+  void *replacement = (void *)lua_topointer(L, 2);
+
+  if (!target || !replacement) {
+    return luaL_error(L, "invalid target or replacement address");
+  }
+
+#if defined(__x86_64__) || defined(_M_X64)
+  // x86_64: mov rax, replacement; jmp rax
+  // 48 B8 [8 bytes addr] FF E0
+  uint8_t jmp_code[12] = {
+    0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xE0
+  };
+  *(uint64_t *)(&jmp_code[2]) = (uint64_t)replacement;
+
+  // Protect memory, write, and restore
+  long page_size;
+  uintptr_t start_page;
+  uintptr_t end_page;
+  size_t protect_len;
+
+#if defined(_WIN32)
+  SYSTEM_INFO si;
+  DWORD oldProtect;
+  GetSystemInfo(&si);
+  page_size = si.dwPageSize;
+#else
+  page_size = sysconf(_SC_PAGESIZE);
+#endif
+  if (page_size <= 0) page_size = 4096;
+
+  start_page = (uintptr_t)target & ~(page_size - 1);
+  end_page   = ((uintptr_t)target + sizeof(jmp_code) + page_size - 1) & ~(page_size - 1);
+  protect_len = end_page - start_page;
+
+#if defined(_WIN32)
+  if (!VirtualProtect((void*)start_page, protect_len, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+    lua_pushboolean(L, 0); return 1;
+  }
+#else
+  if (mprotect((void*)start_page, protect_len, PROT_READ | PROT_WRITE | PROT_EXEC) == -1) {
+    lua_pushboolean(L, 0); return 1;
+  }
+#endif
+
+  memcpy(target, jmp_code, sizeof(jmp_code));
+
+#if defined(_WIN32)
+  FlushInstructionCache(GetCurrentProcess(), (void*)start_page, protect_len);
+  VirtualProtect((void*)start_page, protect_len, oldProtect, &oldProtect);
+#else
+  __builtin___clear_cache((char*)start_page, (char*)start_page + protect_len);
+  mprotect((void*)start_page, protect_len, PROT_READ | PROT_EXEC);
+#endif
+
+  lua_pushboolean(L, 1);
+  return 1;
+
+#else
+  return luaL_error(L, "hooking not supported on this architecture");
+#endif
+}
+
 static long long get_arg_as_int(lua_State *L, int index) {
   if (lua_isnoneornil(L, index)) {
     return 0;
@@ -553,6 +790,14 @@ static const luaL_Reg patchlib[] = {
   {"call_ret_f", patch_call_ret_f},
   {"get_state", patch_get_state},
   {"memcpy", patch_memcpy},
+  {"memcmp", patch_memcmp},
+  {"memset", patch_memset},
+  {"write_cstring", patch_write_cstring},
+  {"alloc_aligned", patch_alloc_aligned},
+  {"free_aligned", patch_free_aligned},
+  {"read_struct", patch_read_struct},
+  {"write_struct", patch_write_struct},
+  {"hook", patch_hook},
   {NULL, NULL}
 };
 
