@@ -30,7 +30,12 @@
 #include "lzio.h"
 #include "aes.h"
 #include "sha256.h"
+#include "lobfuscate.h"
 
+__attribute__((noinline))
+void llex_vmp_hook_point(void) {
+  VMP_MARKER(llex_vmp);
+}
 
 
 #define next(ls)	(ls->curpos++, ls->current = zgetc(ls->z))
@@ -1364,6 +1369,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 
 
 void luaX_next (LexState *ls) {
+  llex_vmp_hook_point();
   ls->lastline = ls->linenumber;
   ls->lasttoken = ls->t.token;
   ls->lastbuff = ls->buff;

@@ -29,6 +29,12 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "lvm.h"
+#include "lobfuscate.h"
+
+__attribute__((noinline))
+void lcode_vmp_hook_point(void) {
+  VMP_MARKER(lcode_vmp);
+}
 
 
 /* Maximum number of registers in a Lua function (must fit in 8 bits) */
@@ -390,6 +396,7 @@ static void removelastinstruction (FuncState *fs) {
 */
 int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->f;
+  lcode_vmp_hook_point();
   /* put new instruction in code array */
   luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
                   MAX_INT, "opcodes");

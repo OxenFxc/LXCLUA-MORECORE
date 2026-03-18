@@ -30,6 +30,12 @@
 #include "ltable.h"
 #include "ltm.h"
 #include "lthread.h"
+#include "lobfuscate.h"
+
+__attribute__((noinline))
+void lgc_vmp_hook_point(void) {
+  VMP_MARKER(lgc_vmp);
+}
 
 
 /*
@@ -2077,6 +2083,7 @@ static void incstep (lua_State *L, global_State *g) {
  */
 void luaC_step (lua_State *L) {
   global_State *g = G(L);
+  lgc_vmp_hook_point();
   l_mutex_lock(&g->lock);
   if (!gcrunning(g))  /* not running? */
     luaE_setdebt(g, -2000);

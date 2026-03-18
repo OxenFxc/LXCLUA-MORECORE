@@ -31,6 +31,12 @@
 #include "ltable.h"
 #include "ltm.h"
 #include "lopnames.h"
+#include "lobfuscate.h"
+
+__attribute__((noinline))
+void lparser_vmp_hook_point(void) {
+  VMP_MARKER(lparser_vmp);
+}
 
 
 extern void luaX_pushincludefile(LexState *ls, const char *filename);
@@ -13034,6 +13040,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
   FuncState funcstate;
+  lparser_vmp_hook_point();
   LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
   setclLvalue2s(L, L->top.p, cl);  /* anchor it (to avoid being collected) */
   luaD_inctop(L);

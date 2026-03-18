@@ -33,7 +33,12 @@
 #include "lthread.h"
 #include "lclass.h"
 #include "lnamespace.h"
+#include "lobfuscate.h"
 
+__attribute__((noinline))
+void lapi_vmp_hook_point(void) {
+  VMP_MARKER(lapi_vmp);
+}
 
 
 const char lua_ident[] =
@@ -1773,6 +1778,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   struct CallS c;
   int status;
   ptrdiff_t func;
+  lapi_vmp_hook_point();
   lua_lock(L);
   api_check(L, k == NULL || !isLua(L->ci),
     "cannot use continuations inside hooks");

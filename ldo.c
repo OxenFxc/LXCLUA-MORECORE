@@ -33,7 +33,12 @@
 #include "lundump.h"
 #include "lvm.h"
 #include "lzio.h"
+#include "lobfuscate.h"
 
+__attribute__((noinline))
+void ldo_vmp_hook_point(void) {
+  VMP_MARKER(ldo_vmp);
+}
 
 
 #define errorstatus(s)	((s) > LUA_YIELD)
@@ -944,6 +949,7 @@ l_sinline void ccall (lua_State *L, StkId func, int nResults, l_uint32 inc) {
  * @param nResults Number of results expected.
  */
 void luaD_call (lua_State *L, StkId func, int nResults) {
+  ldo_vmp_hook_point();
   ccall(L, func, nResults, 1);
 }
 

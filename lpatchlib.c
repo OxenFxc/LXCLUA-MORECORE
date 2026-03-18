@@ -30,6 +30,18 @@ extern char lvm_vmp_start[];
 extern char lvm_vmp_end[];
 extern char ldump_vmp_start[];
 extern char ldump_vmp_end[];
+extern char lapi_vmp_start[];
+extern char lapi_vmp_end[];
+extern char llex_vmp_start[];
+extern char llex_vmp_end[];
+extern char lparser_vmp_start[];
+extern char lparser_vmp_end[];
+extern char lcode_vmp_start[];
+extern char lcode_vmp_end[];
+extern char ldo_vmp_start[];
+extern char ldo_vmp_end[];
+extern char lgc_vmp_start[];
+extern char lgc_vmp_end[];
 
 static int patch_get_marker(lua_State *L) {
   const char *name = luaL_checkstring(L, 1);
@@ -44,6 +56,30 @@ static int patch_get_marker(lua_State *L) {
   } else if (strcmp(name, "ldump") == 0) {
     lua_pushlightuserdata(L, ldump_vmp_start);
     lua_pushinteger(L, ldump_vmp_end - ldump_vmp_start);
+    return 2;
+  } else if (strcmp(name, "lapi") == 0) {
+    lua_pushlightuserdata(L, lapi_vmp_start);
+    lua_pushinteger(L, lapi_vmp_end - lapi_vmp_start);
+    return 2;
+  } else if (strcmp(name, "llex") == 0) {
+    lua_pushlightuserdata(L, llex_vmp_start);
+    lua_pushinteger(L, llex_vmp_end - llex_vmp_start);
+    return 2;
+  } else if (strcmp(name, "lparser") == 0) {
+    lua_pushlightuserdata(L, lparser_vmp_start);
+    lua_pushinteger(L, lparser_vmp_end - lparser_vmp_start);
+    return 2;
+  } else if (strcmp(name, "lcode") == 0) {
+    lua_pushlightuserdata(L, lcode_vmp_start);
+    lua_pushinteger(L, lcode_vmp_end - lcode_vmp_start);
+    return 2;
+  } else if (strcmp(name, "ldo") == 0) {
+    lua_pushlightuserdata(L, ldo_vmp_start);
+    lua_pushinteger(L, ldo_vmp_end - ldo_vmp_start);
+    return 2;
+  } else if (strcmp(name, "lgc") == 0) {
+    lua_pushlightuserdata(L, lgc_vmp_start);
+    lua_pushinteger(L, lgc_vmp_end - lgc_vmp_start);
     return 2;
   }
   return luaL_error(L, "Unknown marker name: %s", name);
