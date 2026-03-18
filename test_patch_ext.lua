@@ -203,4 +203,58 @@ print("Pointer read/write: SUCCESS")
 patch.free(ptr_mem, 16)
 patch.free(dummy_mem, 4)
 
+
+-- Test part 1 extensions
+local mem3 = patch.alloc(32)
+patch.write_cstring(mem3, "abcdefghijklmnopqrstuvwxyz")
+patch.memmove(patch.add_ptr(mem3, 2), mem3, 5) -- abcde over cdefg => ababcdehijklmnopqrstuvwxyz
+local s2 = patch.read_cstring(mem3)
+assert(s2 == "ababcdehijklmnopqrstuvwxyz", "memmove failed: expected ababcdehijklmnopqrstuvwxyz, got " .. s2)
+
+local chr_ptr = patch.memchr(mem3, string.byte("h"), 32)
+assert(chr_ptr ~= nil, "memchr failed")
+assert(patch.read_u8(chr_ptr) == string.byte("h"), "memchr found wrong byte")
+
+local nop_mem = patch.alloc(16)
+patch.nop(nop_mem, 4)
+if arch == "x86_64" or arch == "x86" then
+    assert(patch.read_u8(nop_mem) == 0x90, "nop failed for x86/x64")
+elseif arch == "arm64" then
+    assert(patch.read_u32(nop_mem) == 0xd503201f, "nop failed for arm64")
+elseif arch == "arm" then
+    assert(patch.read_u32(nop_mem) == 0xe1a00000, "nop failed for arm")
+end
+patch.free(nop_mem, 16)
+patch.free(mem3, 32)
+print("memmove, memchr, nop: SUCCESS")
+
+-- Test part 2 extensions
+local page_size = patch.get_page_size()
+assert(type(page_size) == "number" and page_size > 0, "get_page_size failed")
+
+local pid = patch.get_pid()
+assert(type(pid) == "number" and pid > 0, "get_pid failed")
+
+local base_ptr = patch.to_ptr(0x1000)
+local next_ptr = patch.add_ptr(base_ptr, 0x10)
+local prev_ptr = patch.sub_ptr(next_ptr, 0x10)
+assert(patch.to_num(next_ptr) == 0x1010, "add_ptr failed")
+assert(patch.to_num(prev_ptr) == 0x1000, "sub_ptr failed")
+print("get_page_size, get_pid, add_ptr, sub_ptr: SUCCESS")
+
+-- Test part 3 extensions
+local byte_mem = patch.alloc(16)
+local data = {0xDE, 0xAD, 0xBE, 0xEF}
+patch.write_bytes(byte_mem, data)
+local read_data = patch.read_bytes(byte_mem, 4)
+assert(read_data[1] == 0xDE and read_data[2] == 0xAD and read_data[3] == 0xBE and read_data[4] == 0xEF, "read_bytes/write_bytes failed")
+
+local scan_mem = patch.alloc(64)
+patch.write_bytes(scan_mem, {0x11, 0x22, 0x33, 0x44, 0x55, 0x66})
+local found = patch.scan_pattern(scan_mem, 64, "11 22 ? 44 ?? 66")
+assert(found ~= nil and patch.to_num(found) == patch.to_num(scan_mem), "scan_pattern failed")
+patch.free(byte_mem, 16)
+patch.free(scan_mem, 64)
+print("read_bytes, write_bytes, scan_pattern: SUCCESS")
+
 print("All NEW patch extensions passed!")

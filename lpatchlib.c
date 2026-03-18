@@ -945,6 +945,180 @@ static int patch_get_state(lua_State *L) {
   return 1;
 }
 
+static int patch_memmove(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid dest pointer");
+  luaL_argcheck(L, lua_topointer(L, 2) != NULL, 2, "invalid src pointer");
+  void *dst = (void *)lua_topointer(L, 1);
+  void *src = (void *)lua_topointer(L, 2);
+  size_t size = (size_t)luaL_checkinteger(L, 3);
+  memmove(dst, src, size);
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_memchr(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  void *ptr = (void *)lua_topointer(L, 1);
+  int c = (int)luaL_checkinteger(L, 2);
+  size_t size = (size_t)luaL_checkinteger(L, 3);
+  void *res = memchr(ptr, c, size);
+  if (res == NULL) {
+    lua_pushnil(L);
+  } else {
+    lua_pushlightuserdata(L, res);
+  }
+  return 1;
+}
+
+static int patch_nop(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  void *ptr = (void *)lua_topointer(L, 1);
+  size_t count_bytes = (size_t)luaL_optinteger(L, 2, 1);
+
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(__i386__) || defined(_M_IX86)
+  memset(ptr, 0x90, count_bytes);
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  uint32_t *p = (uint32_t *)ptr;
+  size_t count = count_bytes / 4;
+  for (size_t i = 0; i < count; i++) {
+    p[i] = 0xd503201f;
+  }
+#elif defined(__arm__) || defined(_M_ARM)
+  uint32_t *p = (uint32_t *)ptr;
+  size_t count = count_bytes / 4;
+  for (size_t i = 0; i < count; i++) {
+    p[i] = 0xe1a00000;
+  }
+#else
+  return luaL_error(L, "nop not supported on this architecture");
+#endif
+
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_get_page_size(lua_State *L) {
+  long page_size;
+#if defined(_WIN32)
+  SYSTEM_INFO si;
+  GetSystemInfo(&si);
+  page_size = si.dwPageSize;
+#else
+  page_size = sysconf(_SC_PAGESIZE);
+#endif
+  if (page_size <= 0) page_size = 4096;
+  lua_pushinteger(L, page_size);
+  return 1;
+}
+
+static int patch_get_pid(lua_State *L) {
+#if defined(_WIN32)
+  lua_pushinteger(L, GetCurrentProcessId());
+#else
+  lua_pushinteger(L, getpid());
+#endif
+  return 1;
+}
+
+static int patch_add_ptr(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+  ptrdiff_t offset = (ptrdiff_t)luaL_checkinteger(L, 2);
+  lua_pushlightuserdata(L, ptr + offset);
+  return 1;
+}
+
+static int patch_sub_ptr(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+  ptrdiff_t offset = (ptrdiff_t)luaL_checkinteger(L, 2);
+  lua_pushlightuserdata(L, ptr - offset);
+  return 1;
+}
+
+static int patch_read_bytes(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+  size_t size = (size_t)luaL_checkinteger(L, 2);
+
+  lua_newtable(L);
+  for (size_t i = 0; i < size; i++) {
+    lua_pushinteger(L, ptr[i]);
+    lua_rawseti(L, -2, i + 1);
+  }
+  return 1;
+}
+
+static int patch_write_bytes(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  luaL_checktype(L, 2, LUA_TTABLE);
+  uint8_t *ptr = (uint8_t *)lua_topointer(L, 1);
+
+  size_t size = lua_rawlen(L, 2);
+  for (size_t i = 0; i < size; i++) {
+    lua_rawgeti(L, 2, i + 1);
+    ptr[i] = (uint8_t)luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+  }
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+static int patch_scan_pattern(lua_State *L) {
+  luaL_argcheck(L, lua_topointer(L, 1) != NULL, 1, "invalid pointer");
+  const uint8_t *start = (const uint8_t *)lua_topointer(L, 1);
+  size_t size = (size_t)luaL_checkinteger(L, 2);
+  const char *pattern = luaL_checkstring(L, 3);
+
+  // Parse pattern
+  uint8_t pat[256];
+  uint8_t mask[256];
+  size_t pat_len = 0;
+
+  const char *p = pattern;
+  while (*p && pat_len < sizeof(pat)) {
+    while (*p == ' ') p++;
+    if (!*p) break;
+
+    if (*p == '?') {
+      pat[pat_len] = 0;
+      mask[pat_len] = 0;
+      p++;
+      if (*p == '?') p++;
+    } else {
+      char buf[3] = {p[0], p[1], 0};
+      pat[pat_len] = (uint8_t)strtoul(buf, NULL, 16);
+      mask[pat_len] = 1;
+      if (p[1] != '\0') p += 2;
+      else p += 1;
+    }
+    pat_len++;
+  }
+
+  if (pat_len == 0 || size < pat_len) {
+    lua_pushnil(L);
+    return 1;
+  }
+
+  // Search
+  for (size_t i = 0; i <= size - pat_len; ++i) {
+    int found = 1;
+    for (size_t j = 0; j < pat_len; ++j) {
+      if (mask[j] && start[i + j] != pat[j]) {
+        found = 0;
+        break;
+      }
+    }
+    if (found) {
+      lua_pushlightuserdata(L, (void *)(start + i));
+      return 1;
+    }
+  }
+
+  lua_pushnil(L);
+  return 1;
+}
+
 static const luaL_Reg patchlib[] = {
   {"get_arch", patch_get_arch},
   {"get_marker", patch_get_marker},
@@ -995,6 +1169,16 @@ static const luaL_Reg patchlib[] = {
   {"read_struct", patch_read_struct},
   {"write_struct", patch_write_struct},
   {"hook", patch_hook},
+  {"memmove", patch_memmove},
+  {"memchr", patch_memchr},
+  {"nop", patch_nop},
+  {"get_page_size", patch_get_page_size},
+  {"get_pid", patch_get_pid},
+  {"add_ptr", patch_add_ptr},
+  {"sub_ptr", patch_sub_ptr},
+  {"read_bytes", patch_read_bytes},
+  {"write_bytes", patch_write_bytes},
+  {"scan_pattern", patch_scan_pattern},
   {NULL, NULL}
 };
 
