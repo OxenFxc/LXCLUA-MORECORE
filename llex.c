@@ -300,7 +300,7 @@ static const char *const luaX_tokens [] = {
     "return", "struct", "superstruct", "switch", "take", "then", "true", "try", "until", "using", "void", "when", "while", "with", "let",
     "//", "..", "...", "==", ">=", "<=", "~",  "<<", ">>", "|>", "<|", "|?>",
     "::", "<eof>",
-    "=>", ":=", "->",
+    "=>", ":=", "->", "><",
     /* 复合赋值运算符 */
     "+=", "-=", "*=", "/=", "//=", "%=", "&=", "|=", "~=", ">>=", "<<=", "..=", "++",
     "?.", "??", "??=", "<=>", "$", "$$",
@@ -726,7 +726,12 @@ static int read_numeral (LexState *ls, SemInfo *seminfo) {
       check_next2(ls, "-+");  /* optional exponent sign */
     else if (ls->current == '_')  /* underscore as visual separator? */
       next(ls);  /* skip underscore, don't save it */
-    else if (lisxdigit(ls->current) || ls->current == '.')  /* '%x|%.' */
+    else if (ls->current == '.') {
+      int next_c = ls->z->n > 0 ? cast_uchar(*(ls->z->p)) : EOZ;
+      if (next_c == '.') break; /* it's '..', stop reading number */
+      save_and_next(ls);
+    }
+    else if (lisxdigit(ls->current))
       save_and_next(ls);
     else break;
   }
@@ -1167,6 +1172,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       case '>': {
         next(ls);
         if (check_next1(ls, '=')) return TK_GE;  /* '>=' */
+        else if (check_next1(ls, '<')) return TK_SWAP; /* '><' */
         else if (ls->current == '>') {  /* '>>' 或 '>>=' */
           next(ls);
           if (check_next1(ls, '=')) return TK_SHREQ;  /* '>>=' 右移赋值 */
@@ -1215,9 +1221,10 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         else if(check_next1(ls,'+')) return TK_PLUSPLUS;  /* '++' 自增 */
         else return '+';
       }
-      case '*':{  /* '*' 或 '*=' */
+      case '*':{  /* '*' 或 '*=' 或 '**' */
         next(ls);
         if(check_next1(ls,'=')) return TK_MULEQ;  /* '*=' 乘法赋值 */
+        else if(check_next1(ls,'*')) return '^';  /* '**' 指数 */
         else return '*';
       }
       case '%':{  /* '%' 或 '%=' */

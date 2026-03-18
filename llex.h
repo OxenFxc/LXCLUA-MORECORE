@@ -24,6 +24,11 @@
 #define LUA_ENV		"_ENV"
 #endif
 
+/* expr_flags */
+#define E_NO_COLON 1
+#define E_NO_CALL 2
+#define E_NO_CONCAT 4
+
 
 /*
 * WARNING: if you change the order of this enumeration,
@@ -44,7 +49,7 @@ enum RESERVED {
   TK_IDIV, TK_CONCAT, TK_DOTS, TK_EQ, TK_GE, TK_LE, TK_NE,
   TK_SHL, TK_SHR, TK_PIPE, TK_REVPIPE, TK_SAFEPIPE,
   TK_DBCOLON, TK_EOS,
-  TK_MEAN, TK_WALRUS, TK_ARROW,
+  TK_MEAN, TK_WALRUS, TK_ARROW, TK_SWAP,
   /* 复合赋值运算符 */
   TK_ADDEQ,     /**< += */
   TK_SUBEQ,     /**< -= */
