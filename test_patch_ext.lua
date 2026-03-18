@@ -80,4 +80,73 @@ local L = patch.get_state()
 assert(L ~= nil, "get_state failed")
 
 patch.free(p, 32)
+
+-- Test memcmp, memset, write_cstring, alloc_aligned
+local p1 = patch.alloc_aligned(64, 16)
+local p2 = patch.alloc_aligned(64, 16)
+assert(p1 ~= nil and p2 ~= nil, "alloc_aligned failed")
+
+-- Should be 16-byte aligned
+assert(patch.to_num(p1) % 16 == 0, "p1 not aligned")
+assert(patch.to_num(p2) % 16 == 0, "p2 not aligned")
+
+patch.memset(p1, 0xAA, 64)
+patch.memset(p2, 0xAA, 64)
+assert(patch.memcmp(p1, p2, 64) == 0, "memset or memcmp failed")
+
+patch.write_u8(p2, 0xBB)
+assert(patch.memcmp(p1, p2, 64) ~= 0, "memcmp failed (should not match)")
+
+patch.write_cstring(p1, "hello aligned!")
+assert(patch.read_cstring(p1) == "hello aligned!", "write_cstring failed")
+
+patch.free_aligned(p1)
+patch.free_aligned(p2)
+
+if arch == "x86_64" then
+    local orig_mem = patch.alloc(4096)
+    local hook_mem = patch.alloc(4096)
+
+    -- Function 1 (returns 10)
+    -- mov rax, 10
+    -- ret
+    patch.write(orig_mem, "\x48\xc7\xc0\x0a\x00\x00\x00\xc3")
+    patch.mprotect(orig_mem, 4096, "r-x")
+
+    -- Function 2 (returns 20)
+    -- mov rax, 20
+    -- ret
+    patch.write(hook_mem, "\x48\xc7\xc0\x14\x00\x00\x00\xc3")
+    patch.mprotect(hook_mem, 4096, "r-x")
+
+    local res1 = patch.call_ret(orig_mem)
+    assert(res1 == 10, "orig function failed")
+
+    patch.mprotect(orig_mem, 4096, "rwx")
+    patch.hook(orig_mem, hook_mem)
+    patch.mprotect(orig_mem, 4096, "r-x")
+
+    local res2 = patch.call_ret(orig_mem)
+    assert(res2 == 20, "hook failed: expected 20 got " .. tostring(res2))
+
+    patch.free(orig_mem, 4096)
+    patch.free(hook_mem, 4096)
+    print("hook: SUCCESS")
+end
+
+local s_mem = patch.alloc(64)
+-- format: u8, padding 1 byte, u16, padding 4 bytes (actually let's just use exact sizes without auto padding), u32, f64
+-- "u8xu16xxxxu32f64"
+local fmt = "u8xu16xxxxu32f64"
+local values = { 0x12, 0x3456, 0x789ABCDE, 3.14159 }
+patch.write_struct(s_mem, fmt, values)
+
+local read_values = patch.read_struct(s_mem, fmt)
+assert(read_values[1] == 0x12, "struct u8 mismatch")
+assert(read_values[2] == 0x3456, "struct u16 mismatch")
+assert(read_values[3] == 0x789ABCDE, "struct u32 mismatch")
+assert(math.abs(read_values[4] - 3.14159) < 0.0001, "struct f64 mismatch")
+patch.free(s_mem, 64)
+print("struct read/write: SUCCESS")
+
 print("All NEW patch extensions passed!")
