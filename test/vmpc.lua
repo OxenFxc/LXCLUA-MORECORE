@@ -1,68 +1,119 @@
 local patch = require("patch")
-local ptr = require("ptr")
 
 print("==================================================")
-print("1. Testing patch.write on VMP Markers")
+print("[*] Raw Shellcode Execution: Calculating 1 + 1")
 print("==================================================")
 
--- Helper function to write NOP sled + RET to safely return
-local function patch_marker(name)
-    local addr, size = patch.get_marker(name)
-    if not addr then
-        print(string.format("[-] ERROR: Marker '%s' NOT FOUND!", name))
-        return false
-    end
-    print(string.format("[+] Found Marker '%s' at %s (Size: %d bytes)", name, tostring(addr), size))
+-- 1. 分配一块 128 字节的系统内存 (默认是 RWX: PROT_READ | PROT_WRITE | PROT_EXEC)
+local mem_size = 128
+local shellcode_addr = patch.alloc(mem_size)
 
-    -- Simple x86/64 Payload: mov eax, 0x1337 ; ret
-    local payload = "\xB8\x37\x13\x00\x00\xC3"
-    local padding = string.rep("\x90", size - #payload)
-    local full_payload = payload .. padding
-
-    -- Attempt Write
-    local success = patch.write(addr, full_payload)
-    if success then
-        print(string.format("    -> [SUCCESS] Successfully overwrote memory block for '%s'", name))
-    else
-        print(string.format("    -> [FAILED] Could not modify memory for '%s'", name))
-    end
-    return success
+if not shellcode_addr then
+    print("[-] Failed to allocate memory.")
+    os.exit(1)
 end
 
--- Test all three markers
-local success_1 = patch_marker("lundump")
-local success_2 = patch_marker("lvm")
-local success_3 = patch_marker("ldump")
+print(string.format("[+] Allocated %d bytes of memory at: %s", mem_size, tostring(shellcode_addr)))
 
+-- 2. 准备计算 1 + 1 的机器码 (x86_64 架构)
+-- 在 x86_64 C 调用约定中，函数的返回值存储在 RAX (或 EAX) 寄存器中。
+--
+-- 对应的汇编指令:
+-- mov eax, 1    -> B8 01 00 00 00  (将 1 放入 EAX)
+-- add eax, 1    -> 83 C0 01        (将 1 加到 EAX)
+-- ret           -> C3              (函数返回，返回值在 EAX)
+--
+local raw_shellcode = "\xB8\x01\x00\x00\x00" .. -- mov eax, 1
+                      "\x83\xC0\x01"         .. -- add eax, 1
+                      "\xC3"                    -- ret
 
-print("\n==================================================")
-print("2. Testing patch.write via dynamically loaded symbol")
-print("==================================================")
+-- 3. 将机器码写入刚刚分配的内存中
+patch.write(shellcode_addr, raw_shellcode)
+print("[*] Shellcode written successfully.")
 
--- Look up a safe, innocuous standard C function to patch temporarily for testing
--- We will resolve a standard C library function like 'puts' since it is exported dynamically across all OSes
-local symbol_name = "puts"
-local symbol_addr = patch.get_symbol(symbol_name)
+-- 4. 设置内存权限为可读可执行 (遵循 W^X 原则)
+patch.mprotect(shellcode_addr, mem_size, "rx")
+print("[*] Memory protected as RX (W^X compliant).")
 
-if symbol_addr then
-    print(string.format("[+] Found Symbol '%s' at %s via dynamic lookup.", symbol_name, tostring(symbol_addr)))
+-- 5. 调用执行这段机器码
+print("[*] Executing injected shellcode...")
+
+-- pcall 捕获可能崩溃的情况，但如果是正常 return 的机器码就不会崩溃
+-- 注意：引擎层面的 patch.call 如果没有捕获 RAX 返回值，这可能没法直接在 Lua 层面打印出结果。
+-- 但如果你修改过 lpatchlib.c 让 patch_call 返回整数 (lua_pushinteger(L, func())), 就能看到 2。
+-- 在原版 C 实现中 `patch.call` 直接返回了 0：
+--   void (*func)(void) = (void (*)(void))address; func(); return 0;
+-- 所以默认它是拿不到返回值的。我教你一种通过指针直接写回内存的方法来读取结果：
+
+-- ========== 改进的 Shellcode：将结果写回我们提供的内存指针 ==========
+-- 在 x86_64 调用约定下，如果函数有参数，第一个参数 (我们的指针) 存放在 RDI 中。
+-- 如果 patch.call 不传参，RDI 的值是不确定的。
+-- 由于原本的 patch.call(addr) 没有任何参数传入，我们干脆再分配一块 8 字节的内存当 "共享变量"。
+local result_ptr = patch.alloc(8)
+-- 将这个指针强行硬编码进机器码里：
+-- mov rax, 1
+-- add rax, 1
+-- mov rcx, <result_ptr_address>  (注意：使用 rcx 这种 volatile 寄存器，不要用 rbx 这种 callee-saved 寄存器破坏 C 调用栈)
+-- mov [rcx], rax
+-- ret
+
+-- 将 result_ptr (LightUserData) 转换为 64位无符号整数表示的地址字符串，以便写入汇编
+-- Lua 的 userdata 打印出来类似: userdata: 0x55d04526b000 (Linux) 或 userdata: 00007FF... (Windows)
+local addr_str = tostring(result_ptr):match("userdata:%s*0*x?([0-9a-fA-F]+)")
+if not addr_str then
+    print("[-] Failed to parse pointer address from userdata string: " .. tostring(result_ptr))
+    os.exit(1)
+end
+
+-- 将十六进制字符串手动转化为 8字节 小端序 的二进制字符串
+local function to_little_endian_8bytes(hex_str)
+    -- 补齐 16 个字符 (8 字节)
+    hex_str = string.rep("0", 16 - #hex_str) .. hex_str
+    local bytes = {}
+    for i = #hex_str, 1, -2 do
+        table.insert(bytes, string.char(tonumber(hex_str:sub(i-1, i), 16)))
+    end
+    return table.concat(bytes)
+end
+
+local ptr_bytes = to_little_endian_8bytes(addr_str)
+
+-- 重新构造高级机器码：
+local advanced_shellcode = 
+    "\x48\xC7\xC0\x01\x00\x00\x00" .. -- mov rax, 1
+    "\x48\x83\xC0\x01"             .. -- add rax, 1
+    "\x48\xB9" .. ptr_bytes        .. -- mov rcx, <8_byte_address>
+    "\x48\x89\x01"                 .. -- mov [rcx], rax (写入结果到共享内存)
+    "\xC3"                            -- ret
+
+-- 重新赋予写权限
+patch.mprotect(shellcode_addr, mem_size, "rwx")
+patch.write(shellcode_addr, advanced_shellcode)
+patch.mprotect(shellcode_addr, mem_size, "rx")
+
+print(string.format("[*] Advanced Shellcode injected! Shared Memory Address: %s", tostring(result_ptr)))
+
+local success, err = pcall(function()
+    patch.call(shellcode_addr)
+end)
+
+if success then
+    -- 从共享内存中读取这 8 个字节
+    local result_bytes = patch.read(result_ptr, 8)
     
-    -- Write a single RET instruction (0xC3) just to prove write permissions work on exported symbols.
-    local ret_payload = "\xC3"
-    local success_4 = patch.write(symbol_addr, ret_payload)
-    
-    if success_4 then
-        print(string.format("    -> [SUCCESS] Successfully overwrote first byte of '%s' with RET (0xC3).", symbol_name))
-    else
-        print(string.format("    -> [FAILED] Could not modify memory for '%s'", symbol_name))
+    -- 将小端序的 8 字节还原为 Lua 的数字
+    local sum = 0
+    for i = 1, 8 do
+        sum = sum + string.byte(result_bytes, i) * (256 ^ (i - 1))
     end
+    
+    print("[+] Shellcode executed safely!")
+    print(string.format("[+] >>> The result of 1 + 1 is: %d <<<", sum))
 else
-    print(string.format("[-] ERROR: Symbol '%s' NOT FOUND!", symbol_name))
+    print("[-] Shellcode execution failed: " .. tostring(err))
 end
 
-print("\n==================================================")
-if success_1 and success_2 and success_3 then
-    print("ALL TESTS PASSED: Markers and Symbols were successfully resolved and modified in memory!")
-else
-    print("WARNING: Some write tests failed.")
-end
+-- 清理内存
+patch.free(shellcode_addr, mem_size)
+patch.free(result_ptr, 8)
+print("[+] Cleanup complete.")

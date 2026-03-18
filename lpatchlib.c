@@ -611,14 +611,31 @@ static int patch_hook(lua_State *L) {
     return luaL_error(L, "invalid target or replacement address");
   }
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || defined(_M_ARM64)
+  const void *hook_code = NULL;
+  size_t hook_size = 0;
+
 #if defined(__x86_64__) || defined(_M_X64)
   // x86_64: mov rax, replacement; jmp rax
   // 48 B8 [8 bytes addr] FF E0
-  uint8_t jmp_code[12] = {
+  uint8_t x86_jmp_code[12] = {
     0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0xFF, 0xE0
   };
-  *(uint64_t *)(&jmp_code[2]) = (uint64_t)replacement;
+  *(uint64_t *)(&x86_jmp_code[2]) = (uint64_t)replacement;
+  hook_code = x86_jmp_code;
+  hook_size = sizeof(x86_jmp_code);
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  // ARM64: ldr x16, .+8; br x16; <64-bit addr>
+  uint32_t arm_jmp_code[4] = {
+    0x58000050,
+    0xd61f0200,
+    0, 0
+  };
+  *(uint64_t *)(&arm_jmp_code[2]) = (uint64_t)replacement;
+  hook_code = arm_jmp_code;
+  hook_size = sizeof(arm_jmp_code);
+#endif
 
   // Protect memory, write, and restore
   long page_size;
@@ -637,7 +654,7 @@ static int patch_hook(lua_State *L) {
   if (page_size <= 0) page_size = 4096;
 
   start_page = (uintptr_t)target & ~(page_size - 1);
-  end_page   = ((uintptr_t)target + sizeof(jmp_code) + page_size - 1) & ~(page_size - 1);
+  end_page   = ((uintptr_t)target + hook_size + page_size - 1) & ~(page_size - 1);
   protect_len = end_page - start_page;
 
 #if defined(_WIN32)
@@ -650,7 +667,7 @@ static int patch_hook(lua_State *L) {
   }
 #endif
 
-  memcpy(target, jmp_code, sizeof(jmp_code));
+  memcpy(target, hook_code, hook_size);
 
 #if defined(_WIN32)
   FlushInstructionCache(GetCurrentProcess(), (void*)start_page, protect_len);
