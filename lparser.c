@@ -50,6 +50,9 @@ extern void luaX_addalias(LexState *ls, TString *name, Token *tokens, int ntoken
 
 #define hasmultret(k)		((k) == VCALL || (k) == VVARARG)
 
+#define E_NO_COLON 1
+#define E_NO_CALL 2
+
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
 #define eqstr(a,b)	((a) == (b))
@@ -4937,7 +4940,6 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   else simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
   op = getbinopr(ls->t.token);
-  if ((ls->expr_flags & E_NO_CONCAT) && op == OPR_CONCAT) op = OPR_NOBINOPR;
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
     BinOpr nextop;
@@ -5221,7 +5223,6 @@ static BinOpr cond_subexpr (LexState *ls, expdesc *v, int limit) {
   else cond_simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
   op = getbinopr(ls->t.token);
-  if ((ls->expr_flags & E_NO_CONCAT) && op == OPR_CONCAT) op = OPR_NOBINOPR;
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
     BinOpr nextop;
@@ -5654,10 +5655,10 @@ static void forlist (LexState *ls, TString *indexname) {
   int line;
   int base = fs->freereg;
   /* create control variables */
-  int state1 = new_localvarliteral(ls, "(for state)");
-  int state2 = new_localvarliteral(ls, "(for state)");
-  int state3 = new_localvarliteral(ls, "(for state)");
-  int state4 = new_localvarliteral(ls, "(for state)");
+  new_localvarliteral(ls, "(for state)");
+  new_localvarliteral(ls, "(for state)");
+  new_localvarliteral(ls, "(for state)");
+  new_localvarliteral(ls, "(for state)");
   /* create declared variables */
   new_varkind(ls, indexname, RDKCONST);  /* 控制变量设为只读常量 */
   while (testnext(ls, ',')) {
@@ -5666,59 +5667,7 @@ static void forlist (LexState *ls, TString *indexname) {
   }
   if (ls->t.token == TK_IN) luaX_next(ls);
   line = ls->linenumber;
-
-  /* 添加范围运算符检查: for i in a .. b do */
-  int old_flags = ls->expr_flags;
-  ls->expr_flags |= E_NO_CONCAT;
-
-  int nexps = 1;
-  expr(ls, &e);
-
-  ls->expr_flags = old_flags;
-
-  if (nvars == 5 && ls->t.token == TK_CONCAT) {
-      /* It is a range: for indexname in e .. e2 */
-      luaX_next(ls); /* skip '..' */
-      expdesc e2, e3;
-      expr(ls, &e2);
-      int has_step = 0;
-      if (ls->t.token == TK_CONCAT) {
-          luaX_next(ls);
-          expr(ls, &e3);
-          has_step = 1;
-      }
-
-      /* 重命名变量以匹配 numeric for loop (fornum) 的结构 */
-      getlocalvardesc(fs, state1)->vd.name = luaS_newliteral(ls->L, "(for index)");
-      getlocalvardesc(fs, state2)->vd.name = luaS_newliteral(ls->L, "(for limit)");
-      getlocalvardesc(fs, state3)->vd.name = luaS_newliteral(ls->L, "(for step)");
-      getlocalvardesc(fs, state4)->vd.name = indexname; /* 将第4个状态变量变为控制变量 */
-      ls->dyd->actvar.n--; /* 移除原来最后添加的 indexname 变量 */
-
-      luaK_exp2nextreg(fs, &e);
-      luaK_exp2nextreg(fs, &e2);
-      if (has_step) luaK_exp2nextreg(fs, &e3);
-      else {
-          init_exp(&e3, VKINT, 0);
-          e3.u.ival = 1;
-          luaK_exp2nextreg(fs, &e3);
-      }
-
-      adjustlocalvars(ls, 3);
-      forbody(ls, base, line, 1, 0); /* 0 for numeric forloop */
-      return;
-  }
-
-  /* 如果不是范围操作符，继续解析多重赋值的通用for循环 (forlist) */
-  luaK_exp2nextreg(fs, &e);
-  while (testnext(ls, ',')) {
-      expdesc e_next;
-      expr(ls, &e_next);
-      luaK_exp2nextreg(fs, &e_next);
-      nexps++;
-  }
-
-  adjust_assign(ls, 4, nexps, &e);
+  adjust_assign(ls, 4, explist(ls, &e), &e);
   adjustlocalvars(ls, 4);  /* control variables */
   marktobeclosed(fs);  /* last control var. must be closed */
   luaK_checkstack(fs, 3);  /* extra space to call generator */
@@ -11717,46 +11666,6 @@ static void compoundassign (LexState *ls, expdesc *var, BinOpr opr) {
 
 
 /*
-** 处理原地交换运算符 (a >< b)
-** 语法: var1 >< var2  =>  var1, var2 = var2, var1
-** 参数：
-**   ls - 词法状态
-**   v1 - 左侧变量的表达式描述符
-*/
-static void swapstat (LexState *ls, expdesc *v1) {
-  FuncState *fs = ls->fs;
-  expdesc v2;
-  int line = ls->linenumber;
-
-  /* 检查左侧变量是否可赋值 */
-  check_condition(ls, vkisvar(v1->k), "syntax error");
-  check_readonly(ls, v1);
-
-  /* 跳过 >< 运算符 */
-  luaX_next(ls);
-
-  /* 解析右侧变量 */
-  suffixedexp(ls, &v2);
-
-  /* 检查右侧变量是否可赋值 */
-  check_condition(ls, vkisvar(v2.k), "syntax error");
-  check_readonly(ls, &v2);
-
-  /* 复制表达式以便读取当前值而不破坏原有访问路径（如表索引） */
-  expdesc e1 = *v1;
-  expdesc e2 = v2;
-
-  /* 分别将两个变量的当前值加载到新分配的临时寄存器中 */
-  /* 这会自动处理 GETGLOBAL, GETTABLE, GETUPVAL 等 */
-  luaK_exp2nextreg(fs, &e1);
-  luaK_exp2nextreg(fs, &e2);
-
-  /* 将临时寄存器中的值写回原来的变量，但交叉写入 */
-  luaK_storevar(fs, v1, &e2);
-  luaK_storevar(fs, &v2, &e1);
-}
-
-/*
 ** 处理自增运算符 (a++)
 ** 语法: var++  =>  var = var + 1
 ** 参数：
@@ -11820,12 +11729,6 @@ static void exprstat (LexState *ls) {
     return;
   }
   
-  /* 检查是否是原地交换运算符 */
-  if (ls->t.token == TK_SWAP) {
-    swapstat(ls, &v.v);
-    return;
-  }
-
   /* 检查是否是复合赋值运算符 */
   BinOpr opr = getcompoundop(ls->t.token);
   if (opr != OPR_NOBINOPR) {
