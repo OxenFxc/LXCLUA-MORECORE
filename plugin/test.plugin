@@ -1,3 +1,11 @@
 plugin "my_awesome_plugin" {
     version = "2.0.1"
 }
+
+-- Mix with lua language here:
+local meta = ...
+print("[test.plugin] Hello, I am " .. meta.name .. " version " .. meta.version)
+
+meta.some_custom_field = "This is a lua-injected string"
+
+return meta

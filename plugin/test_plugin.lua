@@ -1,8 +1,9 @@
 local plugin = require("plugin")
 
 print("=== Testing Parser ===")
-local data = plugin.parse("plugin \"test_pkg\" { version = \"1.2.3\" }")
+local data, rest = plugin.parse("plugin \"test_pkg\" { version = \"1.2.3\" }\nprint('hello')")
 print("Parsed table: name=" .. tostring(data.name) .. ", version=" .. tostring(data.version))
+print("Parsed rest string length: " .. tostring(string.len(rest)))
 
 print("\n=== Testing Dump / Undump ===")
 local bdata = plugin.dump(data)

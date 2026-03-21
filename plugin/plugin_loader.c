@@ -35,9 +35,41 @@ int plugin_load(lua_State *L) {
         /* Call our custom plugin_parse natively */
         lua_pushcfunction(L, plugin_parse);
         lua_pushstring(L, buffer);
-        lua_call(L, 1, 1); /* returns a table */
-        /* To make it act like a module, return a function that returns the table */
-        /* But simple enough to just return the parsed table for demonstration. */
+        lua_call(L, 1, 2); /* returns table, lua_code */
+
+        const char *lua_code = lua_tostring(L, -1);
+        int code_len = strlen(lua_code);
+
+        /* Only compile and run if there's actually Lua code after the plugin block */
+        if (code_len > 0) {
+            int status = luaL_loadbuffer(L, lua_code, code_len, path);
+            if (status != LUA_OK) {
+                free(buffer);
+                return lua_error(L);
+            }
+
+            /* push metadata table as argument to the Lua script */
+            lua_pushvalue(L, -3);
+
+            if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+                free(buffer);
+                return lua_error(L);
+            }
+
+            /* If the script returned nil, we fallback to returning the metadata table */
+            if (lua_isnil(L, -1)) {
+                lua_pop(L, 1);
+                /* The metadata table is still at -2, clean up stack and leave table */
+                lua_remove(L, -1); /* remove the string containing lua code */
+            } else {
+                /* Script returned something, remove metadata and code string from stack */
+                lua_remove(L, -2);
+                lua_remove(L, -2);
+            }
+        } else {
+            /* No lua code, just return the table */
+            lua_pop(L, 1); /* pop lua code string */
+        }
     } else {
         /* Default lua parsing */
         int status = luaL_loadbuffer(L, buffer, size, path);
