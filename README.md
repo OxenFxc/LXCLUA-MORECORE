@@ -42,6 +42,7 @@ A high-performance embedded scripting engine based on **Lua 5.5 (Custom)** with 
 | `ByteCode` | Bytecode manipulation and analysis |
 | `vmprotect` | VM-based code protection |
 | `translator` | Code translation utilities |
+| `patch` | Direct memory manipulation and raw machine code execution |
 
 ---
 
@@ -58,6 +59,13 @@ Supports compound assignments, increment/decrement, spaceship operator, null coa
 local a = 10
 a += 5          -- a = 15
 a++             -- a = 16
+
+-- Exponential Operator
+local p = 2 ** 3  -- 8
+
+-- In-Place Swap
+local x, y = 10, 20
+x >< y          -- x = 20, y = 10
 
 -- Spaceship Operator (-1, 0, 1)
 local cmp = 10 <=> 20  -- -1
@@ -238,6 +246,11 @@ print(sum(1, ...arr2))
 ### 6. Control Flow
 
 ```lua
+-- Range Operator Loop
+for i in 1..10 do
+    print(i)
+end
+
 -- Switch Statement
 switch (val) do
     case 1:
