@@ -1,7 +1,3 @@
-plugin "test_pkg" {
-    version = "1.0.0",
-    author = "jules",
-    dependencies = {
-        "lxclua-base"
-    }
+plugin "my_awesome_plugin" {
+    version = "2.0.1"
 }

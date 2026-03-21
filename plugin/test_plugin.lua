@@ -1,11 +1,21 @@
 local plugin = require("plugin")
 
-print("Testing plugin API")
+print("=== Testing Parser ===")
+local data = plugin.parse("plugin \"test_pkg\" { version = \"1.2.3\" }")
+print("Parsed table: name=" .. tostring(data.name) .. ", version=" .. tostring(data.version))
 
-local data = plugin.parse("mock data")
-print("Parse output: " .. tostring(data))
+print("\n=== Testing Dump / Undump ===")
+local bdata = plugin.dump(data)
+local udata = plugin.undump(bdata)
+print("Undumped table: name=" .. tostring(udata.name) .. ", version=" .. tostring(udata.version))
 
-local ok = plugin.install("test_pkg")
-print("Install success: " .. tostring(ok))
+print("\n=== Testing Loader ===")
+local res = plugin.load("plugin/test.plugin")
+print("Loader returned:")
+for k,v in pairs(res) do
+  print("  " .. tostring(k) .. " = " .. tostring(v))
+end
 
-plugin.shop_connect("https://test.shop.com")
+print("\n=== Testing Shop ===")
+local shop_res = plugin.shop_connect()
+print("Shop returned: " .. string.sub(shop_res, 1, 100) .. "...")
