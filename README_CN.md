@@ -60,13 +60,6 @@ local a = 10
 a += 5          -- a = 15
 a++             -- a = 16
 
--- 指数操作符
-local p = 2 ** 3  -- 8
-
--- 原地交换 (In-Place Swap)
-local x, y = 10, 20
-x >< y          -- x = 20, y = 10
-
 -- 太空船操作符 (-1, 0, 1)
 local cmp = 10 <=> 20  -- -1
 
@@ -246,11 +239,6 @@ print(sum(1, ...arr2))
 ### 6. 控制流
 
 ```lua
--- 范围操作符循环 (Range Operator Loop)
-for i in 1..10 do
-    print(i)
-end
-
 -- Switch 语句
 switch (val) do
     case 1:
