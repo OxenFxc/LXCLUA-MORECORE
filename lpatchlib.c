@@ -24,6 +24,9 @@
 #include <dlfcn.h>
 #endif
 
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* WebAssembly: VMP markers are not available as external symbols */
+#else
 extern char lundump_vmp_start[];
 extern char lundump_vmp_end[];
 extern char lvm_vmp_start[];
@@ -42,8 +45,13 @@ extern char ldo_vmp_start[];
 extern char ldo_vmp_end[];
 extern char lgc_vmp_start[];
 extern char lgc_vmp_end[];
+#endif
 
 static int patch_get_marker(lua_State *L) {
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+  /* WebAssembly: VMP markers are not available */
+  return luaL_error(L, "VMP markers not available on WebAssembly");
+#else
   const char *name = luaL_checkstring(L, 1);
   if (strcmp(name, "lundump") == 0) {
     lua_pushlightuserdata(L, lundump_vmp_start);
@@ -83,6 +91,7 @@ static int patch_get_marker(lua_State *L) {
     return 2;
   }
   return luaL_error(L, "Unknown marker name: %s", name);
+#endif
 }
 
 static int patch_write(lua_State *L) {
@@ -126,7 +135,11 @@ static int patch_write(lua_State *L) {
 #endif
 
   memcpy(address, bytes, len);
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+  /* WebAssembly 不需要手动清除指令缓存 */
+#else
   __builtin___clear_cache((char*)start_page, (char*)start_page + protect_len);
+#endif
 
 #if defined(_WIN32)
   VirtualProtect((void*)start_page, protect_len, oldProtect, &oldProtect);
@@ -672,6 +685,8 @@ static int patch_hook(lua_State *L) {
 #if defined(_WIN32)
   FlushInstructionCache(GetCurrentProcess(), (void*)start_page, protect_len);
   VirtualProtect((void*)start_page, protect_len, oldProtect, &oldProtect);
+#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
+  /* WebAssembly 不需要手动清除指令缓存 */
 #else
   __builtin___clear_cache((char*)start_page, (char*)start_page + protect_len);
   mprotect((void*)start_page, protect_len, PROT_READ | PROT_EXEC);
@@ -750,6 +765,8 @@ static int patch_exec(lua_State *L) {
 
 #if defined(_WIN32)
   FlushInstructionCache(GetCurrentProcess(), address, len);
+#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
+  /* WebAssembly 不需要手动清除指令缓存 */
 #else
   __builtin___clear_cache((char*)address, (char*)address + len);
 #endif

@@ -1,3 +1,11 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
@@ -1530,7 +1538,7 @@ static void generate_code(IRNode *node, luaL_Buffer *B, int indent) {
         else luaL_addstring(B, node->str_val);
     } else if (node->type == IR_EXPR_LITERAL_INT) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "%lld", node->int_val);
+        snprintf(buf, sizeof(buf), "%lld", (long long)node->int_val);
         luaL_addstring(B, buf);
     } else if (node->type == IR_EXPR_LITERAL_FLT) {
         char buf[32];

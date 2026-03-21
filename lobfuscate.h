@@ -514,6 +514,20 @@ LUAI_FUNC int luaO_vmProtect (lua_State *L, Proto *f, unsigned int seed);
 ** =======================================================
 */
 
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+
+/*
+** WebAssembly 兼容的 VMP Marker 实现
+** 使用静态常量数组替代内联汇编
+*/
+#define VMP_MARKER(name) \
+  __attribute__((used, visibility("default"))) \
+  static const unsigned char name##_start[] = { 0x90, 0x90, 0x90, 0x90 }; \
+  __attribute__((used, visibility("default"))) \
+  static const unsigned char name##_end[] = { 0x00 }
+
+#else
+
 /* VMP Marker bytes */
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
 #define VMP_BYTES ".byte 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90\n"
@@ -547,6 +561,8 @@ LUAI_FUNC int luaO_vmProtect (lua_State *L, Proto *f, unsigned int seed);
     ASM_GLOBAL " " ASM_PREFIX #name "_end\n" \
     ASM_PREFIX #name "_end:\n" \
   )
+
+#endif /* __EMSCRIPTEN__ || __wasm__ */
 
 
 #endif /* lobfuscate_h */
