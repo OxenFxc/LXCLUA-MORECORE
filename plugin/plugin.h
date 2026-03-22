@@ -11,6 +11,11 @@
 int luaopen_plugin(lua_State *L);
 
 /*
+** Shared utilities
+*/
+void get_plugin_dir(char *buffer, size_t size);
+
+/*
 ** Parsers and sub-modules
 */
 int plugin_parse(lua_State *L);

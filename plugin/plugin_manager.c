@@ -13,7 +13,7 @@
 #endif
 
 /* Utility to get the plugin install directory */
-static void get_plugin_dir(char *buffer, size_t size) {
+void get_plugin_dir(char *buffer, size_t size) {
 #if defined(_WIN32)
     const char *appdata = getenv("APPDATA");
     if (appdata) {
@@ -115,6 +115,12 @@ int plugin_install(lua_State *L) {
     FILE *fp = fopen(filepath, "w");
     if (fp) {
         fprintf(fp, "plugin \"%s\" {\n  version = \"1.0.0\"\n}\n", pkg_name);
+        fprintf(fp, "\n");
+        fprintf(fp, "-- This is embedded Lua code in the .plugin file!\n");
+        fprintf(fp, "local meta = ...\n");
+        fprintf(fp, "print(\"Hello from \" .. (meta.name or \"unknown\") .. \" v\" .. (meta.version or \"unknown\"))\n");
+        fprintf(fp, "meta.loaded = true\n");
+        fprintf(fp, "return meta\n");
         fclose(fp);
         printf("Fallback Package %s installed successfully to %s\n", pkg_name, filepath);
         lua_pushboolean(L, 1);
